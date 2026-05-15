@@ -21,6 +21,7 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { AppBar } from '../components/AppBar';
+import { SymptomFlowBack } from '../components/SymptomFlowBack';
 
 export function AIResults() {
   const navigate = useNavigate();
@@ -30,6 +31,8 @@ export function AIResults() {
       <AppBar />
 
       <div className="px-6 pt-24 py-8">
+        <SymptomFlowBack to="/questionnairev1" label="بازگشت به سوالات" className="mb-4" />
+
         {/* Header */}
         <div className="text-center mb-6">
           <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse">

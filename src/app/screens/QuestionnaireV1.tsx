@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
+import type { SymptomFormState } from './SymptomSelection';
 import { ArrowRight, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -8,6 +9,7 @@ import { Label } from '../components/ui/label';
 import { Progress } from '../components/ui/progress';
 import { Textarea } from '../components/ui/textarea';
 import { AppBar } from '../components/AppBar';
+import { SymptomFlowBack } from '../components/SymptomFlowBack';
 
 const questions = [
   {
@@ -57,6 +59,9 @@ const questions = [
 
 export function QuestionnaireV1() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const symptomFormState = (location.state as { symptomFormState?: SymptomFormState } | null)
+    ?.symptomFormState;
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const [medicationDetails, setMedicationDetails] = useState('');
@@ -83,8 +88,10 @@ export function QuestionnaireV1() {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+    } else if (symptomFormState) {
+      navigate('/symptoms', { state: symptomFormState });
     } else {
-      navigate(-1);
+      navigate('/symptoms');
     }
   };
 
@@ -106,6 +113,13 @@ export function QuestionnaireV1() {
         <AppBar />
 
         <div className="px-6 pt-24 py-8">
+          <SymptomFlowBack
+            to="/symptoms"
+            label="بازگشت به علائم"
+            state={symptomFormState}
+            className="mb-4"
+          />
+
           {/* Progress */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
@@ -171,15 +185,13 @@ export function QuestionnaireV1() {
 
           {/* Navigation Buttons */}
           <div className="flex gap-3">
-            {currentStep > 0 && (
-                <Button
-                    variant="outline"
-                    onClick={handleBack}
-                    className="flex-1 h-12 text-lg"
-                >
-                  قبلی
-                </Button>
-            )}
+            <Button
+                variant="outline"
+                onClick={handleBack}
+                className="flex-1 h-12 text-lg"
+            >
+              {currentStep > 0 ? 'قبلی' : 'بازگشت به علائم'}
+            </Button>
             <Button
                 onClick={handleNext}
                 disabled={!canProceed}
