@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { Activity, Stethoscope, Brain, Settings, ChevronRight, UtensilsCrossed, Calendar, Clock, ChevronLeft } from 'lucide-react';
+import { Activity, Stethoscope, Brain, ChevronRight, UtensilsCrossed, Calendar, Clock, ChevronLeft } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
@@ -110,21 +110,16 @@ export function Home() {
   };
 
   return (
-      <div className=" font-[IRANSansXFaNum] h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto overflow-x-hidden pb-24">
-        <AppBar showLogout={true} title="خانه" showChat={true} />
+      <div className=" font-[YekanBakhFaNum] h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto overflow-x-hidden pb-24">
+        <AppBar />
 
         <div className="px-6 pt-24 py-8 text-right">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl text-gray-900">
-                سلام {userData?.name?.split(' ')[0] || 'کاربر'} عزیز 👋
-              </h1>
-              <p className="text-gray-600 mt-1">امروز حالتان چطور است؟</p>
-            </div>
-            <button className="w-12 h-12 bg-white rounded-full shadow-md flex items-center justify-center">
-              <Settings className="w-6 h-6 text-gray-600" />
-            </button>
+          <div className="mb-8">
+            <h1 className="text-3xl text-gray-900">
+              سلام {userData?.name?.split(' ')[0] || 'کاربر'} عزیز 👋
+            </h1>
+            <p className="text-gray-600 mt-1">امروز حالتان چطور است؟</p>
           </div>
 
           {/* Quick Stats Card */}

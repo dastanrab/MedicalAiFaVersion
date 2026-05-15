@@ -198,7 +198,7 @@ export default function CakeShopManager() {
     const btnPrimaryClasses = "py-2 bg-rose-400 text-white text-sm rounded-lg hover:bg-rose-500 transition shadow-sm shadow-rose-200 disabled:opacity-50 disabled:cursor-not-allowed";
 
     return (
-        <div className="min-h-screen bg-pink-50 text-pink-900 font-[IRANSansXFaNum] p-4 md:p-8 dir-rtl text-right selection:bg-rose-200" dir="rtl">
+        <div className="min-h-screen bg-pink-50 text-pink-900 font-[YekanBakhFaNum] p-4 md:p-8 dir-rtl text-right selection:bg-rose-200" dir="rtl">
             <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
 
                 <h1 className="text-2xl md:text-3xl font-light tracking-tight text-center text-rose-900">

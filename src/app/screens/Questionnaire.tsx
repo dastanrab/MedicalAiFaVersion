@@ -273,7 +273,7 @@ export function Questionnaire() {
   if (showFullResult && previousResult) {
     return (
         <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto relative" dir="rtl">
-          <AppBar title="نتیجه کامل تشخیص" />
+          <AppBar />
 
           <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-20 pb-24">
             <Card className="p-4 sm:p-6 mb-4 border-r-4 border-blue-500">
@@ -453,7 +453,7 @@ export function Questionnaire() {
 
   return (
       <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto relative" dir="rtl">
-        <AppBar title={form.title} />
+        <AppBar />
 
         <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-20 pb-32">
           <Card className="p-6 mb-6">

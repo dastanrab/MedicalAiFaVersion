@@ -77,7 +77,7 @@ export function SymptomSelection() {
 
   return (
       <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto relative" dir="rtl">
-        <AppBar title="انتخاب علائم" />
+        <AppBar />
 
         <div className="px-6 pt-24 pb-32">
           {/* Header */}

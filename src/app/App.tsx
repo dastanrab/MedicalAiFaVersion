@@ -85,7 +85,7 @@ function App() {
           />
 
             <Route path="/diagnosis-result" element={<ProtectedRoute>
-                <AppContainer showNavbar showAppBar appBarTitle="Home">
+                <AppContainer showNavbar>
                     <DiagnosisResult />
                 </AppContainer></ProtectedRoute>} />
 
@@ -94,7 +94,7 @@ function App() {
               path="/home"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="Home">
+                  <AppContainer showNavbar>
                     <Home />
                   </AppContainer>
                 </ProtectedRoute>
@@ -138,7 +138,7 @@ function App() {
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="Profile">
+                  <AppContainer showNavbar>
                     <UserProfile />
                   </AppContainer>
                 </ProtectedRoute>
@@ -148,7 +148,7 @@ function App() {
               path="/symptoms"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="Select Symptoms">
+                  <AppContainer showNavbar>
                     <SymptomSelection />
                   </AppContainer>
                 </ProtectedRoute>
@@ -158,7 +158,7 @@ function App() {
               path="/questionnaire"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="Health Assessment">
+                  <AppContainer showNavbar>
                     <Questionnaire />
                   </AppContainer>
                 </ProtectedRoute>
@@ -168,7 +168,7 @@ function App() {
                 path="/questionnairev1"
                 element={
                     <ProtectedRoute>
-                        <AppContainer showNavbar showAppBar appBarTitle="Health Assessment">
+                        <AppContainer showNavbar>
                             <QuestionnaireV1 />
                         </AppContainer>
                     </ProtectedRoute>
@@ -178,7 +178,7 @@ function App() {
               path="/results"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="AI Analysis">
+                  <AppContainer showNavbar>
                     <AIResults />
                   </AppContainer>
                 </ProtectedRoute>
@@ -188,7 +188,7 @@ function App() {
               path="/doctors"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="Find Doctors">
+                  <AppContainer showNavbar>
                     <DoctorList />
                   </AppContainer>
                 </ProtectedRoute>
@@ -208,7 +208,7 @@ function App() {
               path="/doctor/:id"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="پروفایل پزشک">
+                  <AppContainer showNavbar>
                     <DoctorProfile />
                   </AppContainer>
                 </ProtectedRoute>
@@ -228,7 +228,7 @@ function App() {
               path="/body-measurement"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="Body Measurement">
+                  <AppContainer showNavbar>
                     <BodyMeasurement />
                   </AppContainer>
                 </ProtectedRoute>
@@ -247,7 +247,7 @@ function App() {
               path="/meal-plan"
               element={
                 <ProtectedRoute>
-                  <AppContainer showNavbar showAppBar appBarTitle="Meal Plan">
+                  <AppContainer showNavbar>
                     <MealPlan />
                   </AppContainer>
                 </ProtectedRoute>

@@ -209,7 +209,7 @@ export function DiagnosisResult() {
     if (error) {
         return (
             <div className="h-full bg-gradient-to-b from-blue-50 to-white flex items-center justify-center" dir="rtl">
-                <AppBar title="نتیجه تشخیص" />
+                <AppBar />
                 <div className="text-center px-6">
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
                         {error}
@@ -227,7 +227,7 @@ export function DiagnosisResult() {
 
     return (
         <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto relative" dir="rtl">
-            <AppBar title="نتیجه تشخیص" />
+            <AppBar />
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-24">
                 {/* چت باکس - علایم بیمار و تشخیص اولیه */}

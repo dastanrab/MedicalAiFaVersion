@@ -94,7 +94,7 @@ export function MealPlan() {
 
   return (
     <div className="h-full bg-gradient-to-b from-orange-50 to-white overflow-y-auto pb-24">
-      <AppBar title="Meal Plan" />
+      <AppBar />
 
       <div className="px-6 pt-24 py-8 pb-8">
         {/* Daily Calories Card */}

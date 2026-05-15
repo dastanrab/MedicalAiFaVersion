@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, User, Scale, Ruler, Calendar, MapPin, X, Check } from 'lucide-react';
+import { LogOut, User, Scale, Ruler, Calendar, MapPin, X, Check, Crown } from 'lucide-react';
 import svgPaths from '../../imports/MedicalAiMobileAppUi/svg-u90z92ve7h';
 import {AppBar} from "../components/AppBar";
 import {useAuthStore} from "../store/authStore";
@@ -69,7 +69,7 @@ const pricingPlans = [
 
 export function UserProfile() {
   const navigate = useNavigate();
-  const { accessToken } = useAuthStore();
+  const { accessToken, logout } = useAuthStore();
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState('basic');
@@ -174,11 +174,6 @@ export function UserProfile() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    navigate('/');
-  };
-
   const updateField = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
     if (field === 'province') {
@@ -200,12 +195,8 @@ export function UserProfile() {
   }
 
   return (
-      <div className="min-h-screen relative bg-gray-50 overflow-y-auto pb-24 font-[IRANSansXFaNum]" dir="rtl">
-        <AppBar
-            title="پروفایل"
-            showPricingIcon={true}
-            onPricingClick={() => setShowPricingModal(true)}
-        />
+      <div className="min-h-screen relative bg-gray-50 overflow-y-auto pb-24 font-[YekanBakhFaNum]" dir="rtl">
+        <AppBar />
 
         <div className="px-4 pt-20 py-6 max-w-md mx-auto">
           {/* Header */}
@@ -356,10 +347,27 @@ export function UserProfile() {
             {/* Buttons */}
             <div className="pt-2 space-y-3">
               <button
+                  type="button"
+                  onClick={() => setShowPricingModal(true)}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-medium text-base transition-colors"
+              >
+                <Crown className="w-5 h-5" />
+                پنل‌های مالی
+              </button>
+              <button
+                  type="button"
                   onClick={handleSubmit}
                   className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-base transition-colors shadow-lg shadow-blue-200"
               >
                 ذخیره پروفایل
+              </button>
+              <button
+                  type="button"
+                  onClick={logout}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg font-medium text-base transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                خروج از حساب
               </button>
             </div>
           </div>

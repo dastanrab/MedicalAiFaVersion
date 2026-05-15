@@ -29,6 +29,7 @@ import {
   DialogTrigger,
 } from '../components/ui/dialog';
 import {useAuthStore} from "../store/authStore";
+import { AppBar } from '../components/AppBar';
 
 const doctorData: any = {
   1: {
@@ -144,6 +145,7 @@ export function DoctorProfile() {
 
   return (
       <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white" dir="rtl">
+        <AppBar />
         <div className="pt-24 px-6 pb-24">
 
           {/* کارت پروفایل پزشک */}

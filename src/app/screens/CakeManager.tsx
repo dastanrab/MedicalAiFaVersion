@@ -188,7 +188,7 @@ export default function CakeManager() {
 
     // ---------- رندر ----------
     return (
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-4 md:p-6 font-[IRANSansXFaNum]" dir="rtl">
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-4 md:p-6 font-[YekanBakhFaNum]" dir="rtl">
         {/* نوتیفیکیشن شناور */}
     {notification && (
         <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-medium backdrop-blur-sm bg-opacity-90 animate-bounce">
