@@ -11,6 +11,21 @@ import { Textarea } from '../components/ui/textarea';
 import { AppBar } from '../components/AppBar';
 import { SymptomFlowBack } from '../components/SymptomFlowBack';
 
+const symptoms = [
+  { id: 'headache', label: 'سردرد' },
+  { id: 'fever', label: 'تب' },
+  { id: 'cough', label: 'سرفه' },
+  { id: 'sore-throat', label: 'گلودرد' },
+  { id: 'fatigue', label: 'خستگی' },
+  { id: 'nausea', label: 'حالت تهوع' },
+  { id: 'dizziness', label: 'سرگیجه' },
+  { id: 'body-ache', label: 'درد بدن' },
+  { id: 'runny-nose', label: 'آبریزش بینی' },
+  { id: 'chest-pain', label: 'درد قفسه سینه' },
+  { id: 'shortness-breath', label: 'تنگی نفس' },
+  { id: 'stomach-pain', label: 'درد شکم' },
+];
+
 const questions = [
   {
     id: 1,
@@ -61,7 +76,7 @@ export function QuestionnaireV1() {
   const navigate = useNavigate();
   const location = useLocation();
   const symptomFormState = (location.state as { symptomFormState?: SymptomFormState } | null)
-    ?.symptomFormState;
+      ?.symptomFormState;
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const [medicationDetails, setMedicationDetails] = useState('');
@@ -71,17 +86,88 @@ export function QuestionnaireV1() {
 
   const handleAnswer = (answer: string) => {
     setAnswers({ ...answers, [currentQuestion.id]: answer });
-    // Clear medication details if user changes answer to "No"
     if (currentQuestion.id === 3 && answer === 'خیر') {
       setMedicationDetails('');
     }
+  };
+
+  const buildFormattedText = (): string => {
+    const parts: string[] = [];
+
+    // علائم انتخاب شده از صفحه قبل
+    if (symptomFormState?.selectedSymptoms && symptomFormState.selectedSymptoms.length > 0) {
+      const symptomLabels = symptomFormState.selectedSymptoms
+          .map(id => symptoms.find(s => s.id === id)?.label)
+          .filter(Boolean)
+          .join('، ');
+      parts.push(`علائم: ${symptomLabels}`);
+    }
+
+    // سوال 1: زمان شروع علائم
+    if (answers[1]) {
+      parts.push(`زمان شروع علائم: ${answers[1]}`);
+    }
+
+    // سوال 2: شدت درد
+    if (answers[2]) {
+      parts.push(`شدت درد/ناراحتی: ${answers[2]}`);
+    }
+
+    // سوال 3: مصرف دارو
+    if (answers[3]) {
+      if (answers[3] === 'بله' && medicationDetails) {
+        parts.push(`مصرف دارو: بله - ${medicationDetails}`);
+      } else {
+        parts.push(`مصرف دارو: ${answers[3]}`);
+      }
+    }
+
+    // سوال 4: سیگار
+    if (answers[4]) {
+      parts.push(`سیگار: ${answers[4]}`);
+    }
+
+    // سوال 5: مصرف الکل
+    if (answers[5]) {
+      parts.push(`مصرف الکل: ${answers[5]}`);
+    }
+
+    // سوال 6: بیماری مزمن
+    if (answers[6]) {
+      parts.push(`بیماری مزمن: ${answers[6]}`);
+    }
+
+    // سوال 7: اطلاعات تکمیلی
+    if (answers[7]) {
+      parts.push(`اطلاعات تکمیلی: ${answers[7]}`);
+    }
+
+    return parts.join('. ');
   };
 
   const handleNext = () => {
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      navigate('/results');
+      // ساخت متن فرمت‌بندی شده
+      const formattedSymptoms = buildFormattedText();
+
+      const payload: Record<string, unknown> = {
+        symptoms: formattedSymptoms
+      };
+
+      // اضافه کردن اطلاعات تکمیلی
+      if (symptomFormState?.age) payload.age = Number(symptomFormState.age);
+      if (symptomFormState?.gender) payload.gender = symptomFormState.gender;
+      if (symptomFormState?.medicalHistory) payload.medical_history = symptomFormState.medicalHistory;
+
+      navigate('/diagnosis-result', {
+        state: {
+          requestPayload: payload,
+          isLoading: true,
+          symptomFormState: symptomFormState,
+        },
+      });
     }
   };
 
@@ -95,17 +181,14 @@ export function QuestionnaireV1() {
     }
   };
 
-  // Check if user can proceed
   const canProceed = (() => {
     if (!answers[currentQuestion.id]) return false;
-    // If it's the medication question and answer is "Yes", require medication details
     if (currentQuestion.id === 3 && answers[currentQuestion.id] === 'بله') {
       return medicationDetails.trim().length > 0;
     }
     return true;
   })();
 
-  // Check if we should show the medication details field
   const showMedicationDetails = currentQuestion.id === 3 && answers[3] === 'بله';
 
   return (
@@ -114,13 +197,12 @@ export function QuestionnaireV1() {
 
         <div className="px-6 pt-24 py-8">
           <SymptomFlowBack
-            to="/symptoms"
-            label="بازگشت به علائم"
-            state={symptomFormState}
-            className="mb-4"
+              to="/symptoms"
+              label="بازگشت به علائم"
+              state={symptomFormState}
+              className="mb-4"
           />
 
-          {/* Progress */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm text-gray-600">
@@ -134,7 +216,6 @@ export function QuestionnaireV1() {
             <Progress value={progress} className="h-2" />
           </div>
 
-          {/* Question Card */}
           <Card className="mb-6 border-0 p-6 text-right shadow-xl" dir="rtl">
             <h1 className="mb-6 text-2xl text-right text-gray-900">{currentQuestion.question}</h1>
 
@@ -174,7 +255,6 @@ export function QuestionnaireV1() {
                 />
             )}
 
-            {/* Medication Details Field */}
             {showMedicationDetails && (
                 <Textarea
                     placeholder="لطفا جزئیات داروهایی که مصرف می‌کنید را وارد کنید..."
@@ -186,7 +266,6 @@ export function QuestionnaireV1() {
             )}
           </Card>
 
-          {/* Navigation Buttons */}
           <div className="flex gap-3">
             <Button
                 variant="outline"
