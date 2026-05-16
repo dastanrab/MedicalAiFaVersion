@@ -1,10 +1,8 @@
 import { useNavigate } from 'react-router';
-import { 
-  Brain, 
-  AlertCircle, 
-  CheckCircle, 
-  Activity, 
-  ArrowRight, 
+import {
+  Sparkles,
+  AlertCircle,
+  Activity,
   Home,
   Clock,
   TrendingUp,
@@ -15,287 +13,303 @@ import {
   Calendar,
   Pill,
   Heart,
-  Info
+  Info,
+  Stethoscope,
+  CheckCircle2,
 } from 'lucide-react';
-import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { AppBar } from '../components/AppBar';
 import { SymptomFlowBack } from '../components/SymptomFlowBack';
 
+const keySymptoms = [
+  { label: 'تب', icon: Thermometer, bg: 'bg-red-50', color: 'text-red-500' },
+  { label: 'آبریزش بینی', icon: Droplets, bg: 'bg-sky-50', color: 'text-sky-500' },
+  { label: 'سرفه', icon: Wind, bg: 'bg-amber-50', color: 'text-amber-500' },
+  { label: 'خستگی', icon: Activity, bg: 'bg-violet-50', color: 'text-violet-500' },
+];
+
+const expectations = [
+  'علائم معمولاً طی ۲ تا ۳ روز به اوج می‌رسند',
+  'پس از روز پنجم بهبود تدریجی انتظار می‌رود',
+  'بیشتر افراد طی ۷ تا ۱۰ روز بهبود کامل پیدا می‌کنند',
+];
+
+const recommendations = [
+  {
+    title: 'استراحت و مایعات',
+    desc: '۷ تا ۹ ساعت خواب و مصرف حداقل ۸ لیوان آب در روز',
+    badge: 'ضروری',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    icon: Heart,
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
+  },
+  {
+    title: 'داروهای بدون نسخه',
+    desc: 'استامینوفن ۵۰۰ میلی‌گرم هر ۶ ساعت یا ایبوپروفن برای تب و درد',
+    badge: 'در صورت نیاز',
+    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
+    icon: Pill,
+    iconBg: 'bg-sky-100',
+    iconColor: 'text-sky-600',
+  },
+  {
+    title: 'بخور گرم',
+    desc: 'استنشاق بخار گرم ۲ تا ۳ بار در روز برای رفع گرفتگی بینی',
+    badge: 'توصیه‌شده',
+    badgeClass: 'bg-violet-50 text-violet-700 border-violet-200',
+    icon: Droplets,
+    iconBg: 'bg-violet-100',
+    iconColor: 'text-violet-600',
+  },
+  {
+    title: 'پایش علائم',
+    desc: 'دمای بدن و علائم را ثبت کنید؛ در تب بالای ۳۹.۵ درجه یا تنگی نفس فوراً به پزشک مراجعه کنید',
+    badge: 'مهم',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    icon: Activity,
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+  },
+];
+
+const urgentSigns = [
+  'تب بالای ۳۹.۵ درجه بیش از ۳ روز',
+  'تنگی نفس یا درد قفسه سینه',
+  'بدتر شدن علائم پس از بهبود اولیه',
+  'سردرد شدید یا گیجی',
+];
+
 export function AIResults() {
   const navigate = useNavigate();
 
   return (
-    <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto pb-24">
+    <div
+      className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum]"
+      dir="rtl"
+    >
       <AppBar />
 
       <div className="px-6 pt-24 py-8">
         <SymptomFlowBack to="/questionnairev1" label="بازگشت به سوالات" className="mb-4" />
 
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg animate-pulse">
-            <Brain className="w-10 h-10 text-white" />
+        {/* Hero */}
+        <div className="relative mb-6">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-blue-600 to-indigo-600 px-5 pt-5 pb-12 shadow-[0_8px_32px_rgba(79,70,229,0.3)]">
+            <div className="pointer-events-none absolute -top-10 -left-10 h-36 w-36 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.12]"
+              style={{
+                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                backgroundSize: '18px 18px',
+              }}
+            />
+            <div className="relative z-10 flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                <Sparkles className="h-7 w-7 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold text-white ring-1 ring-white/25">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  تحلیل تکمیل شد
+                </div>
+                <h1 className="text-xl font-bold leading-tight text-white">نتیجه تشخیص هوشمند</h1>
+                <p className="mt-0.5 text-sm leading-snug text-blue-100">
+                  بر اساس علائم و پاسخ‌های شما
+                </p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-3xl mb-2 text-gray-900">AI Analysis Complete</h1>
-          <p className="text-gray-600">Based on your symptoms and responses</p>
+
+          {/* Stats — floating */}
+          <div className="relative z-10 -mt-8 grid grid-cols-3 gap-2 px-1">
+            {[
+              { label: 'علائم بررسی‌شده', value: '۸', icon: Activity, tone: 'blue' },
+              { label: 'مدت تقریبی', value: '۳–۵ روز', icon: Clock, tone: 'violet' },
+              { label: 'میزان تطابق', value: '۸۵٪', icon: TrendingUp, tone: 'emerald' },
+            ].map((stat) => {
+              const Icon = stat.icon;
+              const toneMap = {
+                blue: 'bg-blue-50 text-blue-600',
+                violet: 'bg-violet-50 text-violet-600',
+                emerald: 'bg-emerald-50 text-emerald-600',
+              } as const;
+              return (
+                <Card
+                  key={stat.label}
+                  className="border-0 p-3 text-center shadow-[0_4px_20px_rgba(0,0,0,0.08)] ring-1 ring-gray-100"
+                >
+                  <div
+                    className={`mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl ${toneMap[stat.tone as keyof typeof toneMap]}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <p className="text-[10px] font-medium text-gray-500">{stat.label}</p>
+                  <p className="text-sm font-bold text-gray-900">{stat.value}</p>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Analysis Summary Stats */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          <Card className="p-3 shadow-lg border-0 text-center">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Activity className="w-5 h-5 text-blue-600" />
+        {/* Diagnosis */}
+        <Card className="mb-4 overflow-hidden rounded-2xl border-0 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 p-5 text-white shadow-[0_8px_32px_rgba(37,99,235,0.28)]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30">
+              <Stethoscope className="h-5 w-5 text-white" />
             </div>
-            <p className="text-xs text-gray-600 font-bold">Analyzed</p>
-            <p className="text-sm text-gray-900">8 Symptoms</p>
-          </Card>
-          
-          <Card className="p-3 shadow-lg border-0 text-center">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Clock className="w-5 h-5 text-purple-600" />
-            </div>
-            <p className="text-xs text-gray-600 font-bold">Duration</p>
-            <p className="text-sm text-gray-900">3-5 Days</p>
-          </Card>
-          
-          <Card className="p-3 shadow-lg border-0 text-center">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-            </div>
-            <p className="text-xs text-gray-600 font-bold">Match</p>
-            <p className="text-sm text-gray-900">85%</p>
-          </Card>
-        </div>
-
-        {/* Diagnosis Card */}
-        <Card className="p-6 shadow-xl border-0 mb-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-          <div className="flex items-start mb-4">
-            <Activity className="w-6 h-6 mr-3 mt-1" />
-            <div className="flex-1">
-              <h2 className="text-lg mb-1 font-bold">Possible Condition</h2>
-              <h3 className="text-2xl mb-3">Upper Respiratory Infection</h3>
-              <p className="text-sm text-blue-100">
-                Commonly known as the common cold, affecting the nose, throat, and airways
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-blue-100">احتمال تشخیص</p>
+              <h2 className="mt-0.5 text-xl font-bold leading-snug">عفونت دستگاه تنفسی فوقانی</h2>
+              <p className="mt-2 text-sm leading-relaxed text-blue-100">
+                شایع‌ترین نوع سرماخوردگی که بینی، گلو و مجاری هوایی را تحت تأثیر قرار می‌دهد
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Badge className="bg-white/20 text-white border-white/30 rounded-full">
-              85% Confidence
-            </Badge>
-            <Badge className="bg-white/20 text-white border-white/30 rounded-full">
-              Moderate Severity
-            </Badge>
-            <Badge className="bg-white/20 text-white border-white/30 rounded-full">
-              Self-limiting
-            </Badge>
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <Badge className="rounded-full border-white/30 bg-white/20 text-white">اطمینان ۸۵٪</Badge>
+            <Badge className="rounded-full border-white/30 bg-white/20 text-white">شدت متوسط</Badge>
+            <Badge className="rounded-full border-white/30 bg-white/20 text-white">خودبه‌خود بهبود</Badge>
           </div>
         </Card>
 
-        {/* Key Symptoms Identified */}
-        <Card className="p-4 shadow-lg border-0 mb-4">
-          <h3 className="text-base text-gray-900 mb-3 flex items-center font-bold">
-            <Info className="w-4 h-4 mr-2 text-blue-500" />
-            Key Symptoms Identified
+        {/* Key symptoms */}
+        <Card className="mb-4 rounded-2xl border border-gray-100 p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
+          <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900">
+            <Info className="h-4 w-4 shrink-0 text-blue-500" />
+            علائم کلیدی شناسایی‌شده
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center p-2 bg-red-50 rounded-lg">
-              <Thermometer className="w-4 h-4 text-red-500 mr-2" />
-              <span className="text-sm text-gray-900">Fever</span>
-            </div>
-            <div className="flex items-center p-2 bg-blue-50 rounded-lg">
-              <Droplets className="w-4 h-4 text-blue-500 mr-2" />
-              <span className="text-sm text-gray-900">Runny Nose</span>
-            </div>
-            <div className="flex items-center p-2 bg-orange-50 rounded-lg">
-              <Wind className="w-4 h-4 text-orange-500 mr-2" />
-              <span className="text-sm text-gray-900">Cough</span>
-            </div>
-            <div className="flex items-center p-2 bg-purple-50 rounded-lg">
-              <Activity className="w-4 h-4 text-purple-500 mr-2" />
-              <span className="text-sm text-gray-900">Fatigue</span>
-            </div>
+            {keySymptoms.map(({ label, icon: Icon, bg, color }) => (
+              <div
+                key={label}
+                className={`flex items-center gap-2 rounded-xl p-2.5 ${bg}`}
+              >
+                <Icon className={`h-4 w-4 shrink-0 ${color}`} />
+                <span className="text-sm font-medium text-gray-900">{label}</span>
+              </div>
+            ))}
           </div>
         </Card>
 
-        {/* Severity & Timeline */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <Card className="p-4 shadow-lg border-0">
-            <div className="flex items-center mb-2">
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
-                <AlertCircle className="w-5 h-5 text-yellow-600" />
-              </div>
+        {/* Severity & recovery */}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <Card className="rounded-2xl border border-gray-100 p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
+            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
             </div>
-            <p className="text-xs text-gray-600">Severity Level</p>
-            <p className="text-lg text-gray-900">Moderate</p>
+            <p className="text-xs text-gray-500">سطح شدت</p>
+            <p className="text-lg font-bold text-gray-900">متوسط</p>
           </Card>
-          
-          <Card className="p-4 shadow-lg border-0">
-            <div className="flex items-center mb-2">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
+          <Card className="rounded-2xl border border-gray-100 p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
+            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+              <Calendar className="h-5 w-5 text-blue-600" />
             </div>
-            <p className="text-xs text-gray-600">Recovery Time</p>
-            <p className="text-lg text-gray-900">7-10 Days</p>
+            <p className="text-xs text-gray-500">زمان بهبود</p>
+            <p className="text-lg font-bold text-gray-900">۷ تا ۱۰ روز</p>
           </Card>
         </div>
 
-        {/* What to Expect */}
-        <Card className="p-4 shadow-lg border-0 mb-4 bg-gradient-to-br from-indigo-50 to-purple-50">
-          <h3 className="text-base text-gray-900 mb-2 flex items-center">
-            <TrendingUp className="w-4 h-4 mr-2 text-indigo-600" />
-            What to Expect
+        {/* What to expect */}
+        <Card className="mb-4 rounded-2xl border border-indigo-100 bg-gradient-to-l from-indigo-50/80 to-violet-50/80 p-4">
+          <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900">
+            <TrendingUp className="h-4 w-4 shrink-0 text-indigo-600" />
+            پیش‌بینی روند بیماری
           </h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
-              <p className="text-gray-700">Symptoms typically peak within 2-3 days</p>
-            </div>
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
-              <p className="text-gray-700">Gradual improvement expected after day 5</p>
-            </div>
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
-              <p className="text-gray-700">Full recovery within 7-10 days for most people</p>
-            </div>
-          </div>
+          <ul className="space-y-2.5">
+            {expectations.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-sm leading-relaxed text-gray-700">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
+                {item}
+              </li>
+            ))}
+          </ul>
         </Card>
 
         {/* Recommendations */}
         <div className="mb-4">
-          <h2 className="text-xl text-gray-900 mb-3 flex items-center">
-            <Shield className="w-5 h-5 mr-2 text-green-600" />
-            Treatment Recommendations
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-gray-900">
+            <Shield className="h-5 w-5 shrink-0 text-emerald-600" />
+            توصیه‌های درمانی
           </h2>
-
-          <Card className="p-4 shadow-lg border-0 mb-2">
-            <div className="flex items-start">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                <Heart className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-gray-900 mb-1">Rest & Hydration</h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  Get 7-9 hours of sleep and drink at least 8 glasses of water daily
-                </p>
-                <Badge className="bg-green-50 text-green-700 border-green-200 text-xs rounded-full">
-                  Essential
-                </Badge>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 shadow-lg border-0 mb-2">
-            <div className="flex items-start">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                <Pill className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-gray-900 mb-1">Over-the-Counter Medication</h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  Pain relievers (acetaminophen 500mg every 6 hours) or ibuprofen for fever and aches
-                </p>
-                <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs rounded-full">
-                  As needed
-                </Badge>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 shadow-lg border-0 mb-2">
-            <div className="flex items-start">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                <Droplets className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-gray-900 mb-1">Steam Inhalation</h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  Breathe warm steam 2-3 times daily to relieve nasal congestion
-                </p>
-                <Badge className="bg-purple-50 text-purple-700 border-purple-200 text-xs rounded-full">
-                  Recommended
-                </Badge>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 shadow-lg border-0 mb-2">
-            <div className="flex items-start">
-              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                <Activity className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="text-gray-900 mb-1">Monitor Symptoms</h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  Track temperature and symptoms. Seek immediate care if fever exceeds 103°F or breathing difficulties occur
-                </p>
-                <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-xs rounded-full">
-                  Important
-                </Badge>
-              </div>
-            </div>
-          </Card>
+          <div className="space-y-2">
+            {recommendations.map((rec) => {
+              const Icon = rec.icon;
+              return (
+                <Card
+                  key={rec.title}
+                  className="rounded-2xl border border-gray-100 p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${rec.iconBg}`}
+                    >
+                      <Icon className={`h-5 w-5 ${rec.iconColor}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-gray-900">{rec.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-gray-600">{rec.desc}</p>
+                      <Badge className={`mt-2 rounded-full text-[11px] ${rec.badgeClass}`}>
+                        {rec.badge}
+                      </Badge>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
-        {/* When to See a Doctor */}
-        <Card className="p-4 bg-red-50 border-red-200 mb-4">
-          <h3 className="text-base text-red-900 mb-2 flex items-center">
-            <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
-            Seek Immediate Medical Care If:
+        {/* Urgent care */}
+        <Card className="mb-4 rounded-2xl border border-red-200 bg-red-50/80 p-4">
+          <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-red-900">
+            <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
+            در این موارد فوراً به پزشک مراجعه کنید
           </h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-start">
-              <div className="w-1.5 h-1.5 bg-red-600 rounded-full mt-2 mr-2 flex-shrink-0"></div>
-              <p className="text-red-900">High fever (above 103°F/39.4°C) lasting more than 3 days</p>
-            </div>
-            <div className="flex items-start">
-              <div className="w-1.5 h-1.5 bg-red-600 rounded-full mt-2 mr-2 flex-shrink-0"></div>
-              <p className="text-red-900">Difficulty breathing or chest pain</p>
-            </div>
-            <div className="flex items-start">
-              <div className="w-1.5 h-1.5 bg-red-600 rounded-full mt-2 mr-2 flex-shrink-0"></div>
-              <p className="text-red-900">Symptoms worsen after initial improvement</p>
-            </div>
-            <div className="flex items-start">
-              <div className="w-1.5 h-1.5 bg-red-600 rounded-full mt-2 mr-2 flex-shrink-0"></div>
-              <p className="text-red-900">Severe headache or confusion</p>
-            </div>
-          </div>
+          <ul className="space-y-2">
+            {urgentSigns.map((sign) => (
+              <li key={sign} className="flex items-start gap-2 text-sm text-red-900">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-red-600" />
+                {sign}
+              </li>
+            ))}
+          </ul>
         </Card>
 
-        {/* Warning */}
-        <Card className="p-4 bg-orange-50 border-orange-200 mb-4">
-          <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-orange-600 mr-3 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-orange-900">
-              This is an AI-generated analysis and should not replace professional medical advice. 
-              Please consult a healthcare provider for proper diagnosis and treatment.
+        {/* Disclaimer */}
+        <Card className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <p className="text-sm leading-relaxed text-amber-900">
+              این تحلیل توسط هوش مصنوعی تولید شده و جایگزین تشخیص پزشک نیست. برای تشخیص و
+              درمان دقیق حتماً با پزشک مشورت کنید.
             </p>
           </div>
         </Card>
 
-        {/* Action Buttons */}
+        {/* Actions */}
         <div className="space-y-3">
-          <Button
+          <button
+            type="button"
             onClick={() => navigate('/doctors')}
-            className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white text-lg shadow-lg"
+            className="group flex w-full items-center justify-center gap-2.5 rounded-full border border-blue-100/90 bg-gradient-to-b from-white via-white to-blue-50/90 py-3 pl-1.5 pr-4 text-sm font-semibold text-blue-700 shadow-[0_4px_24px_-6px_rgba(59,130,246,0.28)] transition-all duration-300 hover:border-blue-200 hover:text-blue-800 hover:shadow-[0_8px_32px_-6px_rgba(59,130,246,0.38)] active:scale-[0.97]"
           >
-            Find a Doctor
-            <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
+            <span>یافتن پزشک</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30 transition-all duration-300 group-hover:from-blue-600 group-hover:to-blue-700">
+              <Stethoscope className="h-4 w-4" />
+            </span>
+          </button>
 
-          <Button
-            variant="outline"
+          <button
+            type="button"
             onClick={() => navigate('/home')}
-            className="w-full h-12 text-lg"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
           >
-            <Home className="mr-2 w-5 h-5" />
-            Back to Home
-          </Button>
+            <Home className="h-4 w-4" />
+            بازگشت به خانه
+          </button>
         </div>
       </div>
     </div>
