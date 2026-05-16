@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import type { SymptomFormState } from './SymptomSelection';
-import { ArrowRight, Clock } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -135,28 +135,29 @@ export function QuestionnaireV1() {
           </div>
 
           {/* Question Card */}
-          <Card className="p-6 shadow-xl border-0 mb-6">
-            <h1 className="text-2xl mb-6 text-gray-900">{currentQuestion.question}</h1>
+          <Card className="mb-6 border-0 p-6 text-right shadow-xl" dir="rtl">
+            <h1 className="mb-6 text-2xl text-right text-gray-900">{currentQuestion.question}</h1>
 
             {currentQuestion.type === 'radio' ? (
                 <RadioGroup
                     value={answers[currentQuestion.id]}
                     onValueChange={handleAnswer}
                     className="space-y-3"
+                    dir="rtl"
                 >
                   {currentQuestion.options.map((option) => (
                       <div
                           key={option}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          className={`cursor-pointer rounded-lg border-2 p-4 text-right transition-all ${
                               answers[currentQuestion.id] === option
                                   ? 'border-blue-500 bg-blue-50'
                                   : 'border-gray-200 hover:border-gray-300'
                           }`}
                           onClick={() => handleAnswer(option)}
                       >
-                        <div className="flex items-center">
-                          <RadioGroupItem value={option} id={option} className="ml-3" />
-                          <Label htmlFor={option} className="cursor-pointer flex-1">
+                        <div className="flex items-center justify-start gap-3">
+                          <RadioGroupItem value={option} id={option} className="shrink-0" />
+                          <Label htmlFor={option} className="flex-1 cursor-pointer text-right">
                             {option}
                           </Label>
                         </div>
@@ -168,7 +169,8 @@ export function QuestionnaireV1() {
                     placeholder="لطفا جزئیات بیشتری را وارد کنید..."
                     value={answers[currentQuestion.id] || ''}
                     onChange={(e) => handleAnswer(e.target.value)}
-                    className="min-h-32"
+                    className="min-h-32 text-right"
+                    dir="rtl"
                 />
             )}
 
@@ -178,7 +180,8 @@ export function QuestionnaireV1() {
                     placeholder="لطفا جزئیات داروهایی که مصرف می‌کنید را وارد کنید..."
                     value={medicationDetails}
                     onChange={(e) => setMedicationDetails(e.target.value)}
-                    className="min-h-32 mt-4"
+                    className="mt-4 min-h-32 text-right"
+                    dir="rtl"
                 />
             )}
           </Card>
@@ -198,7 +201,7 @@ export function QuestionnaireV1() {
                 className="flex-1 h-12 bg-blue-500 hover:bg-blue-600 text-white text-lg shadow-lg"
             >
               {currentStep === questions.length - 1 ? 'دریافت نتایج' : 'بعدی'}
-              <ArrowRight className="mr-2 w-5 h-5" />
+              <ArrowLeft className="mr-2 h-5 w-5" />
             </Button>
           </div>
         </div>
