@@ -9,17 +9,28 @@ interface AppContainerProps {
   showAppBar?: boolean;
 }
 
+const phoneFrameClass =
+  'relative flex h-screen w-full max-w-[550px] flex-col overflow-hidden bg-white';
+
 export function AppContainer({
   children,
   variant = 'default',
   showNavbar = false,
   showAppBar = false,
 }: AppContainerProps) {
+  const outerClass =
+    variant === 'transparent'
+      ? 'flex min-h-screen items-center justify-center bg-white'
+      : 'flex min-h-screen items-center justify-center bg-gray-100';
+
+  const frameClass =
+    variant === 'transparent' ? phoneFrameClass : `${phoneFrameClass} shadow-lg`;
+
   return (
-    <div className={variant === 'transparent' ? 'min-h-screen bg-white flex items-center justify-center' : 'min-h-screen bg-gray-100 flex items-center justify-center'}>
-      <div className={variant === 'transparent' ? 'w-full max-w-[550px] h-screen bg-white relative overflow-hidden' : 'w-full max-w-[550px] h-screen bg-white shadow-lg relative overflow-hidden'}>
+    <div className={outerClass}>
+      <div className={frameClass}>
         {showAppBar && <AppBar />}
-        {children}
+        <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
         {showNavbar && <Navbar />}
       </div>
     </div>

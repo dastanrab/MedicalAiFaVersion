@@ -24,6 +24,7 @@ import MapPage from "./screens/MapPage";
 import FoodExtractor from "./screens/FoodExtractor";
 import {MedicalServices} from "./screens/MedicalServices";
 import {LabsFlow} from "./screens/LabsFlow"; // adjust path to your store
+import { PricingPlans } from './screens/PricingPlans';
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -142,6 +143,16 @@ function App() {
                 <ProtectedRoute>
                   <AppContainer showNavbar>
                     <UserProfile />
+                  </AppContainer>
+                </ProtectedRoute>
+              }
+          />
+          <Route
+              path="/plans"
+              element={
+                <ProtectedRoute>
+                  <AppContainer showNavbar>
+                    <PricingPlans />
                   </AppContainer>
                 </ProtectedRoute>
               }

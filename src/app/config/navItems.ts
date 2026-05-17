@@ -8,6 +8,7 @@ import {
   UtensilsCrossed,
   Ruler,
   HeartPulse,
+  Crown,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -31,4 +32,5 @@ export const sidebarNavItems: NavItem[] = [
   { icon: Calendar, label: 'تقویم قاعدگی', path: '/period-tracker' },
   { icon: Ruler, label: 'اندازه‌گیری بدن', path: '/body-measurement' },
   { icon: UtensilsCrossed, label: 'برنامه غذایی', path: '/meal-plan' },
+  { icon: Crown, label: 'پلن‌ها', path: '/plans' },
 ];
