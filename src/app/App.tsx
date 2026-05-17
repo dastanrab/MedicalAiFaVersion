@@ -21,7 +21,9 @@ import {Chats} from "./screens/Chats";
 import CakeManager from "./screens/CakeManager";
 import CakeManagerV1 from "./screens/CakeManagerV1";
 import MapPage from "./screens/MapPage";
-import FoodExtractor from "./screens/FoodExtractor"; // adjust path to your store
+import FoodExtractor from "./screens/FoodExtractor";
+import {MedicalServices} from "./screens/MedicalServices";
+import {LabsFlow} from "./screens/LabsFlow"; // adjust path to your store
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -239,6 +241,30 @@ function App() {
                 element={
                     <ProtectedRoute>
                             <FoodExtractor />
+
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/services"
+                element={
+                    <ProtectedRoute>
+                        <AppContainer showNavbar>
+                            <MedicalServices />
+                        </AppContainer>
+
+
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/services/labs"
+                element={
+                    <ProtectedRoute>
+                        <AppContainer showNavbar>
+                            <LabsFlow />
+                        </AppContainer>
+
 
                     </ProtectedRoute>
                 }

@@ -7,6 +7,7 @@ import {
   Calendar,
   UtensilsCrossed,
   Ruler,
+  HeartPulse,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -25,6 +26,7 @@ export const mainNavItems: NavItem[] = [
 
 export const sidebarNavItems: NavItem[] = [
   ...mainNavItems,
+  { icon: HeartPulse, label: 'خدمات درمانی', path: '/services' },
   { icon: MessageCircle, label: 'پیام‌ها', path: '/chats' },
   { icon: Calendar, label: 'تقویم قاعدگی', path: '/period-tracker' },
   { icon: Ruler, label: 'اندازه‌گیری بدن', path: '/body-measurement' },
