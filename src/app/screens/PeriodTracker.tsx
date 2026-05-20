@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
 import {
     Calendar as CalendarIcon,
     Droplets,
     Heart,
     Plus,
-    Settings,
-    User,
     ChevronLeft,
-    Info,
     X,
-    MessageCircle
+    MessageCircle,
+    Sparkles,
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { AppBar } from '../components/AppBar';
 
-// دیتا برای ایموجی‌ها
 const MOODS = [
     { id: 'happy', emoji: '😊', label: 'شاد' },
     { id: 'calm', emoji: '😌', label: 'آرام' },
@@ -31,219 +28,502 @@ const FOODS = [
     { id: 'spicy', emoji: '🌶️', label: 'تندی' },
 ];
 
+const WEEK_DAYS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+const CALENDAR_DAYS = [14, 15, 16, 17, 18, 19, 20];
+const TODAY_INDEX = 3;
+const CYCLE_LENGTH = 28;
+
+interface InsightDialogTheme {
+    tipsIcon: string;
+    tipsItemBg: string;
+    tipsItemRing: string;
+    tipsDot: string;
+    button: string;
+}
+
 interface HealthInsight {
     id: number;
     title: string;
     description: string;
+    details: string;
+    tips: string[];
     icon: React.ReactNode;
-    color: string;
+    accent: string;
+    iconBg: string;
+    headerGradient: string;
+    dialogTheme: InsightDialogTheme;
 }
 
-export default function PeriodTracker() {
-    const navigate = useNavigate();
-    const [daysUntil, setDaysUntil] = useState<number>(5);
+const PINK_DIALOG_THEME: InsightDialogTheme = {
+    tipsIcon: 'text-pink-500',
+    tipsItemBg: 'bg-[#FFF9FA]',
+    tipsItemRing: 'ring-pink-50',
+    tipsDot: 'bg-pink-400',
+    button:
+        'h-11 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200/60 hover:from-pink-600 hover:to-rose-600',
+};
 
-    // استیت‌های مدال
+const BLUE_DIALOG_THEME: InsightDialogTheme = {
+    tipsIcon: 'text-sky-500',
+    tipsItemBg: 'bg-sky-50',
+    tipsItemRing: 'ring-sky-100',
+    tipsDot: 'bg-sky-500',
+    button:
+        'h-11 w-full rounded-2xl bg-gradient-to-l from-sky-500 to-blue-600 text-white shadow-md shadow-sky-200/60 hover:from-sky-600 hover:to-blue-700',
+};
+
+const CYCLE_STATS = [
+    { label: 'طول سیکل', value: '۲۸', unit: 'روز' },
+    { label: 'مدت پریود', value: '۵', unit: 'روز' },
+    { label: 'روز فعلی', value: '۲۳', unit: 'ام' },
+];
+
+export default function PeriodTracker() {
+    const daysUntil = 5;
+    const cycleProgress = (CYCLE_LENGTH - daysUntil) / CYCLE_LENGTH;
+
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
     const [isSymptomsModalOpen, setIsSymptomsModalOpen] = useState(false);
-
-    // استیت‌های فرم ثبت علائم
+    const [activeInsight, setActiveInsight] = useState<HealthInsight | null>(null);
     const [symptomText, setSymptomText] = useState('');
     const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
     const [selectedFoods, setSelectedFoods] = useState<string[]>([]);
 
+    const ringRadius = 108;
+    const ringCircumference = 2 * Math.PI * ringRadius;
+    const ringOffset = ringCircumference * (1 - cycleProgress);
+
     const insights: HealthInsight[] = [
         {
             id: 1,
-            title: "وضعیت پوست",
-            description: "امروز احتمال بروز جوش کمتر است.",
+            title: 'وضعیت پوست',
+            description: 'امروز احتمال بروز جوش کمتر است. مرطوب‌کننده سبک کافی است.',
+            details:
+                'در فاز لوتئال سطح پروژسترون بالا می‌رود و معمولاً پوست پایدارتر می‌شود. اگر پوستت خشک است، مرطوب‌کننده بدون چربی انتخاب کن و از محصولات سنگین که منافذ را می‌بندند پرهیز کن.',
+            tips: [
+                'پاک‌سازی ملایم صبح و شب',
+                'استفاده از ضدآفتاب حتی در روزهای ابری',
+                'نوشیدن آب کافی در طول روز',
+                'پرهیز از لمس مکرر صورت',
+            ],
             icon: <Heart className="w-5 h-5" />,
-            color: "bg-rose-100 text-rose-500"
+            accent: 'from-rose-400 to-pink-500',
+            iconBg: 'bg-rose-50 text-rose-500',
+            headerGradient: 'from-rose-500 via-pink-500 to-pink-600',
+            dialogTheme: PINK_DIALOG_THEME,
         },
         {
             id: 2,
-            title: "سطح انرژی",
-            description: "زمان خوبی برای ورزش‌های سبک مثل یوگا است.",
+            title: 'سطح انرژی',
+            description: 'زمان خوبی برای ورزش‌های سبک مثل یوگا یا پیاده‌روی است.',
+            details:
+                'بدن در این روزها برای فعالیت متوسط آماده‌تر است. ورزش سبک می‌تواند خلق‌وخو را بهتر کند و احساس سنگینی قبل از پریود را کمتر کند؛ فقط به سیگنال‌های بدنت گوش بده.',
+            tips: [
+                '۳۰ دقیقه پیاده‌روی یا یوگای ملایم',
+                'خواب منظم حدود ۷ تا ۸ ساعت',
+                'میان‌وعده سبک با پروتئین و میوه',
+                'استراحت کوتاه در صورت خستگی',
+            ],
             icon: <Droplets className="w-5 h-5" />,
-            color: "bg-blue-100 text-blue-500"
+            accent: 'from-sky-400 to-blue-500',
+            iconBg: 'bg-sky-50 text-sky-500',
+            headerGradient: 'from-sky-500 via-blue-500 to-indigo-500',
+            dialogTheme: BLUE_DIALOG_THEME,
         },
     ];
 
-    // تابع مدیریت انتخاب چندگانه ایموجی‌ها
     const toggleSelection = (id: string, type: 'mood' | 'food') => {
         if (type === 'mood') {
-            setSelectedMoods(prev =>
-                prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+            setSelectedMoods((prev) =>
+                prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
             );
         } else {
-            setSelectedFoods(prev =>
-                prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+            setSelectedFoods((prev) =>
+                prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
             );
         }
     };
 
     return (
-        <div className="h-full bg-[#FFF9FA] overflow-y-auto pb-24" dir="rtl">
+        <div className="h-full overflow-y-auto bg-gradient-to-b from-pink-50 to-[#FFF9FA] pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
+            <AppBar />
 
-            {/* Header */}
-            <div className="fixed top-0 left-0 right-0 z-40 flex justify-center">
-                <div className="w-full max-w-lg h-16 bg-white/80 backdrop-blur-md border-b border-pink-50 flex items-center justify-between px-6 pointer-events-auto">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-pink-100 rounded-full flex items-center justify-center">
-                            <User className="w-5 h-5 text-pink-500" />
+            <div className="px-6 pt-24">
+                <div className="relative mb-6">
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500 px-5 pt-5 pb-5 shadow-[0_8px_32px_rgba(236,72,153,0.28)]">
+                        <div className="pointer-events-none absolute -top-10 -left-10 h-36 w-36 rounded-full bg-white/10" />
+                        <div className="pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+                        <div
+                            className="pointer-events-none absolute inset-0 opacity-[0.12]"
+                            style={{
+                                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                                backgroundSize: '18px 18px',
+                            }}
+                        />
+                        <div className="relative z-10 flex items-center gap-4" dir="rtl">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                                <CalendarIcon className="h-7 w-7 text-white" />
+                            </div>
+                            <div className="min-w-0 flex-1 text-right">
+                                <h1 className="text-xl font-bold leading-tight text-white">تقویم قاعدگی</h1>
+                                <p className="mt-0.5 text-sm leading-snug text-pink-100">
+                                    پیگیری سیکل، علائم و پیش‌بینی پریود — اردیبهشت ۱۴۰۵
+                                </p>
+                            </div>
                         </div>
-                        <span className="font-bold text-gray-800">تقویم من</span>
                     </div>
-                    <Settings className="w-6 h-6 text-gray-400 cursor-pointer" />
                 </div>
-            </div>
 
-            <main className="px-6 pt-24 max-w-md mx-auto">
+                <main className="space-y-6">
+                <section className="flex flex-col items-center">
+                    <div className="relative">
+                        <svg
+                            className="-rotate-90"
+                            width="248"
+                            height="248"
+                            viewBox="0 0 248 248"
+                            aria-hidden
+                        >
+                            <circle
+                                cx="124"
+                                cy="124"
+                                r={ringRadius}
+                                fill="none"
+                                stroke="#fce7f3"
+                                strokeWidth="10"
+                            />
+                            <circle
+                                cx="124"
+                                cy="124"
+                                r={ringRadius}
+                                fill="none"
+                                stroke="url(#cycleGradient)"
+                                strokeWidth="10"
+                                strokeLinecap="round"
+                                strokeDasharray={ringCircumference}
+                                strokeDashoffset={ringOffset}
+                                className="transition-all duration-700 ease-out"
+                            />
+                            <defs>
+                                <linearGradient id="cycleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#f472b6" />
+                                    <stop offset="100%" stopColor="#fb7185" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
 
-                {/* Cycle Section */}
-                <section className="flex justify-center mb-10">
-                    <div className="relative group">
-                        <div className="w-60 h-60 rounded-full border-4 border-white shadow-sm flex flex-col items-center justify-center bg-white relative z-10">
-                            <span className="text-sm text-gray-400 font-medium">پریود در</span>
-                            <div className="text-7xl font-light text-pink-500 my-1">{daysUntil}</div>
-                            <span className="text-sm text-gray-400 font-medium">روز دیگر</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="mb-1 rounded-full bg-pink-50 px-3 py-1 text-[11px] font-medium text-pink-500">
+                                فاز لوتئال
+                            </span>
+                            <span className="text-xs text-gray-400">پریود در</span>
+                            <span className="bg-gradient-to-b from-pink-500 to-rose-500 bg-clip-text text-6xl font-light leading-none text-transparent">
+                                {daysUntil}
+                            </span>
+                            <span className="text-sm text-gray-500">روز دیگر</span>
                         </div>
-                        <div className="absolute inset-[-8px] rounded-full bg-gradient-to-tr from-pink-100 to-rose-200 -z-0 opacity-50"></div>
                     </div>
+
+                    <p className="mt-4 max-w-[260px] text-center text-xs leading-relaxed text-gray-500">
+                        سیکل شما منظم است. احتمال شروع پریود بعدی{' '}
+                        <span className="font-semibold text-pink-500">۲۵ اردیبهشت</span> است.
+                    </p>
                 </section>
 
-                {/* Quick Actions */}
-                <div className="flex gap-3 mb-10">
+                <section className="grid grid-cols-3 gap-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-pink-50">
+                    {CYCLE_STATS.map((stat) => (
+                        <div key={stat.label} className="text-center">
+                            <p className="text-[10px] text-gray-400">{stat.label}</p>
+                            <p className="mt-1 text-lg font-semibold text-gray-800">
+                                {stat.value}
+                                <span className="mr-0.5 text-[10px] font-normal text-gray-400">
+                                    {stat.unit}
+                                </span>
+                            </p>
+                        </div>
+                    ))}
+                </section>
+
+                <section className="flex gap-3">
                     <Button
                         onClick={() => setIsSymptomsModalOpen(true)}
-                        className="flex-1 h-14 bg-pink-500 hover:bg-pink-600 text-white rounded-2xl shadow-md shadow-pink-100 transition-all active:scale-95 flex items-center justify-center"
+                        className="h-12 flex-1 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200/60 transition-all active:scale-[0.98] hover:from-pink-600 hover:to-rose-600"
                     >
-                        <Plus className="ml-2 w-5 h-5" />
+                        <Plus className="ml-2 h-4 w-4" />
                         ثبت علائم
                     </Button>
                     <Button
                         variant="outline"
-                        className="flex-1 h-14 border-pink-200 text-pink-600 bg-white rounded-2xl hover:bg-pink-50 flex items-center justify-center"
+                        className="h-12 flex-1 rounded-2xl border-pink-200 bg-white text-pink-600 hover:bg-pink-50"
                     >
                         شروع پریود
                     </Button>
-                </div>
+                </section>
 
-                {/* Horizontal Calendar */}
-                <section className="mb-10">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-gray-800">امروز</h2>
+                <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-pink-50">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-base font-bold text-gray-800">هفته جاری</h2>
+                            <p className="text-xs text-gray-400">۱۴ تا ۲۰ اردیبهشت</p>
+                        </div>
                         <button
+                            type="button"
                             onClick={() => setIsCalendarModalOpen(true)}
-                            className="text-sm text-pink-500 font-medium hover:text-pink-600 cursor-pointer"
+                            className="flex items-center gap-1 rounded-full bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-600 transition-colors hover:bg-pink-100"
                         >
-                            مشاهده تقویم
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                            تقویم کامل
                         </button>
                     </div>
 
-                    <div className="flex gap-3 overflow-x-auto pb-4 snap-x" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        <style>{`div::-webkit-scrollbar { display: none; }`}</style>
-
-                        {[14, 15, 16, 17, 18, 19, 20].map((day, index) => (
-                            <div
-                                key={day}
-                                onClick={() => setIsCalendarModalOpen(true)}
-                                className={`min-w-[60px] flex flex-col items-center py-3 px-2 rounded-2xl transition-all cursor-pointer snap-center ${
-    index === 3
-        ? 'bg-pink-500 text-white shadow-lg shadow-pink-200 scale-105'
-        : 'bg-white text-gray-400 border border-gray-50 hover:bg-pink-50'
-}`}
-                            >
-                                <span className="text-[10px] uppercase mb-1">{index === 3 ? 'امروز' : 'ش'}</span>
-                                <span className="text-base font-bold">{day}</span>
-                            </div>
-                        ))}
+                    <div className="grid w-full grid-cols-7 gap-1.5">
+                        {CALENDAR_DAYS.map((day, index) => {
+                            const isToday = index === TODAY_INDEX;
+                            return (
+                                <button
+                                    key={day}
+                                    type="button"
+                                    onClick={() => setIsCalendarModalOpen(true)}
+                                    className={`flex w-full min-h-[4.5rem] min-w-0 flex-col items-center justify-center rounded-2xl py-4 text-center transition-all ${
+                                        isToday
+                                            ? 'bg-gradient-to-b from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200/60'
+                                            : 'bg-[#FFF9FA] text-gray-500 ring-1 ring-pink-50 hover:bg-pink-50'
+                                    }`}
+                                >
+                                    <span className="mb-1 block truncate text-[10px] leading-none opacity-80">
+                                        {isToday ? 'امروز' : WEEK_DAYS[index]}
+                                    </span>
+                                    <span className="text-sm font-bold leading-none">{day}</span>
+                                    {index === 1 && !isToday && (
+                                        <span className="mt-1.5 block h-1 w-1 rounded-full bg-pink-300" />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 </section>
 
-                {/* Insights Section */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Info className="w-4 h-4 text-pink-400" />
-                        <h2 className="text-lg font-bold text-gray-800">توصیه‌های هوشمند</h2>
+                <section className="space-y-3 pb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
+                            <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+                        </div>
+                        <h2 className="text-base font-bold text-gray-800">توصیه‌های هوشمند</h2>
                     </div>
 
                     {insights.map((item) => (
                         <Card
                             key={item.id}
-                            className="p-4 border-0 shadow-sm bg-white hover:shadow-md transition-shadow cursor-pointer rounded-2xl"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setActiveInsight(item)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    setActiveInsight(item);
+                                }
+                            }}
+                            className="cursor-pointer overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-sm ring-1 ring-pink-50 transition-all hover:shadow-md hover:ring-pink-100 active:scale-[0.99]"
                         >
-                            <div className="flex items-center">
-                                <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center ml-4`}>
-                                    {item.icon}
+                            <div className="flex">
+                                <div className={`w-1 shrink-0 bg-gradient-to-b ${item.accent}`} />
+                                <div className="flex flex-1 items-center gap-3 p-4">
+                                    <div
+                                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.iconBg}`}
+                                    >
+                                        {item.icon}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-sm font-bold text-gray-900">{item.title}</h3>
+                                        <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                                            {item.description}
+                                        </p>
+                                    </div>
+                                    <ChevronLeft className="h-4 w-4 shrink-0 text-gray-300" />
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="text-sm font-bold text-gray-900">{item.title}</h3>
-                                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{item.description}</p>
-                                </div>
-                                <ChevronLeft className="w-5 h-5 text-gray-300" />
                             </div>
                         </Card>
                     ))}
                 </section>
-            </main>
-
-            {/* Bottom Navigation */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
-                <nav className="w-full max-w-md bg-white/95 backdrop-blur-lg border-t border-gray-100 px-8 py-4 flex justify-between items-center pointer-events-auto rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
-                    <NavItem icon={<Heart className="w-6 h-6" />} label="امروز" active />
-                    <NavItem icon={<CalendarIcon className="w-6 h-6" />} label="تقویم" onClick={() => setIsCalendarModalOpen(true)} />
-                    <NavItem icon={<Droplets className="w-6 h-6" />} label="علائم" onClick={() => setIsSymptomsModalOpen(true)} />
-                    <div className="flex flex-col items-center gap-1 group cursor-pointer">
-                        <div className="w-6 h-6 rounded-full bg-gray-200 group-hover:bg-pink-200 transition-colors"></div>
-                        <span className="text-[10px] text-gray-400">بیشتر</span>
-                    </div>
-                </nav>
+                </main>
             </div>
 
-            {/* Calendar Modal */}
-            {isCalendarModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 rtl">
-                    <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-                        <button onClick={() => setIsCalendarModalOpen(false)} className="absolute top-5 left-5 text-gray-400 bg-gray-50 p-2 rounded-full"><X className="w-5 h-5" /></button>
-                        <h3 className="text-xl font-bold text-center text-gray-800 mb-6 font-sans">تقویم ماهانه</h3>
-                        <div className="grid grid-cols-7 gap-2 text-center mb-4">
-                            {['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map(day => (
-                                <div key={day} className="text-xs text-gray-400 font-bold">{day}</div>
-                            ))}
-                            <div className="p-2"></div><div className="p-2"></div>
-                            {Array.from({ length: 30 }).map((_, i) => (
-                                <div key={i} className={`p-2 text-sm rounded-full w-8 h-8 flex items-center justify-center mx-auto ${i+1 === 17 ? 'bg-pink-500 text-white' : 'text-gray-700'}`}>{i + 1}</div>
-                            ))}
+            {activeInsight && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 px-4 pb-6 backdrop-blur-sm sm:items-center"
+                    onClick={() => setActiveInsight(null)}
+                    role="presentation"
+                >
+                    <div
+                        className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 overflow-hidden rounded-[2rem] bg-white shadow-2xl duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="insight-dialog-title"
+                    >
+                        <div
+                            className={`relative overflow-hidden bg-gradient-to-br px-6 pb-8 pt-6 ${activeInsight.headerGradient}`}
+                        >
+                            <div className="pointer-events-none absolute -top-8 -left-8 h-32 w-32 rounded-full bg-white/10" />
+                            <div className="pointer-events-none absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
+                            <button
+                                type="button"
+                                onClick={() => setActiveInsight(null)}
+                                className="relative z-10 mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/30 backdrop-blur-sm transition-colors hover:bg-white/30"
+                                aria-label="بستن"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                            <div className="relative z-10 flex flex-col items-center text-center">
+                                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                                    {React.cloneElement(activeInsight.icon as React.ReactElement, {
+                                        className: 'h-8 w-8 text-white',
+                                    })}
+                                </div>
+                                <span className="mb-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-medium text-white/90">
+                                    توصیه هوشمند
+                                </span>
+                                <h3
+                                    id="insight-dialog-title"
+                                    className="text-xl font-bold text-white"
+                                >
+                                    {activeInsight.title}
+                                </h3>
+                            </div>
                         </div>
-                        <Button className="w-full bg-pink-100 text-pink-600 rounded-xl h-12" onClick={() => setIsCalendarModalOpen(false)}>بستن</Button>
+
+                        <div className="space-y-5 px-6 py-6">
+                            <p className="text-sm leading-relaxed text-gray-600">
+                                {activeInsight.details}
+                            </p>
+
+                            <div>
+                                <div className="mb-3 flex items-center gap-2">
+                                    <Sparkles
+                                        className={`h-4 w-4 ${activeInsight.dialogTheme.tipsIcon}`}
+                                    />
+                                    <h4 className="text-sm font-bold text-gray-800">نکات پیشنهادی</h4>
+                                </div>
+                                <ul className="space-y-2.5">
+                                    {activeInsight.tips.map((tip) => (
+                                        <li
+                                            key={tip}
+                                            className={`flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-sm text-gray-600 ring-1 ${activeInsight.dialogTheme.tipsItemBg} ${activeInsight.dialogTheme.tipsItemRing}`}
+                                        >
+                                            <span
+                                                className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${activeInsight.dialogTheme.tipsDot}`}
+                                            />
+                                            <span className="leading-relaxed">{tip}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <Button
+                                className={activeInsight.dialogTheme.button}
+                                onClick={() => setActiveInsight(null)}
+                            >
+                                متوجه شدم
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* SYMPTOMS MODAL - بخش جدید طبق درخواست شما */}
-            {isSymptomsModalOpen && (
-                <div className="fixed inset-0 z-50 pb-20 flex items-center justify-center bg-black/40 backdrop-blur-sm px-6 rtl">
-                    <div className="bg-white w-full max-w-md  p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 duration-300 max-h-[90vh] overflow-y-auto">
+            {isCalendarModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 px-4 pb-6 backdrop-blur-sm sm:items-center">
+                    <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-200 rounded-[2rem] bg-white p-6 shadow-2xl">
+                        <div className="mb-6 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-gray-800">تقویم ماهانه</h3>
+                            <button
+                                type="button"
+                                onClick={() => setIsCalendarModalOpen(false)}
+                                className="rounded-full bg-gray-50 p-2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
 
-                        <button
-                            onClick={() => setIsSymptomsModalOpen(false)}
-                            className="absolute top-6 left-6 text-gray-400 hover:text-gray-600 transition-colors"
+                        <div className="mb-4 grid grid-cols-7 gap-1 text-center">
+                            {WEEK_DAYS.map((day) => (
+                                <div key={day} className="py-1 text-xs font-bold text-gray-400">
+                                    {day}
+                                </div>
+                            ))}
+                            <div className="col-span-2" />
+                            {Array.from({ length: 30 }).map((_, i) => {
+                                const dayNum = i + 1;
+                                const isPeriod = dayNum >= 3 && dayNum <= 7;
+                                const isToday = dayNum === 17;
+                                const isPredicted = dayNum >= 22 && dayNum <= 26;
+
+                                return (
+                                    <button
+                                        key={dayNum}
+                                        type="button"
+                                        className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors ${
+                                            isToday
+                                                ? 'bg-gradient-to-br from-pink-500 to-rose-500 font-bold text-white shadow-md'
+                                                : isPeriod
+                                                  ? 'bg-pink-100 font-medium text-pink-600'
+                                                  : isPredicted
+                                                    ? 'bg-rose-50 text-rose-400 ring-1 ring-dashed ring-rose-200'
+                                                    : 'text-gray-700 hover:bg-pink-50'
+                                        }`}
+                                    >
+                                        {dayNum}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="mb-5 flex flex-wrap gap-3 text-[10px] text-gray-500">
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-full bg-pink-100" />
+                                پریود
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-full border border-dashed border-rose-200 bg-rose-50" />
+                                پیش‌بینی
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-pink-500 to-rose-500" />
+                                امروز
+                            </span>
+                        </div>
+
+                        <Button
+                            className="h-11 w-full rounded-xl bg-pink-50 text-pink-600 hover:bg-pink-100"
+                            onClick={() => setIsCalendarModalOpen(false)}
                         >
-                            <X className="w-6 h-6" />
-                        </button>
+                            بستن
+                        </Button>
+                    </div>
+                </div>
+            )}
 
-                        <h3 className="text-xl font-bold text-gray-800 mb-8 mt-2 text-right">ثبت علائم روزانه</h3>
+            {isSymptomsModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
+                    <div className="max-h-[88vh] w-full max-w-md animate-in slide-in-from-bottom-8 overflow-y-auto rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem]">
+                        <div className="mb-6 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-gray-800">ثبت علائم روزانه</h3>
+                            <button
+                                type="button"
+                                onClick={() => setIsSymptomsModalOpen(false)}
+                                className="rounded-full bg-gray-50 p-2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
 
-                        <div className="space-y-8">
-                            {/* نوشتاری */}
+                        <div className="space-y-7">
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 text-pink-500">
-                                    <MessageCircle className="w-4 h-4" />
+                                    <MessageCircle className="h-4 w-4" />
                                     <span className="text-sm font-bold">یادداشت من</span>
                                 </div>
                                 <textarea
-                                    className="w-full bg-gray-50 border-0 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-pink-200 outline-none transition-all"
+                                    className="w-full resize-none rounded-2xl border-0 bg-[#FFF9FA] p-4 text-sm outline-none ring-1 ring-pink-100 transition-all focus:ring-2 focus:ring-pink-200"
                                     placeholder="علائم یا اتفاقات امروز را اینجا بنویس..."
                                     rows={3}
                                     value={symptomText}
@@ -251,18 +531,21 @@ export default function PeriodTracker() {
                                 />
                             </div>
 
-                            {/* حالت روحی - چند انتخابی */}
-                            <div className="space-y-4">
-                                <span className="text-sm font-bold text-gray-700 block">حالت روحی چطوره؟</span>
-                                <div className="flex flex-wrap gap-3">
+                            <div className="space-y-3">
+                                <span className="block text-sm font-bold text-gray-700">
+                                    حالت روحی چطوره؟
+                                </span>
+                                <div className="flex flex-wrap gap-2.5">
                                     {MOODS.map((item) => (
                                         <button
                                             key={item.id}
+                                            type="button"
                                             onClick={() => toggleSelection(item.id, 'mood')}
-                                            className={`flex flex-col items-center justify-center gap-1 w-[68px] h-[75px] rounded-2xl transition-all border-2
-${selectedMoods.includes(item.id)
-    ? 'bg-pink-50 border-pink-400 scale-105 shadow-sm'
-    : 'bg-white border-transparent hover:bg-gray-50'}`}
+                                            className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
+                                                selectedMoods.includes(item.id)
+                                                    ? 'scale-105 border-pink-400 bg-pink-50 shadow-sm'
+                                                    : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-pink-50/50'
+                                            }`}
                                         >
                                             <span className="text-2xl">{item.emoji}</span>
                                             <span className="text-[10px] text-gray-500">{item.label}</span>
@@ -271,18 +554,21 @@ ${selectedMoods.includes(item.id)
                                 </div>
                             </div>
 
-                            {/* طبع غذایی - چند انتخابی */}
-                            <div className="space-y-4">
-                                <span className="text-sm font-bold text-gray-700 block">هوس چه طعمی کردی؟</span>
-                                <div className="flex flex-wrap gap-3">
+                            <div className="space-y-3">
+                                <span className="block text-sm font-bold text-gray-700">
+                                    هوس چه طعمی کردی؟
+                                </span>
+                                <div className="flex flex-wrap gap-2.5">
                                     {FOODS.map((item) => (
                                         <button
                                             key={item.id}
+                                            type="button"
                                             onClick={() => toggleSelection(item.id, 'food')}
-                                            className={`flex flex-col items-center justify-center gap-1 w-[68px] h-[75px] rounded-2xl transition-all border-2
-${selectedFoods.includes(item.id)
-    ? 'bg-blue-50 border-blue-300 scale-105 shadow-sm'
-    : 'bg-white border-transparent hover:bg-gray-50'}`}
+                                            className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
+                                                selectedFoods.includes(item.id)
+                                                    ? 'scale-105 border-sky-300 bg-sky-50 shadow-sm'
+                                                    : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-sky-50/50'
+                                            }`}
                                         >
                                             <span className="text-2xl">{item.emoji}</span>
                                             <span className="text-[10px] text-gray-500">{item.label}</span>
@@ -292,12 +578,11 @@ ${selectedFoods.includes(item.id)
                             </div>
                         </div>
 
-                        {/* دکمه ثبت (فعلاً فقط مدال را می‌بندد) */}
                         <Button
-                            className="w-full bg-pink-500 hover:bg-pink-600 text-white h-14 rounded-2xl mt-10 text-lg font-bold shadow-lg shadow-pink-100"
+                            className="mt-8 h-12 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-base font-bold text-white shadow-lg shadow-pink-200/60 hover:from-pink-600 hover:to-rose-600"
                             onClick={() => setIsSymptomsModalOpen(false)}
                         >
-                            ثبت و ذخیره
+                            ثبت علائم روزانه
                         </Button>
                     </div>
                 </div>
@@ -305,16 +590,3 @@ ${selectedFoods.includes(item.id)
         </div>
     );
 }
-
-function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) {
-    return (
-        <div
-            onClick={onClick}
-            className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${active ? 'text-pink-500' : 'text-gray-300 hover:text-pink-400'}`}
-        >
-            {icon}
-            <span className="text-[10px] font-bold">{label}</span>
-        </div>
-    );
-}
-
