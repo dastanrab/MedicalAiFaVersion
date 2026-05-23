@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
 import { Login } from './screens/Login';
 import { OTPVerification } from './screens/OTPVerification';
 import { UserProfile } from './screens/UserProfile';
@@ -23,276 +24,344 @@ import CakeManagerV1 from "./screens/CakeManagerV1";
 import MapPage from "./screens/MapPage";
 import FoodExtractor from "./screens/FoodExtractor";
 import {MedicalServices} from "./screens/MedicalServices";
-import {LabsFlow} from "./screens/LabsFlow"; // adjust path to your store
+import {LabsFlow} from "./screens/LabsFlow";
 import { PricingPlans } from './screens/PricingPlans';
+import ExerciseExtractor from "./screens/ExerciseExtractor";
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
-  const accessToken = useAuthStore((state) => state.accessToken);
+    const accessToken = useAuthStore((state) => state.accessToken);
 
-  if (!accessToken) {
-    return <Navigate to="/login" replace />;
-  }
+    if (!accessToken) {
+        return <Navigate to="/login" replace />;
+    }
 
-  return children;
+    return children;
+}
+
+// Protected route with profile verification
+function VerifiedRoute({ children }) {
+    const accessToken = useAuthStore((state) => state.accessToken);
+    const [isVerified, setIsVerified] = useState(null); // null = در حال بررسی
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const checkProfileVerification = async () => {
+            if (!accessToken) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const response = await fetch('http://185.222.163.113:7000/api/user/profile', {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) throw new Error('خطا در دریافت اطلاعات');
+
+                const data = await response.json();
+
+                if (data.success) {
+                    setIsVerified(data.data.user.is_verify);
+                }
+            } catch (error) {
+                console.error('Error checking profile:', error);
+                setIsVerified(false);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkProfileVerification();
+    }, [accessToken]);
+
+    // اگر توکن نداره، به لاگین بفرست
+    if (!accessToken) {
+        return <Navigate to="/login" replace />;
+    }
+
+    // تا زمانی که در حال بررسی هست، صفحه خالی نشون بده
+    if (isLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600"></div>
+            </div>
+        );
+    }
+
+    // اگر وریفای نشده، به پروفایل بفرست
+    if (isVerified === false) {
+        return <Navigate to="/profile" replace />;
+    }
+
+    // اگر وریفای شده، صفحه رو نشون بده
+    return children;
 }
 
 // Public route wrapper (redirect to home if already authenticated)
 function PublicRoute({ children }) {
-  const accessToken = useAuthStore((state) => state.accessToken);
+    const accessToken = useAuthStore((state) => state.accessToken);
 
-  if (accessToken) {
-    return <Navigate to="/home" replace />;
-  }
+    if (accessToken) {
+        return <Navigate to="/home" replace />;
+    }
 
-  return children;
+    return children;
 }
 
 function App() {
-  return (
-      <BrowserRouter>
-        <Routes>
-          {/* Redirect root to login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+    return (
+        <BrowserRouter>
+            <Routes>
+                {/* Redirect root to login */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
 
-            <Route
-                path="/chat-test"
-                element={
-                    <ProtectedRoute>
-                        <AppContainer variant="transparent">
-                            <Consultationv1 />
-                        </AppContainer>
-                    </ProtectedRoute>
-                }
-            />
-          {/* Public routes */}
-          <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <AppContainer variant="transparent">
-                    <Login />
-                  </AppContainer>
-                </PublicRoute>
-              }
-          />
-          <Route
-              path="/verify"
-              element={
-                <PublicRoute>
-                  <AppContainer variant="transparent">
-                    <OTPVerification />
-                  </AppContainer>
-                </PublicRoute>
-              }
-          />
+                <Route
+                    path="/chat-test"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer variant="transparent">
+                                <Consultationv1 />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                {/* Public routes */}
+                <Route
+                    path="/login"
+                    element={
+                        <PublicRoute>
+                            <AppContainer variant="transparent">
+                                <Login />
+                            </AppContainer>
+                        </PublicRoute>
+                    }
+                />
+                <Route
+                    path="/verify"
+                    element={
+                        <PublicRoute>
+                            <AppContainer variant="transparent">
+                                <OTPVerification />
+                            </AppContainer>
+                        </PublicRoute>
+                    }
+                />
 
-            <Route path="/diagnosis-result" element={<ProtectedRoute>
-                <AppContainer showNavbar>
-                    <DiagnosisResult />
-                </AppContainer></ProtectedRoute>} />
+                <Route path="/diagnosis-result" element={<VerifiedRoute>
+                    <AppContainer showNavbar>
+                        <DiagnosisResult />
+                    </AppContainer></VerifiedRoute>} />
 
-            {/* Protected routes */}
-          <Route
-              path="/home"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <Home />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-            <Route
-                path="/chats"
-                element={
-                    <ProtectedRoute>
-                        <AppContainer >
-                            <Chats />
-                        </AppContainer>
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/cake"
-                element={
-                    <ProtectedRoute>
+                {/* Protected routes */}
+                <Route
+                    path="/home"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <Home />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/chats"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer >
+                                <Chats />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/cake"
+                    element={
+                        <VerifiedRoute>
                             <CakeManager />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/map"
-                element={
-                    <ProtectedRoute>
-                        <MapPage />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/cakev1"
-                element={
-                    <ProtectedRoute>
-                        <CakeManagerV1 />
-                    </ProtectedRoute>
-                }
-            />
-          <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <UserProfile />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/plans"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <PricingPlans />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/symptoms"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <SymptomSelection />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/questionnaire"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <Questionnaire />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-            <Route
-                path="/questionnairev1"
-                element={
-                    <ProtectedRoute>
-                        <AppContainer showNavbar>
-                            <QuestionnaireV1 />
-                        </AppContainer>
-                    </ProtectedRoute>
-                }
-            />
-          <Route
-              path="/results"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <AIResults />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/doctors"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <DoctorList />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-            <Route
-                path="/period-tracker"
-                element={
-                    <ProtectedRoute>
-                        <AppContainer showNavbar >
-                            <PeriodTracker />
-                        </AppContainer>
-                    </ProtectedRoute>
-                }
-            />
-          <Route
-              path="/doctor/:id"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <DoctorProfile />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/consultation/:id"
-              element={
-                <ProtectedRoute>
-                  <AppContainer>
-                    <Consultationv1 />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/body-measurement"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <BodyMeasurement />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-            <Route
-                path="/food"
-                element={
-                    <ProtectedRoute>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/map"
+                    element={
+                        <VerifiedRoute>
+                            <MapPage />
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/cakev1"
+                    element={
+                        <VerifiedRoute>
+                            <CakeManagerV1 />
+                        </VerifiedRoute>
+                    }
+                />
+                {/* صفحه پروفایل فقط با ProtectedRoute (نه VerifiedRoute) */}
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <AppContainer showNavbar>
+                                <UserProfile />
+                            </AppContainer>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/plans"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <PricingPlans />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/symptoms"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <SymptomSelection />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/questionnaire"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <Questionnaire />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/questionnairev1"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <QuestionnaireV1 />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/results"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <AIResults />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/doctors"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <DoctorList />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/period-tracker"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar >
+                                <PeriodTracker />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/doctor/:id"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <DoctorProfile />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/consultation/:id"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer>
+                                <Consultationv1 />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/body-measurement"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <BodyMeasurement />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/fit"
+                    element={
+                        <VerifiedRoute>
+                            <ExerciseExtractor />
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/food"
+                    element={
+                        <VerifiedRoute>
                             <FoodExtractor />
-
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/services"
-                element={
-                    <ProtectedRoute>
-                        <AppContainer showNavbar>
-                            <MedicalServices />
-                        </AppContainer>
-
-
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/services/labs"
-                element={
-                    <ProtectedRoute>
-                        <AppContainer showNavbar>
-                            <LabsFlow />
-                        </AppContainer>
-
-
-                    </ProtectedRoute>
-                }
-            />
-          <Route
-              path="/meal-plan"
-              element={
-                <ProtectedRoute>
-                  <AppContainer showNavbar>
-                    <MealPlan />
-                  </AppContainer>
-                </ProtectedRoute>
-              }
-          />
-        </Routes>
-      </BrowserRouter>
-  );
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/services"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <MedicalServices />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/services/labs"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <LabsFlow />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/meal-plan"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <MealPlan />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
 export default App;

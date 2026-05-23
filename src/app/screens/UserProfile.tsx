@@ -46,8 +46,69 @@ function sanitizeNonNegative(value: string): string {
   if (Number.isNaN(num) || num < 0) return '';
   return value;
 }
+function ErrorAlert({ message, onClose }: { message: string; onClose: () => void }) {
+  if (!message) return null;
+
+  return (
+      <div className="relative mb-4">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 px-4 py-3 shadow-[0_8px_24px_rgba(239,68,68,0.3)]">
+          <div className="relative z-10 flex items-start gap-3" dir="rtl">
+            <div className="flex-1">
+              <p className="text-xs font-bold text-white sm:text-sm">خطا در ذخیره اطلاعات</p>
+              <p className="mt-1 whitespace-pre-line text-[11px] leading-relaxed text-red-50 sm:text-xs">
+                {message}
+              </p>
+            </div>
+            <button
+                onClick={onClose}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+  );
+}
+
+function IncompleteProfileWarning({ show }: { show: boolean }) {
+  if (!show) return null;
+
+  return (
+      <div className="relative mb-4">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 via-rose-600 to-pink-600 px-4 py-3 shadow-[0_8px_24px_rgba(239,68,68,0.3)] sm:px-4">
+          <div className="pointer-events-none absolute -top-10 -left-10 h-32 w-32 rounded-full bg-white/10 blur-sm" />
+          <div className="pointer-events-none absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-pink-400/25 blur-sm" />
+          <div
+              className="pointer-events-none absolute inset-0 opacity-[0.14]"
+              style={{
+                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                backgroundSize: '20px 20px',
+              }}
+          />
+          <div className="relative z-10 flex items-center gap-3" dir="rtl">
+            <div className="min-w-0 flex-1">
+              <p className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white ring-1 ring-white/25">
+                <HeartPulse className="h-2.5 w-2.5" />
+                تکمیل پروفایل
+              </p>
+              <h1 className="mt-1.5 text-xs font-bold leading-tight text-white sm:text-sm">
+                نام و جنسیت برای ادامه فرایند لازم است
+              </h1>
+              <p className="mt-1 text-[11px] leading-relaxed text-red-100 sm:text-xs">
+                لطفاً نام و جنسیت خود را وارد کنید.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+  );
+}
+
+
 
 export function UserProfile() {
+  const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
   const { accessToken, logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -91,7 +152,7 @@ export function UserProfile() {
         setFormData({
           firstName: user.name?.split(' ')[0]?.substring(0, 10) || '',
           lastName: user.name?.split(' ')[1]?.substring(0, 10) || '',
-          gender: user.gender === 0 ? 'male' : user.gender === 1 ? 'female' : '',
+          gender: user.gender === 0 ? 'male' : user.gender === 1 ? 'female' : 'male',
           age: user.age != null ? String(Math.max(0, user.age)) : '',
           weight: user.weight != null ? String(Math.max(0, user.weight)) : '',
           height: user.height != null ? String(Math.max(0, user.height)) : '',
@@ -110,7 +171,7 @@ export function UserProfile() {
   const handleSubmit = async () => {
     try {
       setSaving(true);
-
+      setErrorMessage('');
       const response = await fetch('http://185.222.163.113:7000/api/user/profile/update', {
         method: 'POST',
         headers: {
@@ -121,7 +182,7 @@ export function UserProfile() {
         body: JSON.stringify({
           first_name: formData.firstName,
           last_name: formData.lastName,
-          gender: formData.gender === 'male' ? 0 : 1,
+          gender: formData.gender === 'female' ? 1 : 0,
           age: parseInt(formData.age, 10),
           weight: parseFloat(formData.weight),
           height: parseFloat(formData.height),
@@ -134,13 +195,13 @@ export function UserProfile() {
         navigate('/home');
       } else {
         const errorMsg = data.errors
-          ? Object.values(data.errors).flat().join('\n')
-          : data.message;
-        alert(errorMsg || 'خطا در ذخیره اطلاعات');
+            ? Object.values(data.errors).flat().join('\n')
+            : data.message;
+        setErrorMessage(errorMsg || 'خطا در ذخیره اطلاعات');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('خطا در برقراری ارتباط با سرور');
+      setErrorMessage('خطا در برقراری ارتباط با سرور');
     } finally {
       setSaving(false);
     }
@@ -176,7 +237,10 @@ export function UserProfile() {
 
       <div className="mx-auto w-full max-w-lg px-3 pb-6 pt-24 sm:px-4">
         <ProfileHero />
-
+        <IncompleteProfileWarning
+            show={!formData.firstName || !formData.gender}
+        />
+        <ErrorAlert message={errorMessage} onClose={() => setErrorMessage('')} />
         <Card
           dir="rtl"
           className="gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)] text-right sm:p-5"
