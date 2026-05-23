@@ -88,6 +88,8 @@ export function DoctorProfile() {
   const { accessToken } = useAuthStore();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [reserveError, setReserveError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
   const [availableSlots, setAvailableSlots] = useState<Record<string, TimeSlot[]>>({});
   const [loading, setLoading] = useState(true);
@@ -97,10 +99,64 @@ export function DoctorProfile() {
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [newReview, setNewReview] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [reservationToken, setReservationToken] = useState<string | null>(null);
+  const [reservationExpiry, setReservationExpiry] = useState<string | null>(null);
+  const [isReserving, setIsReserving] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
     fetchDoctorData();
   }, [id]);
+
+  // اضافه کردن useEffect برای بررسی رزرو فعال هنگام بارگذاری صفحه
+  useEffect(() => {
+    if (doctorData?.id && accessToken) {
+      checkActiveReservation();
+    }
+  }, [doctorData?.id, accessToken]);
+
+// تابع بررسی رزرو فعال
+  const checkActiveReservation = async () => {
+    try {
+      const response = await fetch(
+          `http://185.222.163.113:7000/api/user/reservations/active?doctor_id=${doctorData.id}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // تنظیم state ها با اطلاعات رزرو فعال
+          setReservationToken(result.data.reservation_token);
+          setReservationExpiry(result.data.expires_at);
+
+          // پیدا کردن اسلات مربوطه
+          const slot = availableSlots.find(s => s.id === result.data.slot_id);
+          if (slot) {
+            setSelectedSlot(slot);
+            setSelectedDate(result.data.slot_date);
+          }
+
+          // نمایش مدال تایید نهایی
+          setShowConfirmDialog(true);
+
+          // نمایش پیام اطلاع‌رسانی
+          alert(`شما یک رزرو فعال دارید که ${Math.floor(result.data.remaining_seconds / 60)} دقیقه دیگر منقضی می‌شود`);
+        }
+      }
+    } catch (error) {
+      // در صورت عدم وجود رزرو فعال، خطایی نمایش نمی‌دهیم
+      console.log('No active reservation found');
+    }
+  };
 
   const fetchDoctorData = async () => {
     try {
@@ -135,6 +191,97 @@ export function DoctorProfile() {
     }
   };
 
+  const handleReserveSlot = async () => {
+    if (!selectedSlot) return;
+
+    if (reservationToken) {
+      setReserveError('شما قبلاً یک رزرو فعال دارید');
+      setShowBookingDialog(false);
+      setShowConfirmDialog(true);
+      return;
+    }
+
+    setIsReserving(true);
+    setReserveError(null); // پاک کردن خطای قبلی
+
+    try {
+      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/reserve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          slot_id: selectedSlot.id
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'خطا در رزرو موقت');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setReservationToken(result.data.reservation_token);
+        setReservationExpiry(result.data.expires_at);
+        setShowBookingDialog(false);
+        setShowConfirmDialog(true);
+      }
+    } catch (error) {
+      setReserveError(error instanceof Error ? error.message : 'خطا در رزرو موقت');
+    } finally {
+      setIsReserving(false);
+    }
+  };
+
+
+
+  const confirmBooking = async () => {
+    if (!reservationToken) return;
+
+    setIsConfirming(true);
+    setConfirmError(null); // پاک کردن خطای قبلی
+
+    try {
+      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          reservation_token: reservationToken
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'خطا در تایید رزرو');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // پاک کردن state های رزرو
+        setReservationToken(null);
+        setReservationExpiry(null);
+        setSelectedSlot(null);
+        setShowConfirmDialog(false);
+
+        // بروزرسانی لیست نوبت‌ها
+        await fetchDoctorData();
+
+      }
+    } catch (error) {
+      setConfirmError(error instanceof Error ? error.message : 'خطا در تایید رزرو');
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
   };
@@ -156,10 +303,10 @@ export function DoctorProfile() {
     }
   };
 
-  const confirmBooking = () => {
-    setShowBookingDialog(false);
-    navigate(`/consultation/${id}`);
-  };
+  // const confirmBooking = () => {
+  //   setShowBookingDialog(false);
+  //   navigate(`/consultation/${id}`);
+  // };
 
   async function startChat() {
     try {
@@ -468,6 +615,24 @@ export function DoctorProfile() {
           <Card className="p-5 shadow-xl border-0 mb-6">
             <h3 className="text-lg text-gray-900 mb-4">رزرو نوبت</h3>
 
+            {reservationToken && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-green-800">
+                      <CheckCircle className="w-5 h-5 ml-2" />
+                      <span>شما یک رزرو فعال دارید</span>
+                    </div>
+                    <Button
+                        onClick={() => setShowConfirmDialog(true)}
+                        variant="outline"
+                        size="sm"
+                        className="text-green-700 border-green-300 hover:bg-green-100"
+                    >
+                      مشاهده و تایید
+                    </Button>
+                  </div>
+                </div>
+            )}
             {Object.keys(availableSlots).length > 0 ? (
                 <>
                   {/* انتخاب تاریخ */}
@@ -525,10 +690,17 @@ export function DoctorProfile() {
 
           {/* دکمه‌های اقدام */}
           <div className="space-y-3">
-            <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
+            <Dialog open={showBookingDialog}  onOpenChange={(open) => {
+              setShowBookingDialog(open);
+              if (!open) setReserveError(null);
+            }}>
               <DialogTrigger asChild>
                 <Button
-                    onClick={handleBooking}
+                    onClick={() => {
+                      if (selectedSlot) {
+                        setShowBookingDialog(true);
+                      }
+                    }}
                     disabled={!selectedSlot}
                     className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -538,9 +710,9 @@ export function DoctorProfile() {
               </DialogTrigger>
               <DialogContent dir="rtl">
                 <DialogHeader>
-                  <DialogTitle>تأیید رزرو نوبت</DialogTitle>
+                  <DialogTitle>تأیید رزرو موقت</DialogTitle>
                   <DialogDescription>
-                    شما در حال رزرو نوبت با {doctorData.name} هستید
+                    این نوبت برای ۱۵ دقیقه برای شما رزرو خواهد شد
                   </DialogDescription>
                 </DialogHeader>
                 {selectedSlot && (
@@ -559,9 +731,96 @@ export function DoctorProfile() {
                       </div>
                     </div>
                 )}
-                <Button onClick={confirmBooking} className="w-full">
-                  تأیید و رزرو
+                {reserveError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-red-800 text-sm">{reserveError}</p>
+                    </div>
+                )}
+
+                <Button
+                    onClick={handleReserveSlot}
+                    className="w-full"
+                    disabled={isReserving}
+                >
+                  {isReserving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                        در حال رزرو...
+                      </>
+                  ) : (
+                      'رزرو موقت (۱۵ دقیقه)'
+                  )}
                 </Button>
+              </DialogContent>
+
+            </Dialog>
+
+            <Dialog open={showConfirmDialog} onOpenChange={(open) => {
+              setShowConfirmDialog(open);
+              if (!open) setConfirmError(null);
+            }}>
+              <DialogContent dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>تأیید نهایی رزرو</DialogTitle>
+                  <DialogDescription>
+                    نوبت شما رزرو شده است. برای تکمیل رزرو دکمه تایید نهایی را بزنید
+                  </DialogDescription>
+                </DialogHeader>
+                {selectedSlot && reservationExpiry && (
+                    <div className="space-y-3 py-4">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-center text-yellow-800 text-sm">
+                          <Clock className="w-4 h-4 ml-2" />
+                          این رزرو تا {new Date(reservationExpiry).toLocaleTimeString('fa-IR')} معتبر است
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">تاریخ:</span>
+                        <span className="text-gray-900">{formatDate(selectedDate)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">ساعت:</span>
+                        <span className="text-gray-900">{selectedSlot.start_time} - {selectedSlot.end_time}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">هزینه ویزیت:</span>
+                        <span className="text-gray-900">{formatPrice(doctorData.visit_price)}</span>
+                      </div>
+                    </div>
+                )}
+                <div className="flex gap-3">
+                  {confirmError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                        <p className="text-red-800 text-sm">{confirmError}</p>
+                      </div>
+                  )}
+
+                  <Button
+                      onClick={confirmBooking}
+                      className="flex-1"
+                      disabled={isConfirming}
+                  >
+                    {isConfirming ? (
+                        <>
+                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                          در حال تایید...
+                        </>
+                    ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 ml-2" />
+                          تأیید نهایی
+                        </>
+                    )}
+                  </Button>
+                  <Button
+                      onClick={() => setShowConfirmDialog(false)}
+                      variant="outline"
+                      className="flex-1"
+                      disabled={isConfirming}
+                  >
+                    انصراف
+                  </Button>
+                </div>
               </DialogContent>
             </Dialog>
 
