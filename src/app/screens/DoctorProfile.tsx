@@ -90,6 +90,8 @@ export function DoctorProfile() {
   const { id } = useParams();
   const [reserveError, setReserveError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
   const [availableSlots, setAvailableSlots] = useState<Record<string, TimeSlot[]>>({});
   const [loading, setLoading] = useState(true);
@@ -190,6 +192,54 @@ export function DoctorProfile() {
       setLoading(false);
     }
   };
+  const cancelReservation = async () => {
+    if (!reservationToken) return;
+
+    if (!confirm('آیا از لغو رزرو موقت اطمینان دارید؟')) {
+      return;
+    }
+
+    setIsCancelling(true);
+    setConfirmError(null);
+
+    try {
+      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          reservation_token: reservationToken
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'خطا در لغو رزرو');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // پاک کردن state های رزرو
+        setReservationToken(null);
+        setReservationExpiry(null);
+        setSelectedSlot(null);
+        setShowConfirmDialog(false);
+
+        // بروزرسانی لیست نوبت‌ها
+        await fetchDoctorData();
+
+        alert('رزرو موقت شما لغو شد');
+      }
+    } catch (error) {
+      setConfirmError(error instanceof Error ? error.message : 'خطا در لغو رزرو');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
 
   const handleReserveSlot = async () => {
     if (!selectedSlot) return;
@@ -759,70 +809,60 @@ export function DoctorProfile() {
               setShowConfirmDialog(open);
               if (!open) setConfirmError(null);
             }}>
-              <DialogContent dir="rtl">
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>تأیید نهایی رزرو</DialogTitle>
+                  <DialogTitle>تایید نهایی رزرو</DialogTitle>
                   <DialogDescription>
-                    نوبت شما رزرو شده است. برای تکمیل رزرو دکمه تایید نهایی را بزنید
+                    رزرو موقت شما برای ۱۵ دقیقه ثبت شده است
                   </DialogDescription>
                 </DialogHeader>
-                {selectedSlot && reservationExpiry && (
-                    <div className="space-y-3 py-4">
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-                        <div className="flex items-center text-yellow-800 text-sm">
-                          <Clock className="w-4 h-4 ml-2" />
-                          این رزرو تا {new Date(reservationExpiry).toLocaleTimeString('fa-IR')} معتبر است
+
+                {selectedSlot && (
+                    <div className="space-y-3">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">
+              زمان باقی‌مانده: {reservationExpiry ?
+                              Math.max(0, Math.floor((new Date(reservationExpiry).getTime() - Date.now()) / 1000 / 60))
+                              : 0} دقیقه
+            </span>
+                        </div>
+                        <div className="text-sm text-gray-700 space-y-1">
+                          <p><strong>تاریخ:</strong> {selectedDate}</p>
+                          <p><strong>ساعت:</strong> {selectedSlot.start_time} - {selectedSlot.end_time}</p>
                         </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">تاریخ:</span>
-                        <span className="text-gray-900">{formatDate(selectedDate)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">ساعت:</span>
-                        <span className="text-gray-900">{selectedSlot.start_time} - {selectedSlot.end_time}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">هزینه ویزیت:</span>
-                        <span className="text-gray-900">{formatPrice(doctorData.visit_price)}</span>
+
+                      {confirmError && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-red-800 text-sm">{confirmError}</p>
+                          </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                            onClick={confirmBooking}
+                            disabled={isConfirming || isCancelling}
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                        >
+                          {isConfirming ? 'در حال تایید...' : 'تأیید نهایی'}
+                        </Button>
+
+                        <Button
+                            onClick={cancelReservation}
+                            disabled={isConfirming || isCancelling}
+                            variant="destructive"
+                            className="flex-1"
+                        >
+                          {isCancelling ? 'در حال لغو...' : 'لغو رزرو'}
+                        </Button>
                       </div>
                     </div>
                 )}
-                <div className="flex gap-3">
-                  {confirmError && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                        <p className="text-red-800 text-sm">{confirmError}</p>
-                      </div>
-                  )}
-
-                  <Button
-                      onClick={confirmBooking}
-                      className="flex-1"
-                      disabled={isConfirming}
-                  >
-                    {isConfirming ? (
-                        <>
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                          در حال تایید...
-                        </>
-                    ) : (
-                        <>
-                          <CheckCircle className="w-4 h-4 ml-2" />
-                          تأیید نهایی
-                        </>
-                    )}
-                  </Button>
-                  <Button
-                      onClick={() => setShowConfirmDialog(false)}
-                      variant="outline"
-                      className="flex-1"
-                      disabled={isConfirming}
-                  >
-                    انصراف
-                  </Button>
-                </div>
               </DialogContent>
             </Dialog>
+
 
             <div className="grid grid-cols-2 gap-3">
               <Button
