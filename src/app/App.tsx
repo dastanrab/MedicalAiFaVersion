@@ -27,6 +27,15 @@ import {MedicalServices} from "./screens/MedicalServices";
 import {LabsFlow} from "./screens/LabsFlow";
 import { PricingPlans } from './screens/PricingPlans';
 import ExerciseExtractor from "./screens/ExerciseExtractor";
+import MediraAIDashboard from "./screens/panel/MediraAIDashboard";
+import Dashboard from "./screens/Dashboard";
+import OnlineVisitPage from "./screens/panel/OnlineVisitPage";
+import ReportsPage from "./screens/panel/ReportsPage";
+import MyVisitsPage from "./screens/panel/MyVisitsPage";
+import PatientsPage from "./screens/panel/PatientsPage";
+import PrescriptionPage from "./screens/panel/PrescriptionPage";
+import AppointmentsPage from "./screens/panel/AppointmentsPage";
+import MainLayout from "./layouts/MainLayout";
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -130,6 +139,7 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
+
                 {/* Public routes */}
                 <Route
                     path="/login"
@@ -168,6 +178,26 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
+                <Route
+                    path="/dash"
+                    element={
+                        <VerifiedRoute>
+                            <MainLayout />
+                        </VerifiedRoute>
+                    }
+                >
+                    {/* Dashboard as default */}
+                    <Route index element={<MediraAIDashboard />} />
+                    <Route path="dash" element={<MediraAIDashboard />} />
+                    <Route path="appointments" element={<AppointmentsPage />} />
+                    <Route path="prescriptions" element={<PrescriptionPage />} />
+                    <Route path="patients" element={<PatientsPage />} />
+                    <Route path="my-visits" element={<MyVisitsPage />} />
+                    <Route path="reports" element={<ReportsPage />} />
+                    <Route path="online-visit" element={<OnlineVisitPage />} />
+                    {/*<Route path="common-prescriptions" element={<CommonPrescriptionsPage />} />*/}
+                    {/*<Route path="support" element={<SupportPage />} />*/}
+                </Route>
                 <Route
                     path="/chats"
                     element={
