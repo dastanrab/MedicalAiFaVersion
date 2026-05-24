@@ -39,10 +39,10 @@ type UserStatus = {
   last_seen?: string;
 };
 
-type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error' | 'disable';
 
 type WSMessage = {
-  type: 'message' | 'user_status' | 'typing';
+  type: 'message' | 'user_status' | 'typing' | 'error';
   user_id?: number;
   username?: string;
   message?: string;
@@ -280,6 +280,11 @@ export function Consultationv1() {
             addSystemMessage(`${data.username || `کاربر ${data.user_id}`} ${statusText}`);
           }
         }
+        else if (data.type === 'error') {
+          console.log(data.message,'on error')
+          setErrorMsg(data.message || 'خطا در اتصال');
+          //setTimeout(() => navigate('/'), 3000);
+        }
 
         // نشانگر تایپ
         else if (data.type === 'typing') {
@@ -306,14 +311,18 @@ export function Consultationv1() {
     };
 
     ws.onclose = (event) => {
+      console.log('close code:', event.code, 'reason:', event.reason);
       setStatus('disconnected');
 
-      if (event.code === 1008 || event.code === 4001) {
-        setErrorMsg('توکن نامعتبر است');
-        navigate('/');
-      } else if (event.code !== 1000) {
+      if (event.code === 1008 ) {
+        setStatus('disable');
+        setErrorMsg('دسترسی به این چت مجاز نیست');
+      }else if(event.code === 4001){
+        setErrorMsg('دسترسی به این چت مجاز نیست');
+         setTimeout(() => navigate('/'), 3000);
+      }
+      else if (event.code !== 1000) {
         setErrorMsg(`اتصال قطع شد (${event.code})`);
-
         reconnectTimeoutRef.current = setTimeout(() => {
           if (accessToken) {
             fetchChatHistory().then(() => {
@@ -323,6 +332,7 @@ export function Consultationv1() {
         }, 3000);
       }
     };
+
   };
 
   const addSystemMessage = (text: string) => {
@@ -441,6 +451,7 @@ export function Consultationv1() {
       },
       connecting: { color: 'text-yellow-500', label: 'در حال اتصال...', icon: <Loader2 className="w-4 h-4 animate-spin" /> },
       disconnected: { color: 'text-gray-400', label: 'قطع شده', icon: <WifiOff className="w-4 h-4" /> },
+      disable: { color: 'text-purple-500', label: 'دسترسی شما محدود شده', icon: <WifiOff className="w-4 h-4" /> },
       error: { color: 'text-red-500', label: 'خطا', icon: <WifiOff className="w-4 h-4" /> },
     };
     const s = map[status];
