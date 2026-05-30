@@ -30,6 +30,7 @@ import ExerciseExtractor from "./screens/ExerciseExtractor";
 import { AdminLogin } from './admin/screens/AdminLogin';
 import { AdminLayout } from './admin/layout/AdminLayout';
 import { AdminDashboard } from './admin/screens/AdminDashboard';
+import { AdminUsers } from './admin/screens/AdminUsers';
 import { useAdminAuthStore } from './admin/store/adminAuthStore';
 
 // Protected route wrapper
@@ -165,6 +166,7 @@ function App() {
                 >
                     <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="users" element={<AdminUsers />} />
                 </Route>
 
                 <Route
