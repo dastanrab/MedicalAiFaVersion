@@ -22,7 +22,6 @@ export interface AdminNavItem {
 export const adminNavItems: AdminNavItem[] = [
     { icon: LayoutDashboard, label: 'داشبورد', path: '/admin/dashboard' },
     { icon: Users, label: 'کاربران', path: '/admin/users' },
-    { icon: Stethoscope, label: 'پزشکان', path: '/admin/doctors' },
     { icon: CalendarCheck, label: 'نوبت‌ها', path: '/admin/appointments' },
     { icon: MessagesSquare, label: 'گفتگوها', path: '/admin/chats' },
     { icon: CreditCard, label: 'پرداخت‌ها', path: '/admin/payments' },

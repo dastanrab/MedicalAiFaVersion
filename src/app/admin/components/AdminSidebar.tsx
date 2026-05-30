@@ -1,5 +1,4 @@
 import { useNavigate, useLocation } from 'react-router';
-import { Activity } from 'lucide-react';
 import { adminNavItems, adminSocialLinks } from '../config/adminNav';
 import { useAdminAuthStore } from '../store/adminAuthStore';
 
@@ -17,17 +16,6 @@ export function AdminSidebar() {
 
     return (
         <aside className="flex h-full w-72 flex-shrink-0 flex-col bg-slate-900 text-slate-300">
-            {/* لوگو */}
-            <div className="flex items-center gap-3 border-b border-white/5 px-6 py-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
-                    <Activity className="h-5 w-5" />
-                </div>
-                <div>
-                    <p className="text-sm font-semibold text-white">مدیرا AI</p>
-                    <p className="text-xs text-slate-500">پنل مدیریت</p>
-                </div>
-            </div>
-
             {/* پروفایل ادمین */}
             <div className="flex items-center gap-3 px-6 py-5">
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-base font-semibold text-white ring-2 ring-white/10">
