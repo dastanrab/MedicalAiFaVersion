@@ -27,6 +27,10 @@ import {MedicalServices} from "./screens/MedicalServices";
 import {LabsFlow} from "./screens/LabsFlow";
 import { PricingPlans } from './screens/PricingPlans';
 import ExerciseExtractor from "./screens/ExerciseExtractor";
+import { AdminLogin } from './admin/screens/AdminLogin';
+import { AdminLayout } from './admin/layout/AdminLayout';
+import { AdminDashboard } from './admin/screens/AdminDashboard';
+import { useAdminAuthStore } from './admin/store/adminAuthStore';
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -113,12 +117,55 @@ function PublicRoute({ children }) {
     return children;
 }
 
+// Admin protected route wrapper
+function AdminProtectedRoute({ children }) {
+    const token = useAdminAuthStore((state) => state.token);
+
+    if (!token) {
+        return <Navigate to="/admin/login" replace />;
+    }
+
+    return children;
+}
+
+// Admin public route wrapper (redirect to dashboard if already authenticated)
+function AdminPublicRoute({ children }) {
+    const token = useAdminAuthStore((state) => state.token);
+
+    if (token) {
+        return <Navigate to="/admin/dashboard" replace />;
+    }
+
+    return children;
+}
+
 function App() {
     return (
         <BrowserRouter>
             <Routes>
                 {/* Redirect root to login */}
                 <Route path="/" element={<Navigate to="/login" replace />} />
+
+                {/* Admin routes */}
+                <Route
+                    path="/admin/login"
+                    element={
+                        <AdminPublicRoute>
+                            <AdminLogin />
+                        </AdminPublicRoute>
+                    }
+                />
+                <Route
+                    path="/admin"
+                    element={
+                        <AdminProtectedRoute>
+                            <AdminLayout />
+                        </AdminProtectedRoute>
+                    }
+                >
+                    <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                </Route>
 
                 <Route
                     path="/chat-test"
