@@ -27,7 +27,7 @@ const blogPosts = [
     id: 1,
     title: '۱۰ نکته برای سلامت بهتر قلب',
     excerpt: 'با این تغییرات ساده قلبی سالم‌تر داشته باشید.',
-    image: 'https://clinicniavaran.com/wp-content/uploads/2022/07/scanning11.jpg',
+    image: '/scan.jpg',
     date: '۲۸ اسفند ۱۴۰۴',
     readTime: '۵ دقیقه مطالعه',
     tag: 'قلب و عروق',
@@ -377,9 +377,6 @@ export function Home() {
                         src={post.image}
                         alt={post.title}
                         className="h-full w-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = '/scan.jpg';
-                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                       <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-semibold text-blue-700 backdrop-blur-sm">
