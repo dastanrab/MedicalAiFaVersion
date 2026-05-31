@@ -26,6 +26,7 @@ import {
     type UserType,
     type UserStatus,
 } from '../config/userOptions';
+import { AddUserModal } from '../components/AddUserModal';
 import { useAdminAuthStore } from "../store/adminAuthStore";
 
 const PAGE_SIZE = 8;
@@ -70,6 +71,16 @@ export function AdminUsers() {
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+
+    const addUser = (data: Omit<AdminUserRow, 'id'>) => {
+        setUsers((prev) => {
+            const nextId = prev.reduce((max, u) => Math.max(max, u.id), 0) + 1;
+            return [{ ...data, id: nextId }, ...prev];
+        });
+        setIsAddOpen(false);
+        setPage(1);
+    };
 
     const cities = province === 'all' ? [] : iranCitiesByProvince[province] ?? [];
 
@@ -262,8 +273,10 @@ export function AdminUsers() {
                         <p className="text-sm text-slate-500">مدیریت و مشاهده کاربران سامانه</p>
                     </div>
                 </div>
+
                 <button
                     type="button"
+                    onClick={() => setIsAddOpen(true)}
                     className="flex h-11 items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-500 to-violet-600 px-5 text-sm font-medium text-white shadow-lg shadow-indigo-600/20 transition hover:from-indigo-400 hover:to-violet-500"
                 >
                     <UserPlus className="h-5 w-5" />
@@ -631,6 +644,10 @@ export function AdminUsers() {
                     </div>
                 </div>
             </div>
+
+            {isAddOpen && (
+                <AddUserModal onClose={() => setIsAddOpen(false)} onSubmit={addUser} />
+            )}
         </div>
     );
 }
