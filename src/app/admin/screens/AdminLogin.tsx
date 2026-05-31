@@ -21,31 +21,28 @@ export function AdminLogin() {
         setError('');
 
         try {
-            // TODO: اتصال به API واقعی ادمین
-            // const response = await fetch('http://185.222.163.113:7000/api/admin/login', {
-            //   method: 'POST',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ username, password }),
-            // });
-            // const data = await response.json();
-
-            await new Promise((resolve) => setTimeout(resolve, 800));
-
-            setAuth('admin-demo-token', {
-                firstName: 'علی',
-                lastName: 'محمدی',
-                role: 'مدیر سیستم',
-                avatar: null,
+            const response = await fetch('http://185.222.163.113:7000/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: username, password }),
             });
+            const data = await response.json();
 
+            if (!data.success) {
+                setError(data.message || 'نام کاربری یا رمز عبور اشتباه است');
+                return;
+            }
+
+            setAuth(data.data.token, data.data.user);
             navigate('/admin/dashboard', { replace: true });
         } catch (err) {
-            setError('نام کاربری یا رمز عبور اشتباه است');
+            setError('خطا در اتصال به سرور');
             console.error('Admin login error:', err);
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen w-full bg-slate-950 flex" dir="rtl">

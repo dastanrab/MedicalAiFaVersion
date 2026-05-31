@@ -9,9 +9,9 @@ export function AdminSidebar() {
 
     const isActive = (path: string) => location.pathname === path;
 
-    const fullName = admin ? `${admin.firstName} ${admin.lastName}` : 'مدیر سیستم';
+    const fullName = admin ? `${admin.name} ` : 'مدیر سیستم';
     const initials = admin
-        ? `${admin.firstName?.[0] ?? ''}${admin.lastName?.[0] ?? ''}`
+        ? `${admin.name?.[0] ?? ''}}`
         : 'م';
 
     return (

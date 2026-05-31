@@ -32,6 +32,16 @@ import { AdminLayout } from './admin/layout/AdminLayout';
 import { AdminDashboard } from './admin/screens/AdminDashboard';
 import { AdminUsers } from './admin/screens/AdminUsers';
 import { useAdminAuthStore } from './admin/store/adminAuthStore';
+// import FitnessApp from "./screens/FitnessApp";
+// import FitnessAppV1 from "./screens/FitnessAppV1";
+// import WorkoutPage from "./screens/WorkoutPage";
+// import RestaurantSuggestions from "./screens/RestaurantSuggestions";
+// import Entertainment from "./screens/Entertainment";
+// import RestaurantMenu from "./screens/RestaurantMenu";
+// import MusicPlayer from "./screens/MusicPlayer";
+// import WorkoutMusic from "./screens/WorkoutMusic";
+// import FoodPage from "./screens/FoodPage";
+// import {DoctorCalendar} from "./screens/DoctorCalendar";
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -46,6 +56,7 @@ function ProtectedRoute({ children }) {
 
 // Protected route with profile verification
 function VerifiedRoute({ children }) {
+    const clearToken = useAuthStore((state) => state.logout);
     const accessToken = useAuthStore((state) => state.accessToken);
     const [isVerified, setIsVerified] = useState(null); // null = در حال بررسی
     const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +77,13 @@ function VerifiedRoute({ children }) {
                     },
                 });
 
-                if (!response.ok) throw new Error('خطا در دریافت اطلاعات');
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        clearToken(); // یا logout() بسته به storesetIsLoading(false);
+                        return;
+                    }
+                    throw new Error('خطا در دریافت اطلاعات');
+                }
 
                 const data = await response.json();
 
@@ -119,15 +136,44 @@ function PublicRoute({ children }) {
 }
 
 // Admin protected route wrapper
-function AdminProtectedRoute({ children }) {
+const AdminProtectedRoute = ({ children }) => {
     const token = useAdminAuthStore((state) => state.token);
+    const logout = useAdminAuthStore((state) => state.logout);
+    const [isVerified, setIsVerified] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    if (!token) {
-        return <Navigate to="/admin/login" replace />;
-    }
+    useEffect(() => {
+        if (!token) {
+            setIsLoading(false);
+            return;
+        }
+
+        fetch('http://185.222.163.113:7000/api/admin/profile', {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((res) => {
+                if (res.status === 401 || res.status === 403) {
+                    logout();
+                    return;
+                }
+                if (!res.ok) throw new Error();
+                return res.json();
+            })
+            .then((data) => {
+                if (data) setIsVerified(data.success === true);
+            })
+            .catch(() => setIsVerified(false))
+            .finally(() => setIsLoading(false));
+    }, [token]);
+
+    if (!token) return <Navigate to="/admin/login" replace />;
+    if (isLoading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" /></div>;
+    if (!isVerified) return <Navigate to="/admin/login" replace />;
 
     return children;
-}
+};
+
+
 
 // Admin public route wrapper (redirect to dashboard if already authenticated)
 function AdminPublicRoute({ children }) {
@@ -217,6 +263,16 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
+                {/*<Route*/}
+                {/*    path="/doctor-calender"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*          /!*<AppContainer showNavbar>*!/*/}
+                {/*                <DoctorCalendar />*/}
+                {/*            /!*</AppContainer>*!/*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
                 <Route
                     path="/chats"
                     element={
@@ -362,14 +418,14 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
-                <Route
-                    path="/fit"
-                    element={
-                        <VerifiedRoute>
-                            <ExerciseExtractor />
-                        </VerifiedRoute>
-                    }
-                />
+                {/*<Route*/}
+                {/*    path="/fit"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <ExerciseExtractor />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
                 <Route
                     path="/food"
                     element={
@@ -408,6 +464,94 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
+                {/*<Route*/}
+                {/*    path="/f"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <FitnessApp />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/fit"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <FitnessAppV1 />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/workout"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <WorkoutPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/restaurant"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <RestaurantSuggestions />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/entertainment"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            < Entertainment />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/restaurant/:id"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <RestaurantMenu />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/music-player/:id"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <MusicPlayer/>*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/workout-music"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <WorkoutMusic/>*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/plan"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <ExerciseExtractor />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/food"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <FoodExtractor />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/meal"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <FoodPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
             </Routes>
         </BrowserRouter>
     );

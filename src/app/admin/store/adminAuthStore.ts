@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface AdminUser {
-    firstName: string;
-    lastName: string;
+    name: string;
     avatar?: string | null;
     role?: string;
 }
