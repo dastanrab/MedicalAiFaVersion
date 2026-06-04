@@ -15,6 +15,7 @@ import {
     ChevronRight,
     X,
     Loader2,
+    FileSpreadsheet,
 } from 'lucide-react';
 import { iranProvinces, iranCitiesByProvince } from '../../data/iranLocations';
 import {
@@ -49,6 +50,66 @@ interface UsersApiResponse {
     current_page: number;
 }
 
+function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
+    const name = (user.name as string) ?? '';
+    return {
+        ...(user as AdminUserRow),
+        firstName: name.split(' ')[0] ?? '',
+        lastName: name.split(' ').slice(1).join(' ') ?? '',
+        status: statusMapApiToFront[user.status as number] ?? 'blocked',
+        isVerified: Boolean(user.is_verify),
+        type: user.role as UserType,
+    };
+}
+
+function downloadUsersExcel(rows: AdminUserRow[]) {
+    const header = [
+        'ردیف',
+        'نام و نام خانوادگی',
+        'نوع کاربری',
+        'موبایل',
+        'استان',
+        'شهر',
+        'وضعیت',
+        'احراز هویت',
+    ];
+
+    const body = rows
+        .map(
+            (u, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${u.firstName} ${u.lastName}</td>
+            <td>${userTypeLabels[u.type] ?? u.type}</td>
+            <td>${u.phone}</td>
+            <td>${u.province}</td>
+            <td>${u.city}</td>
+            <td>${userStatusLabels[u.status]}</td>
+            <td>${u.isVerified ? 'بله' : 'خیر'}</td>
+        </tr>`
+        )
+        .join('');
+
+    const html = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+            <head><meta charset="UTF-8"></head>
+            <body>
+                <table border="1">
+                    <thead><tr>${header.map((h) => `<th>${h}</th>`).join('')}</tr></thead>
+                    <tbody>${body}</tbody>
+                </table>
+            </body>
+        </html>`;
+
+    const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `users-${new Date().toISOString().slice(0, 10)}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
 export function AdminUsers() {
     const token = useAdminAuthStore((state) => state.token);
 
@@ -72,6 +133,7 @@ export function AdminUsers() {
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     const addUser = (data: Omit<AdminUserRow, 'id'>) => {
         setUsers((prev) => {
@@ -84,6 +146,20 @@ export function AdminUsers() {
 
     const cities = province === 'all' ? [] : iranCitiesByProvince[province] ?? [];
 
+    const buildFilterParams = (pageNum: number, perPage: number): Record<string, string> => {
+        const params: Record<string, string> = {
+            page: String(pageNum),
+            per_page: String(perPage),
+        };
+        if (name.trim()) params.name = name.trim();
+        if (phone.trim()) params.phone = phone.trim();
+        if (type !== 'all') params.type = type;
+        if (status !== 'all') params.status = String(statusMapFrontToApi[status]);
+        if (province !== 'all') params.province = province;
+        if (city !== 'all') params.city = city;
+        return params;
+    };
+
     const fetchUsers = async () => {
         if (!token) {
             setError('توکن احراز هویت معتبر نیست.');
@@ -93,18 +169,9 @@ export function AdminUsers() {
         setLoading(true);
         setError(null);
         try {
-            const params: Record<string, string> = {
-                page: String(page),
-                per_page: String(PAGE_SIZE),
-            };
-            if (name.trim()) params.name = name.trim();
-            if (phone.trim()) params.phone = phone.trim();
-            if (type !== 'all') params.type = type;
-            if (status !== 'all') params.status = String(statusMapFrontToApi[status]);
-            if (province !== 'all') params.province = province;
-            if (city !== 'all') params.city = city;
-
-            const queryString = new URLSearchParams(params).toString();
+            const queryString = new URLSearchParams(
+                buildFilterParams(page, PAGE_SIZE)
+            ).toString();
             const response = await fetch(`${API_URL}?${queryString}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -122,14 +189,9 @@ export function AdminUsers() {
             }
 
             const result = await response.json();
-            const normalized: AdminUserRow[] = result.data.data.map((user: any) => ({
-                ...user,
-                firstName: user.name?.split(' ')[0] ?? '',
-                lastName: user.name?.split(' ').slice(1).join(' ') ?? '',
-                status: statusMapApiToFront[user.status] ?? 'blocked',
-                isVerified: Boolean(user.is_verify),
-                type: user.role as UserType,
-            }));
+            const normalized: AdminUserRow[] = result.data.data.map((user: Record<string, unknown>) =>
+                normalizeUserFromApi(user)
+            );
 
             setUsersData({ ...result.data, data: normalized });
         } catch (err: any) {
@@ -163,6 +225,35 @@ export function AdminUsers() {
         setProvince('all');
         setCity('all');
         resetPage();
+    };
+
+    const handleExportExcel = async () => {
+        if (!token) return;
+        const exportCount = Math.max(usersData.total, paged.length, 1);
+        setExporting(true);
+        try {
+            const queryString = new URLSearchParams(
+                buildFilterParams(1, exportCount)
+            ).toString();
+            const response = await fetch(`${API_URL}?${queryString}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) throw new Error('خطا در دریافت لیست کاربران');
+            const result = await response.json();
+            const rows: AdminUserRow[] = result.data.data.map((user: Record<string, unknown>) =>
+                normalizeUserFromApi(user)
+            );
+            if (rows.length === 0) return;
+            downloadUsersExcel(rows);
+        } catch (err) {
+            console.error('Export users error:', err);
+            if (paged.length > 0) downloadUsersExcel(paged);
+        } finally {
+            setExporting(false);
+        }
     };
 
     const pageIds = paged.map((u) => u.id);
@@ -274,14 +365,29 @@ export function AdminUsers() {
                     </div>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={() => setIsAddOpen(true)}
-                    className="flex h-11 items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-500 to-violet-600 px-5 text-sm font-medium text-white shadow-lg shadow-indigo-600/20 transition hover:from-indigo-400 hover:to-violet-500"
-                >
-                    <UserPlus className="h-5 w-5" />
-                    افزودن کاربر
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={handleExportExcel}
+                        disabled={exporting || (paged.length === 0 && usersData.total === 0)}
+                        className="flex h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {exporting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <FileSpreadsheet className="h-4 w-4" />
+                        )}
+                        دانلود اکسل
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsAddOpen(true)}
+                        className="flex h-11 items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-500 to-violet-600 px-5 text-sm font-medium text-white shadow-lg shadow-indigo-600/20 transition hover:from-indigo-400 hover:to-violet-500"
+                    >
+                        <UserPlus className="h-5 w-5" />
+                        افزودن کاربر
+                    </button>
+                </div>
             </div>
 
             {/* فیلترها */}
