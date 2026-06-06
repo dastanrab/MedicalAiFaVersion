@@ -137,11 +137,11 @@ function PublicRoute({ children }) {
     return children;
 }
 
-// Admin protected route wrapper
-const AdminProtectedRoute = ({ children }) => {
+// Admin auth gate — layout همیشه visible است؛ فقط محتوا اسکلتون می‌شود
+function AdminAuthGate() {
     const token = useAdminAuthStore((state) => state.token);
     const logout = useAdminAuthStore((state) => state.logout);
-    const [isVerified, setIsVerified] = useState(null);
+    const [isVerified, setIsVerified] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -166,14 +166,13 @@ const AdminProtectedRoute = ({ children }) => {
             })
             .catch(() => setIsVerified(false))
             .finally(() => setIsLoading(false));
-    }, [token]);
+    }, [token, logout]);
 
     if (!token) return <Navigate to="/admin/login" replace />;
-    if (isLoading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" /></div>;
-    if (!isVerified) return <Navigate to="/admin/login" replace />;
+    if (!isLoading && !isVerified) return <Navigate to="/admin/login" replace />;
 
-    return children;
-};
+    return <AdminLayout authLoading={isLoading} />;
+}
 
 
 
@@ -204,14 +203,7 @@ function App() {
                         </AdminPublicRoute>
                     }
                 />
-                <Route
-                    path="/admin"
-                    element={
-                        <AdminProtectedRoute>
-                            <AdminLayout />
-                        </AdminProtectedRoute>
-                    }
-                >
+                <Route path="/admin" element={<AdminAuthGate />}>
                     <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="users" element={<AdminUsers />} />
