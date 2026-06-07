@@ -45,6 +45,16 @@ import { useAdminAuthStore } from './admin/store/adminAuthStore';
 // import WorkoutMusic from "./screens/WorkoutMusic";
 // import FoodPage from "./screens/FoodPage";
 // import {DoctorCalendar} from "./screens/DoctorCalendar";
+// import ChallengesPage from "./screens/ChallengesPage";
+// import ChallengeDetailsPage from "./screens/ChallengeDetailsPage";
+// import OnboardingPage from "./screens/OnboardingPage";
+// import ProfilePage from "./screens/ProfilePage";
+// import BodyAnalysisPage from "./screens/BodyAnalysisPage";
+// import Forum from "./screens/Forum";
+// import ProgressPage from "./screens/ProgressPage";
+import MedicalChat from "./screens/MedicalChat";
+import MedicalChatV1 from "./screens/MedicalChatV1";
+import {DiagnosisResultV1} from "./screens/DiagnosisResultV1";
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -246,8 +256,8 @@ function App() {
                 />
 
                 <Route path="/diagnosis-result" element={<VerifiedRoute>
-                    <AppContainer showNavbar>
-                        <DiagnosisResult />
+                    <AppContainer >
+                        <DiagnosisResultV1 />
                     </AppContainer></VerifiedRoute>} />
 
                 {/* Protected routes */}
@@ -352,6 +362,26 @@ function App() {
                         <VerifiedRoute>
                             <AppContainer showNavbar>
                                 <QuestionnaireV1 />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/medical-chat"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer>
+                                <MedicalChat />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/medical-chat-v1"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer>
+                                <MedicalChatV1 />
                             </AppContainer>
                         </VerifiedRoute>
                     }
@@ -543,10 +573,66 @@ function App() {
                 {/*    }*/}
                 {/*/>*/}
                 {/*<Route*/}
+                {/*    path="/challenges"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <ChallengesPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/challenges/:id"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <ChallengeDetailsPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
                 {/*    path="/meal"*/}
                 {/*    element={*/}
                 {/*        <VerifiedRoute>*/}
                 {/*            <FoodPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/onboarding"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <OnboardingPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/fit-profile"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <ProfilePage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/progress"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <ProgressPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/forum"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <Forum />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/body"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <BodyAnalysisPage />*/}
                 {/*        </VerifiedRoute>*/}
                 {/*    }*/}
                 {/*/>*/}
