@@ -33,6 +33,7 @@ import { AdminDashboard } from './admin/screens/AdminDashboard';
 import { AdminUsers } from './admin/screens/AdminUsers';
 import { AdminAppointments } from './admin/screens/AdminAppointments';
 import { AdminPayments } from './admin/screens/AdminPayments';
+import { AdminChats } from './admin/screens/AdminChats';
 import { useAdminAuthStore } from './admin/store/adminAuthStore';
 // import FitnessApp from "./screens/FitnessApp";
 // import FitnessAppV1 from "./screens/FitnessAppV1";
@@ -209,6 +210,7 @@ function App() {
                     <Route path="users" element={<AdminUsers />} />
                     <Route path="appointments" element={<AdminAppointments />} />
                     <Route path="payments" element={<AdminPayments />} />
+                    <Route path="chats" element={<AdminChats />} />
                 </Route>
 
                 <Route
