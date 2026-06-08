@@ -99,7 +99,7 @@ export type SymptomFormState = {
 export function SymptomSelection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [mode, setMode] = useState<InputMode>('select');
+  const [mode, setMode] = useState<InputMode>('text');
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -437,43 +437,43 @@ export function SymptomSelection() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">سن</label>
-                  <Input
-                    type="number"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    className="h-11 rounded-xl border-gray-200 bg-gray-50/50 text-right focus:bg-white"
-                    placeholder="مثال: ۳۰"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">جنسیت</label>
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as 'male' | 'female' | '')}
-                    className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-right text-sm focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <option value="">انتخاب کنید</option>
-                    <option value="male">مرد</option>
-                    <option value="female">زن</option>
-                  </select>
-                </div>
-              </div>
+              {/*<div className="grid grid-cols-2 gap-4">*/}
+              {/*  <div>*/}
+              {/*    <label className="mb-2 block text-sm font-semibold text-gray-700">سن</label>*/}
+              {/*    <Input*/}
+              {/*      type="number"*/}
+              {/*      value={age}*/}
+              {/*      onChange={(e) => setAge(e.target.value)}*/}
+              {/*      className="h-11 rounded-xl border-gray-200 bg-gray-50/50 text-right focus:bg-white"*/}
+              {/*      placeholder="مثال: ۳۰"*/}
+              {/*    />*/}
+              {/*  </div>*/}
+              {/*  <div>*/}
+              {/*    <label className="mb-2 block text-sm font-semibold text-gray-700">جنسیت</label>*/}
+              {/*    <select*/}
+              {/*      value={gender}*/}
+              {/*      onChange={(e) => setGender(e.target.value as 'male' | 'female' | '')}*/}
+              {/*      className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-right text-sm focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"*/}
+              {/*    >*/}
+              {/*      <option value="">انتخاب کنید</option>*/}
+              {/*      <option value="male">مرد</option>*/}
+              {/*      <option value="female">زن</option>*/}
+              {/*    </select>*/}
+              {/*  </div>*/}
+              {/*</div>*/}
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  سابقه پزشکی (اختیاری)
-                </label>
-                <textarea
-                  value={medicalHistory}
-                  onChange={(e) => setMedicalHistory(e.target.value)}
-                  rows={3}
-                  className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50/50 p-4 text-right text-sm leading-relaxed transition-colors placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  placeholder="بیماری‌های قبلی، داروهای مصرفی و..."
-                />
-              </div>
+              {/*<div>*/}
+              {/*  <label className="mb-2 block text-sm font-semibold text-gray-700">*/}
+              {/*    سابقه پزشکی (اختیاری)*/}
+              {/*  </label>*/}
+              {/*  <textarea*/}
+              {/*    value={medicalHistory}*/}
+              {/*    onChange={(e) => setMedicalHistory(e.target.value)}*/}
+              {/*    rows={3}*/}
+              {/*    className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50/50 p-4 text-right text-sm leading-relaxed transition-colors placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"*/}
+              {/*    placeholder="بیماری‌های قبلی، داروهای مصرفی و..."*/}
+              {/*  />*/}
+              {/*</div>*/}
 
               {error && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-right text-sm text-red-700">
