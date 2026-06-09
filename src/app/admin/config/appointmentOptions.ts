@@ -1,10 +1,11 @@
-export type AppointmentStatus = 'booked' | 'done' | 'canceled' | 'no-show';
+export type AppointmentStatus = 'booked' | 'done' | 'canceled' | 'no-show' | 'available';
 
 export const appointmentStatusLabels: Record<AppointmentStatus, string> = {
     booked: 'رزرو شده',
     done: 'انجام شده',
     canceled: 'لغو شده',
     'no-show': 'عدم حضور',
+    'available': 'آزاد',
 };
 
 export const appointmentStatusStyles: Record<AppointmentStatus, string> = {
@@ -12,6 +13,7 @@ export const appointmentStatusStyles: Record<AppointmentStatus, string> = {
     done: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
     canceled: 'bg-red-50 text-red-700 ring-red-600/20',
     'no-show': 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    'available': 'bg-amber-50 text-amber-700 ring-amber-600/20',
 };
 
 /** API numeric status → frontend */
@@ -28,6 +30,7 @@ export const statusMapFrontToApi: Record<AppointmentStatus, number> = {
     done: 2,
     canceled: 3,
     'no-show': 4,
+    available:5
 };
 
 const statusAliases: Record<string, AppointmentStatus> = {
