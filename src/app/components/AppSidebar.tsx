@@ -4,6 +4,7 @@ import { Sheet, SheetContent } from './ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { sidebarNavItems } from '../config/navItems';
 import { useAuthStore } from '../store/authStore';
+import {useUserStore} from "../store/useUserStore";
 
 const SAMPLE_PROFILE = {
   firstName: 'علی',
@@ -23,7 +24,8 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
-
+  const user = useUserStore((s) => s.user);
+console.log('user',user)
   const handleNavigate = (path: string) => {
     onOpenChange(false);
     navigate(path);
@@ -66,13 +68,10 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
 
               <div className="min-w-0 flex-1 text-white">
                 <p className="text-lg font-bold leading-tight truncate">
-                  {SAMPLE_PROFILE.firstName}
-                </p>
-                <p className="text-base font-medium text-white/90 leading-tight truncate">
-                  {SAMPLE_PROFILE.lastName}
+                  {user.name}
                 </p>
                 <p className="mt-1 text-sm text-white/80 truncate" dir="ltr">
-                  {SAMPLE_PROFILE.mobile}
+                  {user.phone}
                 </p>
               </div>
             </div>

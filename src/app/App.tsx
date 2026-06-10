@@ -55,6 +55,8 @@ import { useAdminAuthStore } from './admin/store/adminAuthStore';
 import MedicalChat from "./screens/MedicalChat";
 import MedicalChatV1 from "./screens/MedicalChatV1";
 import {DiagnosisResultV1} from "./screens/DiagnosisResultV1";
+import MainWorkoutPage from "./screens/MainWorkoutPage";
+import {useUserStore} from "./store/useUserStore";
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -69,58 +71,25 @@ function ProtectedRoute({ children }) {
 
 // Protected route with profile verification
 function VerifiedRoute({ children }) {
-    const clearToken = useAuthStore((state) => state.logout);
     const accessToken = useAuthStore((state) => state.accessToken);
-    const [isVerified, setIsVerified] = useState(null); // null = در حال بررسی
-    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchProfile = useUserStore((state) => state.fetchProfile);
+    const isVerified = useUserStore((state) => state.isVerified);
+    const isLoading = useUserStore((state) => state.isLoading);
 
     useEffect(() => {
-        const checkProfileVerification = async () => {
-            if (!accessToken) {
-                setIsLoading(false);
-                return;
-            }
-
-            try {
-                const response = await fetch('http://185.222.163.113:7000/api/user/profile', {
-                    method: 'GET',
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401 || response.status === 403) {
-                        clearToken(); // یا logout() بسته به storesetIsLoading(false);
-                        return;
-                    }
-                    throw new Error('خطا در دریافت اطلاعات');
-                }
-
-                const data = await response.json();
-
-                if (data.success) {
-                    setIsVerified(data.data.user.is_verify);
-                }
-            } catch (error) {
-                console.error('Error checking profile:', error);
-                setIsVerified(false);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        checkProfileVerification();
+        if (accessToken) {
+            fetchProfile();
+        }
     }, [accessToken]);
 
-    // اگر توکن نداره، به لاگین بفرست
+    // اگر توکن ندارد
     if (!accessToken) {
         return <Navigate to="/login" replace />;
     }
 
-    // تا زمانی که در حال بررسی هست، صفحه خالی نشون بده
-    if (isLoading) {
+    // loading
+    if (isLoading || isVerified === null) {
         return (
             <div className="flex h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600"></div>
@@ -128,12 +97,11 @@ function VerifiedRoute({ children }) {
         );
     }
 
-    // اگر وریفای نشده، به پروفایل بفرست
+    // اگر وریفای نشده
     if (isVerified === false) {
         return <Navigate to="/profile" replace />;
     }
 
-    // اگر وریفای شده، صفحه رو نشون بده
     return children;
 }
 
@@ -633,6 +601,14 @@ function App() {
                 {/*    element={*/}
                 {/*        <VerifiedRoute>*/}
                 {/*            <BodyAnalysisPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/workoutv1"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <MainWorkoutPage />*/}
                 {/*        </VerifiedRoute>*/}
                 {/*    }*/}
                 {/*/>*/}
