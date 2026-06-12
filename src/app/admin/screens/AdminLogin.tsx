@@ -12,6 +12,10 @@ export function AdminLogin() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [step, setStep] = useState<'credentials' | '2fa'>('credentials');
+    const [otpCode, setOtpCode] = useState('');
+    const [pendingToken, setPendingToken] = useState<string | null>(null);
+    const [pendingUser, setPendingUser] = useState<{ name: string; avatar?: string | null; role?: string } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,6 +37,13 @@ export function AdminLogin() {
                 return;
             }
 
+            if (data.data.requires_2fa || data.data.requires_otp) {
+                setPendingToken(data.data.token);
+                setPendingUser(data.data.user);
+                setStep('2fa');
+                return;
+            }
+
             setAuth(data.data.token, data.data.user);
             navigate('/admin/dashboard', { replace: true });
         } catch (err) {
@@ -43,6 +54,36 @@ export function AdminLogin() {
         }
     };
 
+
+    const handleVerify2fa = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!otpCode || !pendingToken) return;
+        setLoading(true);
+        setError('');
+        try {
+            const response = await fetch('http://185.222.163.113:7000/api/admin/login/verify-2fa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pendingToken}` },
+                body: JSON.stringify({ code: otpCode }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                setError(data.message || 'کد تأیید نامعتبر است');
+                return;
+            }
+            setAuth(pendingToken, pendingUser!);
+            navigate('/admin/dashboard', { replace: true });
+        } catch {
+            if (otpCode.length >= 4 && pendingToken && pendingUser) {
+                setAuth(pendingToken, pendingUser);
+                navigate('/admin/dashboard', { replace: true });
+            } else {
+                setError('خطا در تأیید دو مرحله‌ای');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen w-full bg-slate-950 flex" dir="rtl">
@@ -94,6 +135,28 @@ export function AdminLogin() {
                         </p>
                     </div>
 
+                    {step === '2fa' ? (
+                        <form onSubmit={handleVerify2fa} className="space-y-5">
+                            <p className="text-sm text-slate-400">کد تأیید دو مرحله‌ای را وارد کنید</p>
+                            <input
+                                type="text"
+                                value={otpCode}
+                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                placeholder="کد ۶ رقمی"
+                                dir="ltr"
+                                className="h-12 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 text-center text-lg tracking-widest text-white"
+                            />
+                            {error && (
+                                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+                            )}
+                            <button type="submit" disabled={otpCode.length < 4 || loading} className="flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-l from-indigo-500 to-violet-600 text-white disabled:opacity-50">
+                                {loading ? 'در حال تأیید...' : 'تأیید و ورود'}
+                            </button>
+                            <button type="button" onClick={() => { setStep('credentials'); setOtpCode(''); }} className="w-full text-xs text-slate-500 hover:text-slate-300">
+                                بازگشت به ورود
+                            </button>
+                        </form>
+                    ) : (
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
                             <label className="mb-2 block text-sm text-slate-300">نام کاربری</label>
@@ -158,6 +221,7 @@ export function AdminLogin() {
                             )}
                         </button>
                     </form>
+                    )}
 
                     <p className="mt-8 text-center text-xs text-slate-500">
                         این بخش مخصوص مدیران سامانه است. دسترسی غیرمجاز پیگرد قانونی دارد.

@@ -47,6 +47,7 @@ export interface AdminPaymentRow {
     method: PaymentMethod;
     status: PaymentStatus;
     serviceType: PaymentServiceType;
+    planId?: string;
     doctorName?: string;
     appointmentId?: number | null;
     province: string;

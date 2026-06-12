@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import {
     CalendarCheck,
     Search,
@@ -155,6 +156,7 @@ function downloadAppointmentsExcel(rows: AdminAppointmentRow[]) {
 }
 
 export function AdminAppointments() {
+    const navigate = useNavigate();
     const accessToken = useAdminAuthStore((state) => state.token);
 
     // تنظیم توکن در سرویس API
@@ -180,6 +182,8 @@ export function AdminAppointments() {
     const [status, setStatus] = useState<AppointmentStatus | 'all'>('all');
     const [province, setProvince] = useState('all');
     const [city, setCity] = useState('all');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     const [page, setPage] = useState(1);
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -206,6 +210,8 @@ export function AdminAppointments() {
                 status: status === 'all' ? undefined : status,
                 province: province === 'all' ? undefined : province,
                 city: city === 'all' ? undefined : city,
+                dateFrom: dateFrom || undefined,
+                dateTo: dateTo || undefined,
             };
 
             const response = await fetchAppointments(pageNum, 15, filters);
@@ -245,7 +251,7 @@ export function AdminAppointments() {
     // وقتی فیلترها تغییر می‌کنند، داده‌ها را مجدداً بارگذاری کن
     useEffect(() => {
         fetchAppointmentsData(1);
-    }, [patientSearch, patientPhone, doctorId, status, province, city]);
+    }, [patientSearch, patientPhone, doctorId, status, province, city, dateFrom, dateTo]);
 
     // وقتی صفحه تغییر می‌کند
     useEffect(() => {
@@ -261,6 +267,8 @@ export function AdminAppointments() {
         setStatus('all');
         setProvince('all');
         setCity('all');
+        setDateFrom('');
+        setDateTo('');
         resetPage();
     };
 
@@ -466,6 +474,28 @@ export function AdminAppointments() {
                             ))}
                         </select>
                     </div>
+
+                    <div>
+                        <label className="mb-1.5 block text-xs text-slate-500">از تاریخ</label>
+                        <input
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            className={selectClass}
+                            dir="ltr"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="mb-1.5 block text-xs text-slate-500">تا تاریخ</label>
+                        <input
+                            type="date"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            className={selectClass}
+                            dir="ltr"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -548,7 +578,7 @@ export function AdminAppointments() {
                                                     type="button"
                                                     title="مشاهده جزئیات"
                                                     disabled={isRowLoading}
-                                                    onClick={() => setDetailsRow(row)}
+                                                    onClick={() => navigate(`/admin/appointments/${row.id}`)}
                                                     className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50"
                                                 >
                                                     <Eye className="h-5 w-5" />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Globe, Image, Link2, Save, CheckCircle2 } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
+import { syncAdminSettings } from '../../services/adminApi';
 import { Switch } from '../../../components/ui/switch';
 
 export function AdminSettingsGeneral() {
@@ -12,11 +13,14 @@ export function AdminSettingsGeneral() {
     const [logoUrl, setLogoUrl] = useState(general.logoUrl ?? '');
     const [saved, setSaved] = useState(false);
 
-    const handleSave = () => {
-        updateGeneral({
+    const handleSave = async () => {
+        const patch = {
             appName: appName.trim() || 'مدیرا AI',
             logoUrl: logoUrl.trim() || null,
-        });
+        };
+        updateGeneral(patch);
+        const state = useSettingsStore.getState();
+        await syncAdminSettings({ general: { ...state.general, ...patch } });
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };

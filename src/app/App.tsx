@@ -42,6 +42,15 @@ import { AdminSettingsContent } from './admin/screens/settings/AdminSettingsCont
 import { AdminSettingsServices } from './admin/screens/settings/AdminSettingsServices';
 import { AdminSettingsAdmins } from './admin/screens/settings/AdminSettingsAdmins';
 import { AdminSettingsProfile } from './admin/screens/settings/AdminSettingsProfile';
+import { AdminVerifications } from './admin/screens/AdminVerifications';
+import { AdminProviders } from './admin/screens/AdminProviders';
+import { AdminAiSessions } from './admin/screens/AdminAiSessions';
+import { AdminServicesCatalog } from './admin/screens/AdminServicesCatalog';
+import { AdminHealthContent } from './admin/screens/AdminHealthContent';
+import { AdminSubscriptions } from './admin/screens/AdminSubscriptions';
+import { AdminUserDetail } from './admin/screens/details/AdminUserDetail';
+import { AdminAppointmentDetail } from './admin/screens/details/AdminAppointmentDetail';
+import { AdminChatDetail } from './admin/screens/details/AdminChatDetail';
 import { ServiceFlowPlaceholder } from './screens/ServiceFlowPlaceholder';
 import { servicesCatalog } from './config/servicesCatalog';
 import { useAdminAuthStore } from './admin/store/adminAuthStore';
@@ -196,9 +205,18 @@ function App() {
                     <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="users" element={<AdminUsers />} />
+                    <Route path="users/:id" element={<AdminUserDetail />} />
+                    <Route path="verifications" element={<AdminVerifications />} />
+                    <Route path="providers" element={<AdminProviders />} />
                     <Route path="appointments" element={<AdminAppointments />} />
+                    <Route path="appointments/:id" element={<AdminAppointmentDetail />} />
                     <Route path="payments" element={<AdminPayments />} />
+                    <Route path="subscriptions" element={<AdminSubscriptions />} />
                     <Route path="chats" element={<AdminChats />} />
+                    <Route path="chats/:roomId" element={<AdminChatDetail />} />
+                    <Route path="ai-sessions" element={<AdminAiSessions />} />
+                    <Route path="services" element={<AdminServicesCatalog />} />
+                    <Route path="health-content" element={<AdminHealthContent />} />
                     <Route path="reports" element={<AdminReports />} />
                     <Route path="settings" element={<AdminSettingsLayout />}>
                         <Route path="general" element={<AdminSettingsGeneral />} />

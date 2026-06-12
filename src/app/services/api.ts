@@ -201,6 +201,8 @@ export async function fetchAppointments(
         status?: string;
         province?: string;
         city?: string;
+        dateFrom?: string;
+        dateTo?: string;
     }
 ): Promise<ApiAppointmentResponse> {
     const params = new URLSearchParams({
@@ -226,6 +228,12 @@ export async function fetchAppointments(
     }
     if (filters?.city && filters.city !== 'all') {
         params.append('city', filters.city);
+    }
+    if (filters?.dateFrom) {
+        params.append('date_from', filters.dateFrom);
+    }
+    if (filters?.dateTo) {
+        params.append('date_to', filters.dateTo);
     }
 
     const response = await fetch(

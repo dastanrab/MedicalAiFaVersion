@@ -12,6 +12,8 @@ import {
     RefreshCw,
     ArrowLeft,
     Clock,
+    Stethoscope,
+    MessagesSquare,
 } from 'lucide-react';
 import {
     Bar,
@@ -30,12 +32,19 @@ import {
     type ChartConfig,
 } from '../../components/ui/chart';
 import { useAdminAuthStore } from '../store/adminAuthStore';
-import { sampleAppointments } from '../data/sampleAppointments';
-import { samplePayments } from '../data/samplePayments';
+import { fetchAppointments, fetchChatRooms, setTokenGetter } from '../../services/api';
+import { useAdminDataStore } from '../store/adminDataStore';
+import {
+    fetchAllAdminUsers,
+    fetchActivityLog,
+    buildSignupTrend,
+    buildAppointmentTrend,
+} from '../services/adminApi';
 import {
     appointmentStatusLabels,
     appointmentStatusStyles,
     type AdminAppointmentRow,
+    type AppointmentStatus,
 } from '../config/appointmentOptions';
 import {
     paymentServiceLabels,
@@ -54,55 +63,12 @@ import {
     formatFaNumber,
 } from '../utils/dashboardStats';
 
-const USERS_API_URL = 'http://185.222.163.113:7000/api/admin/users';
-
-const statusMapApiToFront: Record<number, UserStatus> = {
-    1: 'active',
-    0: 'blocked',
-};
-
-function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
-    const name = (user.name as string) ?? '';
-    return {
-        ...(user as AdminUserRow),
-        firstName: name.split(' ')[0] ?? '',
-        lastName: name.split(' ').slice(1).join(' ') ?? '',
-        status: statusMapApiToFront[user.status as number] ?? 'blocked',
-        isVerified: Boolean(user.is_verify),
-        type: user.role as UserType,
+const mapApptStatus = (text: string): AppointmentStatus => {
+    const m: Record<string, AppointmentStatus> = {
+        'رزرو شده': 'booked', 'انجام شده': 'done', 'لغو شده': 'canceled', 'عدم حضور': 'no-show',
     };
-}
-
-async function fetchAllUsers(token: string): Promise<AdminUserRow[]> {
-    const perPage = 100;
-    const all: AdminUserRow[] = [];
-    let page = 1;
-    let totalPages = 1;
-
-    while (page <= totalPages) {
-        const response = await fetch(`${USERS_API_URL}?page=${page}&per_page=${perPage}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`خطا در دریافت کاربران: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        const payload = result.data;
-        const normalized = payload.data.map((user: Record<string, unknown>) =>
-            normalizeUserFromApi(user)
-        );
-        all.push(...normalized);
-        totalPages = Math.max(1, Math.ceil(payload.total / perPage));
-        page++;
-    }
-
-    return all;
-}
+    return m[text] ?? 'booked';
+};
 
 const roleChartConfig = {
     count: { label: 'تعداد', color: '#6366f1' },
@@ -110,6 +76,7 @@ const roleChartConfig = {
     doctor: { label: userTypeLabels.doctor, color: '#6366f1' },
     pharmacy: { label: userTypeLabels.pharmacy, color: '#14b8a6' },
     lab: { label: userTypeLabels.lab, color: '#f59e0b' },
+    nurse: { label: userTypeLabels.nurse, color: '#f43f5e' },
 } satisfies ChartConfig;
 
 const appointmentChartConfig = {
@@ -134,6 +101,7 @@ const roleColors: Record<UserType, string> = {
     doctor: '#6366f1',
     pharmacy: '#14b8a6',
     lab: '#f59e0b',
+    nurse: '#f43f5e',
 };
 
 const appointmentColors: Record<string, string> = {
@@ -197,14 +165,17 @@ function SectionLink({ to, label }: { to: string; label: string }) {
 
 export function AdminDashboard() {
     const token = useAdminAuthStore((state) => state.token);
+    const payments = useAdminDataStore((s) => s.payments);
+    const localActivity = useAdminDataStore((s) => s.activityLog);
     const [users, setUsers] = useState<AdminUserRow[]>([]);
-    const [appointments] = useState<AdminAppointmentRow[]>(sampleAppointments);
-    const [payments] = useState<AdminPaymentRow[]>(samplePayments);
+    const [appointments, setAppointments] = useState<AdminAppointmentRow[]>([]);
+    const [openChats, setOpenChats] = useState(0);
+    const [activityLog, setActivityLog] = useState<typeof localActivity>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
-    const loadUsers = useCallback(async () => {
+    const loadData = useCallback(async () => {
         if (!token) {
             setError('توکن احراز هویت معتبر نیست.');
             setLoading(false);
@@ -212,20 +183,45 @@ export function AdminDashboard() {
         }
 
         setError(null);
+        setTokenGetter(() => token);
         try {
-            const data = await fetchAllUsers(token);
-            setUsers(data);
+            const [userData, apptRes, chatRes, apiActivity] = await Promise.all([
+                fetchAllAdminUsers(),
+                fetchAppointments(1, 200, {}).catch(() => null),
+                fetchChatRooms(1, 100).catch(() => null),
+                fetchActivityLog(),
+            ]);
+            setUsers(userData);
+            if (apptRes) {
+                setAppointments(apptRes.data.map((a) => ({
+                    id: a.id,
+                    patientName: a.patient.name,
+                    patientPhone: a.mobile ?? '',
+                    doctorId: 0,
+                    doctorName: a.doctor.name,
+                    doctorSpecialty: a.doctor.specialty,
+                    province: a.patient.location.split(' — ')[0] ?? '',
+                    city: a.patient.location.split(' — ')[1] ?? '',
+                    scheduledAt: `${a.datetime.date}T${a.datetime.time}:00`,
+                    status: mapApptStatus(a.status.text),
+                    roomId: null,
+                })));
+            }
+            if (chatRes) {
+                setOpenChats(chatRes.data.filter((c) => c.status === 1).length);
+            }
+            setActivityLog([...localActivity, ...apiActivity].slice(0, 10));
         } catch (err) {
             setError(err instanceof Error ? err.message : 'خطایی رخ داد.');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [token]);
+    }, [token, localActivity]);
 
     useEffect(() => {
-        loadUsers();
-    }, [loadUsers]);
+        loadData();
+    }, [loadData]);
 
     const userStats = useMemo(() => computeUserStats(users), [users]);
     const appointmentStats = useMemo(() => computeAppointmentStats(appointments), [appointments]);
@@ -267,43 +263,52 @@ export function AdminDashboard() {
     );
 
     const alerts = useMemo(() => {
-        const items: { text: string; tone: 'amber' | 'rose' | 'indigo' }[] = [];
+        const items: { text: string; tone: 'amber' | 'rose' | 'indigo'; link: string }[] = [];
         if (userStats.unverified > 0) {
             items.push({
                 text: `${formatFaNumber(userStats.unverified)} کاربر در انتظار احراز هویت`,
                 tone: 'amber',
+                link: '/admin/verifications',
             });
         }
-        if (userStats.blocked > 0) {
+        if (appointmentStats.canceled > 0) {
             items.push({
-                text: `${formatFaNumber(userStats.blocked)} کاربر مسدود`,
+                text: `${formatFaNumber(appointmentStats.canceled)} نوبت لغوشده`,
                 tone: 'rose',
-            });
-        }
-        if (paymentStats.pendingCount > 0) {
-            items.push({
-                text: `${formatFaNumber(paymentStats.pendingCount)} پرداخت در انتظار تأیید`,
-                tone: 'amber',
+                link: '/admin/appointments',
             });
         }
         if (paymentStats.failedCount > 0) {
             items.push({
                 text: `${formatFaNumber(paymentStats.failedCount)} پرداخت ناموفق`,
                 tone: 'rose',
+                link: '/admin/payments',
             });
         }
-        if (appointmentStats.noShow > 0) {
+        if (paymentStats.pendingCount > 0) {
             items.push({
-                text: `${formatFaNumber(appointmentStats.noShow)} نوبت با عدم حضور`,
+                text: `${formatFaNumber(paymentStats.pendingCount)} پرداخت در انتظار تأیید`,
+                tone: 'amber',
+                link: '/admin/payments',
+            });
+        }
+        if (openChats > 0) {
+            items.push({
+                text: `${formatFaNumber(openChats)} گفتگوی باز`,
                 tone: 'indigo',
+                link: '/admin/chats',
             });
         }
         return items;
-    }, [userStats, paymentStats, appointmentStats]);
+    }, [userStats, paymentStats, appointmentStats, openChats]);
+
+    const doctorCount = userStats.byRole.find((r) => r.role === 'doctor')?.count ?? 0;
+    const signupTrend = useMemo(() => buildSignupTrend(users), [users]);
+    const appointmentTrend = useMemo(() => buildAppointmentTrend(appointments), [appointments]);
 
     const handleRefresh = () => {
         setRefreshing(true);
-        loadUsers();
+        loadData();
     };
 
     if (loading) {
@@ -356,6 +361,19 @@ export function AdminDashboard() {
                     sub={`${formatFaNumber(userStats.verified)} تأیید‌شده`}
                     icon={Users}
                     tone="indigo"
+                />
+                <KpiCard
+                    label="پزشکان"
+                    value={formatFaNumber(doctorCount)}
+                    sub="ثبت‌شده در سامانه"
+                    icon={Stethoscope}
+                    tone="indigo"
+                />
+                <KpiCard
+                    label="گفتگوهای باز"
+                    value={formatFaNumber(openChats)}
+                    icon={MessagesSquare}
+                    tone="amber"
                 />
                 <KpiCard
                     label="نوبت‌های امروز"
@@ -499,17 +517,35 @@ export function AdminDashboard() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
                     <div className="mb-4 flex items-center justify-between">
                         <div>
-                            <h3 className="text-sm font-semibold text-slate-800">روند تراکنش‌ها</h3>
-                            <p className="mt-0.5 text-xs text-slate-500">تعداد تراکنش در روزهای اخیر</p>
+                            <h3 className="text-sm font-semibold text-slate-800">روند ثبت‌نام کاربران</h3>
+                            <p className="mt-0.5 text-xs text-slate-500">هفتگی / ماهانه</p>
                         </div>
                     </div>
-                    <ChartContainer config={paymentChartConfig} className="aspect-auto h-[260px] w-full">
-                        <BarChart data={paymentStats.dailyRevenue} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <ChartContainer config={roleChartConfig} className="aspect-auto h-[260px] w-full">
+                        <BarChart data={signupTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                             <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                            <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                            <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
                             <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                    </ChartContainer>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-sm font-semibold text-slate-800">روند نوبت‌ها</h3>
+                            <p className="mt-0.5 text-xs text-slate-500">تعداد نوبت در بازه‌های اخیر</p>
+                        </div>
+                    </div>
+                    <ChartContainer config={appointmentChartConfig} className="aspect-auto h-[260px] w-full">
+                        <BarChart data={appointmentTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                            <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                            <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="count" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
                         </BarChart>
                     </ChartContainer>
                 </div>
@@ -575,17 +611,19 @@ export function AdminDashboard() {
                     {alerts.length > 0 ? (
                         <ul className="space-y-3">
                             {alerts.map((alert, index) => (
-                                <li
-                                    key={index}
-                                    className={`rounded-xl border px-3 py-2.5 text-sm ${
-                                        alert.tone === 'amber'
-                                            ? 'border-amber-100 bg-amber-50/60 text-amber-800'
-                                            : alert.tone === 'rose'
-                                              ? 'border-rose-100 bg-rose-50/60 text-rose-800'
-                                              : 'border-indigo-100 bg-indigo-50/60 text-indigo-800'
-                                    }`}
-                                >
-                                    {alert.text}
+                                <li key={index}>
+                                    <Link
+                                        to={alert.link}
+                                        className={`block rounded-xl border px-3 py-2.5 text-sm transition hover:opacity-80 ${
+                                            alert.tone === 'amber'
+                                                ? 'border-amber-100 bg-amber-50/60 text-amber-800'
+                                                : alert.tone === 'rose'
+                                                  ? 'border-rose-100 bg-rose-50/60 text-rose-800'
+                                                  : 'border-indigo-100 bg-indigo-50/60 text-indigo-800'
+                                        }`}
+                                    >
+                                        {alert.text}
+                                    </Link>
                                 </li>
                             ))}
                         </ul>
@@ -610,6 +648,28 @@ export function AdminDashboard() {
                     )}
                 </div>
             </div>
+
+            {activityLog.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-white">
+                    <div className="border-b border-slate-100 px-5 py-4">
+                        <h3 className="text-sm font-semibold text-slate-800">آخرین فعالیت‌ها</h3>
+                    </div>
+                    <ul className="divide-y divide-slate-50">
+                        {activityLog.map((a) => (
+                            <li key={a.id} className="flex items-center justify-between px-5 py-3 text-sm">
+                                {a.link ? (
+                                    <Link to={a.link} className="text-slate-700 hover:text-indigo-600">{a.message}</Link>
+                                ) : (
+                                    <span className="text-slate-700">{a.message}</span>
+                                )}
+                                <span className="text-xs text-slate-400">
+                                    {new Date(a.at).toLocaleString('fa-IR')}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             <div className="rounded-2xl border border-slate-200 bg-white">
                 <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">

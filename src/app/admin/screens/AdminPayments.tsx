@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     CreditCard,
     Search,
@@ -27,8 +27,11 @@ import {
     type PaymentMethod,
     type PaymentServiceType,
 } from '../config/paymentOptions';
-import { samplePayments } from '../data/samplePayments';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
+import { useAdminAuthStore } from '../store/adminAuthStore';
+import { useAdminDataStore } from '../store/adminDataStore';
+import { fetchAdminPayments, refundAdminPayment } from '../services/adminApi';
+import { pricingPlans } from '../../data/pricingPlans';
 
 const PAGE_SIZE = 8;
 
@@ -114,8 +117,26 @@ function downloadPaymentsExcel(rows: AdminPaymentRow[]) {
 }
 
 export function AdminPayments() {
-    const [payments, setPayments] = useState<AdminPaymentRow[]>(samplePayments);
+    const token = useAdminAuthStore((s) => s.token);
+    const payments = useAdminDataStore((s) => s.payments);
+    const setPayments = useAdminDataStore((s) => s.setPayments);
+    const updatePaymentStatus = useAdminDataStore((s) => s.updatePaymentStatus);
+    const addActivity = useAdminDataStore((s) => s.addActivity);
     const [loading, setLoading] = useState(false);
+    const [planFilter, setPlanFilter] = useState<string>('all');
+
+    const loadPayments = useCallback(async () => {
+        if (!token) return;
+        setLoading(true);
+        try {
+            const data = await fetchAdminPayments();
+            setPayments(data);
+        } finally {
+            setLoading(false);
+        }
+    }, [token, setPayments]);
+
+    useEffect(() => { loadPayments(); }, [loadPayments]);
 
     const [patientSearch, setPatientSearch] = useState('');
     const [patientPhone, setPatientPhone] = useState('');
@@ -145,6 +166,7 @@ export function AdminPayments() {
             const matchesStatus = status === 'all' || row.status === status;
             const matchesMethod = method === 'all' || row.method === method;
             const matchesService = serviceType === 'all' || row.serviceType === serviceType;
+            const matchesPlan = planFilter === 'all' || row.planId === planFilter || (planFilter === 'basic' && !row.planId && row.serviceType === 'subscription');
             const matchesProvince = province === 'all' || row.province === province;
             const matchesCity = city === 'all' || row.city === city;
             return (
@@ -154,6 +176,7 @@ export function AdminPayments() {
                 matchesStatus &&
                 matchesMethod &&
                 matchesService &&
+                matchesPlan &&
                 matchesProvince &&
                 matchesCity
             );
@@ -166,6 +189,7 @@ export function AdminPayments() {
         status,
         method,
         serviceType,
+        planFilter,
         province,
         city,
     ]);
@@ -199,19 +223,15 @@ export function AdminPayments() {
         resetPage();
     };
 
-    const handleRefresh = () => {
-        setLoading(true);
-        setTimeout(() => {
-            setPayments([...samplePayments]);
-            setLoading(false);
-        }, 400);
-    };
+    const handleRefresh = () => loadPayments();
 
-    const updateStatus = (id: number, newStatus: PaymentStatus) => {
+    const updateStatus = async (id: number, newStatus: PaymentStatus) => {
         setActionLoadingId(id);
-        setPayments((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
-        );
+        if (newStatus === 'refunded') {
+            await refundAdminPayment(id, 'استرداد دستی توسط ادمین');
+            addActivity({ type: 'payment', message: `استرداد تراکنش #${id}` });
+        }
+        updatePaymentStatus(id, newStatus);
         setOpenMenuId(null);
         setActionLoadingId(null);
     };
@@ -358,6 +378,23 @@ export function AdminPayments() {
                                 <option key={value} value={value}>
                                     {label}
                                 </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="mb-1.5 block text-xs text-slate-500">پلن اشتراک</label>
+                        <select
+                            value={planFilter}
+                            onChange={(e) => {
+                                setPlanFilter(e.target.value);
+                                resetPage();
+                            }}
+                            className={selectClass}
+                        >
+                            <option value="all">همه پلن‌ها</option>
+                            {pricingPlans.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
                             ))}
                         </select>
                     </div>

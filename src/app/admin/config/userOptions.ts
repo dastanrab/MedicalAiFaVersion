@@ -1,4 +1,4 @@
-export type UserType = 'patient' | 'doctor' | 'pharmacy' | 'lab';
+export type UserType = 'patient' | 'doctor' | 'pharmacy' | 'lab' | 'nurse';
 export type UserStatus = 'active' | 'inactive' | 'blocked';
 
 export const userTypeLabels: Record<UserType, string> = {
@@ -69,7 +69,7 @@ const genderOptions = [
 ];
 
 export const userTypeFields: Record<UserType, UserField[]> = {
-    normal: [
+    patient: [
         { name: 'nationalCode', label: 'کد ملی', type: 'text', placeholder: '۱۰ رقم', ltr: true, required: true },
         { name: 'birthDate', label: 'تاریخ تولد', type: 'date' },
         { name: 'gender', label: 'جنسیت', type: 'select', options: genderOptions },

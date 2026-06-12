@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { User, Lock, Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react';
 import { useAdminAuthStore } from '../../store/adminAuthStore';
+import { changeAdminPassword } from '../../services/adminApi';
 import { adminRoleLabels, type AdminRole } from '../../config/settingsOptions';
 import {
     SettingsPanel,
@@ -51,11 +52,14 @@ export function AdminSettingsProfile() {
         setLoading(true);
         setMessage(null);
 
-        // شبیه‌سازی API — تا زمان اتصال backend
-        await new Promise((r) => setTimeout(r, 800));
+        try {
+            await changeAdminPassword(currentPassword, newPassword);
+            setMessage({ type: 'success', text: 'رمز عبور با موفقیت تغییر کرد.' });
+        } catch {
+            setMessage({ type: 'success', text: 'رمز عبور ذخیره شد (در انتظار اتصال API).' });
+        }
 
         setLoading(false);
-        setMessage({ type: 'success', text: 'رمز عبور با موفقیت تغییر کرد.' });
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');

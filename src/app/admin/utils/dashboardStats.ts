@@ -60,7 +60,7 @@ function countByKey<T>(
 }
 
 export function computeUserStats(users: AdminUserRow[]): UserDashboardStats {
-    const roles: UserType[] = ['patient', 'doctor', 'pharmacy', 'lab'];
+    const roles: UserType[] = ['patient', 'doctor', 'pharmacy', 'lab', 'nurse'];
     const roleCounts = new Map<UserType, number>();
     for (const role of roles) roleCounts.set(role, 0);
     for (const user of users) {

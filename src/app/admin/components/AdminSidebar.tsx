@@ -17,7 +17,7 @@ export function AdminSidebar() {
         if (path === '/admin/dashboard') {
             return location.pathname === '/admin/dashboard' || location.pathname === '/admin';
         }
-        return location.pathname === path;
+        return location.pathname === path || location.pathname.startsWith(`${path}/`);
     };
 
     const fullName = admin ? `${admin.name} ` : 'مدیر سیستم';

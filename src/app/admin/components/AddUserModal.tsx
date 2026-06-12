@@ -21,11 +21,11 @@ import {
 
 interface AddUserModalProps {
     onClose: () => void;
-    onSubmit: (user: Omit<AdminUserRow, 'id'>) => void;
+    onSubmit: (user: Omit<AdminUserRow, 'id'>) => void | Promise<void>;
 }
 
 const typeIcons: Record<UserType, LucideIcon> = {
-    normal: User,
+    patient: User,
     doctor: Stethoscope,
     pharmacy: Pill,
     lab: FlaskConical,
@@ -33,7 +33,7 @@ const typeIcons: Record<UserType, LucideIcon> = {
 };
 
 const typeAccent: Record<UserType, string> = {
-    normal: 'data-[active=true]:border-slate-400 data-[active=true]:bg-slate-50 data-[active=true]:text-slate-700',
+    patient: 'data-[active=true]:border-slate-400 data-[active=true]:bg-slate-50 data-[active=true]:text-slate-700',
     doctor: 'data-[active=true]:border-indigo-400 data-[active=true]:bg-indigo-50 data-[active=true]:text-indigo-700',
     pharmacy: 'data-[active=true]:border-teal-400 data-[active=true]:bg-teal-50 data-[active=true]:text-teal-700',
     lab: 'data-[active=true]:border-amber-400 data-[active=true]:bg-amber-50 data-[active=true]:text-amber-700',
@@ -43,10 +43,10 @@ const typeAccent: Record<UserType, string> = {
 const inputClass =
     'h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15';
 
-const userTypeOrder: UserType[] = ['normal', 'doctor', 'lab', 'pharmacy', 'nurse'];
+const userTypeOrder: UserType[] = ['patient', 'doctor', 'lab', 'pharmacy', 'nurse'];
 
 export function AddUserModal({ onClose, onSubmit }: AddUserModalProps) {
-    const [type, setType] = useState<UserType>('normal');
+    const [type, setType] = useState<UserType>('patient');
 
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');

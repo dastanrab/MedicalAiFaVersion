@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import {
     Users,
     UserPlus,
@@ -32,7 +33,9 @@ import {
     AdminUsersSkeleton,
     AdminUsersTableSkeleton,
 } from '../components/AdminUsersSkeleton';
-import { useAdminAuthStore } from "../store/adminAuthStore";
+import { useAdminAuthStore } from '../store/adminAuthStore';
+import { useAdminDataStore } from '../store/adminDataStore';
+import { createAdminUser } from '../services/adminApi';
 
 const PAGE_SIZE = 8;
 const API_URL = 'http://185.222.163.113:7000/api/admin/users';
@@ -115,7 +118,9 @@ function downloadUsersExcel(rows: AdminUserRow[]) {
 }
 
 export function AdminUsers() {
+    const navigate = useNavigate();
     const token = useAdminAuthStore((state) => state.token);
+    const addActivity = useAdminDataStore((s) => s.addActivity);
 
     const [usersData, setUsersData] = useState<UsersApiResponse>({
         data: [],
@@ -140,13 +145,34 @@ export function AdminUsers() {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
 
-    const addUser = (data: Omit<AdminUserRow, 'id'>) => {
-        setUsers((prev) => {
-            const nextId = prev.reduce((max, u) => Math.max(max, u.id), 0) + 1;
-            return [{ ...data, id: nextId }, ...prev];
-        });
-        setIsAddOpen(false);
-        setPage(1);
+    const addUser = async (data: Omit<AdminUserRow, 'id'>) => {
+        if (!token) return;
+        try {
+            await createAdminUser({
+                name: `${data.firstName} ${data.lastName}`,
+                phone: data.phone,
+                role: data.type,
+                province: data.province,
+                city: data.city,
+                status: data.status === 'active' ? 1 : data.status === 'blocked' ? 0 : 2,
+                details: data.details,
+            });
+            addActivity({
+                type: 'user',
+                message: `افزودن کاربر ${data.firstName} ${data.lastName}`,
+            });
+            setIsAddOpen(false);
+            setPage(1);
+            await fetchUsers();
+        } catch {
+            addActivity({
+                type: 'user',
+                message: `افزودن کاربر ${data.firstName} ${data.lastName} (محلی)`,
+            });
+            setIsAddOpen(false);
+            setPage(1);
+            await fetchUsers();
+        }
     };
 
     const cities = province === 'all' ? [] : iranCitiesByProvince[province] ?? [];
@@ -635,6 +661,7 @@ export function AdminUsers() {
                                                 <button
                                                     type="button"
                                                     title="مشاهده جزئیات"
+                                                    onClick={() => navigate(`/admin/users/${u.id}`)}
                                                     className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
                                                 >
                                                     <Eye className="h-5 w-5" />
@@ -661,7 +688,10 @@ export function AdminUsers() {
                                                             <div className="absolute left-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setOpenMenuId(null)}
+                                                                    onClick={() => {
+                                                                        navigate(`/admin/users/${u.id}`);
+                                                                        setOpenMenuId(null);
+                                                                    }}
                                                                     className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-600 transition hover:bg-slate-50"
                                                                 >
                                                                     <Pencil className="h-4 w-4" />

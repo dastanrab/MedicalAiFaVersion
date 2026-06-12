@@ -1,5 +1,6 @@
 // src/pages/AdminChats.tsx
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import {
     MessagesSquare,
     Search,
@@ -151,6 +152,7 @@ function mapApiToAdminChatRow(apiRoom: ApiChatRoom, index: number): AdminChatRow
 }
 
 export function AdminChats() {
+    const navigate = useNavigate();
     const accessToken = useAdminAuthStore((state) => state.token);
 
     // تنظیم توکن در سرویس API
@@ -645,7 +647,7 @@ export function AdminChats() {
                                                     type="button"
                                                     title="مشاهده گفتگو"
                                                     disabled={isRowLoading}
-                                                    onClick={() => loadChatDetails(row)}
+                                                    onClick={() => navigate(`/admin/chats/${row.roomId}`)}
                                                     className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50"
                                                 >
                                                     <Eye className="h-5 w-5" />
