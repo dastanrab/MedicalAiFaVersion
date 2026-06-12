@@ -12,6 +12,8 @@ import {
   FileText,
   TrendingUp,
   Star,
+  HelpCircle,
+  ChevronDown,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '../components/ui/card';
@@ -21,6 +23,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { useSettingsStore } from '../admin/store/settingsStore';
 
 const blogPosts = [
   {
@@ -116,6 +119,8 @@ function SliderArrow({
 export function Home() {
   const navigate = useNavigate();
   const { accessToken } = useAuthStore();
+  const faq = useSettingsStore((s) => s.content.faq);
+  const [openFaqId, setOpenFaqId] = useState<string | null>(null);
   const [userData, setUserData] = useState<{ name?: string; gender?: number } | null>(null);
 
   useEffect(() => {
@@ -405,6 +410,41 @@ export function Home() {
             </Slider>
           </div>
         </div>
+
+        {faq.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-4 flex items-center gap-2">
+              <HelpCircle className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-bold text-gray-900">سؤالات متداول</h2>
+            </div>
+            <div className="space-y-2">
+              {faq.map((item) => (
+                <Card
+                  key={item.id}
+                  className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqId(openFaqId === item.id ? null : item.id)}
+                    className="flex w-full items-center justify-between gap-3 p-4 text-right"
+                  >
+                    <span className="text-sm font-semibold text-gray-900">{item.question}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
+                        openFaqId === item.id ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {openFaqId === item.id && (
+                    <p className="border-t border-gray-100 px-4 pb-4 pt-2 text-sm leading-relaxed text-gray-600">
+                      {item.answer}
+                    </p>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

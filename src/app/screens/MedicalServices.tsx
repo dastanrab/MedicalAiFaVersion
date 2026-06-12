@@ -1,9 +1,5 @@
 import { useNavigate } from 'react-router';
 import {
-  TestTube,
-  Pill,
-  ScanLine,
-  Home as HomeIcon,
   ChevronLeft,
   MapPin,
   Star,
@@ -13,45 +9,9 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
 import { Card } from '../components/ui/card';
-
-type ServiceItem = {
-  title: string;
-  desc: string;
-  path: string;
-  icon: LucideIcon;
-  gradient: string;
-};
-
-const services: ServiceItem[] = [
-  {
-    title: 'آزمایشگاه',
-    desc: 'نمونه‌گیری در منزل',
-    path: '/services/labs',
-    icon: TestTube,
-    gradient: 'from-sky-500 to-blue-600',
-  },
-  {
-    title: 'داروخانه',
-    desc: 'تحویل سریع دارو',
-    path: '/services/pharmacy',
-    icon: Pill,
-    gradient: 'from-emerald-500 to-teal-600',
-  },
-  {
-    title: 'رادیولوژی',
-    desc: 'تصویربرداری تخصصی',
-    path: '/services/radiology',
-    icon: ScanLine,
-    gradient: 'from-violet-500 to-indigo-600',
-  },
-  {
-    title: 'پرستار در منزل',
-    desc: 'مراقبت حرفه‌ای',
-    path: '/services/nurse-home',
-    icon: HomeIcon,
-    gradient: 'from-rose-500 to-pink-600',
-  },
-];
+import { servicesCatalog } from '../config/servicesCatalog';
+import { useSettingsStore } from '../admin/store/settingsStore';
+import type { ServiceModuleId } from '../admin/config/settingsOptions';
 
 const topLabs = [
   { name: 'آزمایشگاه پاتوبیولوژی سینا', city: 'مشهد', rating: 4.9, reviews: '۲۴۰ نظر' },
@@ -67,6 +27,20 @@ const pharmacies = [
 
 export function MedicalServices() {
   const navigate = useNavigate();
+  const enabledServices = useSettingsStore((s) => s.services);
+  const services = servicesCatalog.filter((s) => enabledServices[s.id as ServiceModuleId]);
+
+  if (services.length === 0) {
+    return (
+      <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
+        <AppBar />
+        <div className="flex flex-col items-center justify-center px-6 pt-32 text-center">
+          <HeartPulse className="mb-4 h-12 w-12 text-slate-300" />
+          <p className="text-gray-600">در حال حاضر هیچ خدمتی فعال نیست.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
@@ -103,43 +77,51 @@ export function MedicalServices() {
           })}
         </div>
 
-        <SectionHeader title="آزمایشگاه‌های برتر" onViewAll={() => navigate('/services/labs')} />
-        <HorizontalScroll>
-          {topLabs.map((lab) => (
-            <ProviderCard
-              key={lab.name}
-              name={lab.name}
-              city={lab.city}
-              rating={lab.rating}
-              meta={lab.reviews}
-              icon={TestTube}
-              iconBg="bg-sky-50 text-sky-600"
-              accent="text-sky-600"
-              onClick={() => navigate('/services/labs')}
-            />
-          ))}
-        </HorizontalScroll>
+        {enabledServices.labs && (
+          <>
+            <SectionHeader title="آزمایشگاه‌های برتر" onViewAll={() => navigate('/services/labs')} />
+            <HorizontalScroll>
+              {topLabs.map((lab) => (
+                <ProviderCard
+                  key={lab.name}
+                  name={lab.name}
+                  city={lab.city}
+                  rating={lab.rating}
+                  meta={lab.reviews}
+                  icon={servicesCatalog[0].icon}
+                  iconBg="bg-sky-50 text-sky-600"
+                  accent="text-sky-600"
+                  onClick={() => navigate('/services/labs')}
+                />
+              ))}
+            </HorizontalScroll>
+          </>
+        )}
 
-        <SectionHeader
-          title="داروخانه‌های نزدیک"
-          className="mt-10"
-          onViewAll={() => navigate('/services/pharmacy')}
-        />
-        <HorizontalScroll>
-          {pharmacies.map((pharmacy) => (
-            <ProviderCard
-              key={pharmacy.name}
-              name={pharmacy.name}
-              city={pharmacy.city}
-              rating={pharmacy.rating}
-              meta={pharmacy.open}
-              icon={Pill}
-              iconBg="bg-emerald-50 text-emerald-600"
-              accent="text-emerald-600"
-              onClick={() => navigate('/services/pharmacy')}
+        {enabledServices.pharmacy && (
+          <>
+            <SectionHeader
+              title="داروخانه‌های نزدیک"
+              className="mt-10"
+              onViewAll={() => navigate('/services/pharmacy')}
             />
-          ))}
-        </HorizontalScroll>
+            <HorizontalScroll>
+              {pharmacies.map((pharmacy) => (
+                <ProviderCard
+                  key={pharmacy.name}
+                  name={pharmacy.name}
+                  city={pharmacy.city}
+                  rating={pharmacy.rating}
+                  meta={pharmacy.open}
+                  icon={servicesCatalog[1].icon}
+                  iconBg="bg-emerald-50 text-emerald-600"
+                  accent="text-emerald-600"
+                  onClick={() => navigate('/services/pharmacy')}
+                />
+              ))}
+            </HorizontalScroll>
+          </>
+        )}
       </div>
     </div>
   );

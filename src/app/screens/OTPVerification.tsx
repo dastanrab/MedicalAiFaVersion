@@ -1,23 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Shield, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../components/ui/input-otp';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
+import { useSettingsStore } from '../admin/store/settingsStore';
 
 export function OTPVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const { phone } = location.state || {};
+  const otpLength = useSettingsStore((s) => s.auth.otpLength);
+  const resendCooldown = useSettingsStore((s) => s.auth.resendCooldownSeconds);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
   const { setTokens } = useAuthStore();
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
 
   const handleVerify = async () => {
-    if (otp.length !== 4) return;
+    if (otp.length !== otpLength) return;
 
     setLoading(true);
     setError('');
@@ -69,6 +79,7 @@ export function OTPVerification() {
       if (data.success) {
         setError('');
         setOtp('');
+        setCooldown(resendCooldown);
       } else {
         setError(data.message || 'خطا در ارسال مجدد کد');
       }
@@ -97,7 +108,7 @@ export function OTPVerification() {
               <Shield className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl mb-2 text-gray-900">تأیید شماره تلفن</h1>
-            <p className="text-gray-600">کد ۴ رقمی ارسال شده را وارد کنید</p>
+            <p className="text-gray-600">کد {otpLength.toLocaleString('fa-IR')} رقمی ارسال شده را وارد کنید</p>
             <p className="text-gray-900 mt-1">{phone || '09123456789'}</p>
           </div>
 
@@ -115,12 +126,11 @@ export function OTPVerification() {
                   کد تأیید
                 </label>
                 <div className="flex justify-center" dir="ltr">
-                  <InputOTP maxLength={4} value={otp} onChange={setOtp} disabled={loading}>
+                  <InputOTP maxLength={otpLength} value={otp} onChange={setOtp} disabled={loading}>
                     <InputOTPGroup>
-                      <InputOTPSlot index={0} className="w-12 h-14 text-xl" />
-                      <InputOTPSlot index={1} className="w-12 h-14 text-xl" />
-                      <InputOTPSlot index={2} className="w-12 h-14 text-xl" />
-                      <InputOTPSlot index={3} className="w-12 h-14 text-xl" />
+                      {Array.from({ length: otpLength }, (_, i) => (
+                        <InputOTPSlot key={i} index={i} className="w-12 h-14 text-xl" />
+                      ))}
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
@@ -129,7 +139,7 @@ export function OTPVerification() {
               <Button
                   onClick={handleVerify}
                   className="w-full h-12 bg-green-500 hover:bg-green-600 text-white text-lg shadow-lg"
-                  disabled={otp.length !== 4 || loading}
+                  disabled={otp.length !== otpLength || loading}
               >
                 {loading ? (
                     <>
@@ -146,10 +156,12 @@ export function OTPVerification() {
               <p className="text-sm text-gray-600">کد را دریافت نکردید؟</p>
               <button
                   onClick={handleResend}
-                  disabled={loading}
+                  disabled={loading || cooldown > 0}
                   className="text-blue-500 hover:text-blue-700 text-sm mt-1 disabled:opacity-50"
               >
-                ارسال مجدد کد
+                {cooldown > 0
+                    ? `ارسال مجدد (${cooldown.toLocaleString('fa-IR')} ثانیه)`
+                    : 'ارسال مجدد کد'}
               </button>
             </div>
           </Card>

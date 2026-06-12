@@ -1,18 +1,27 @@
 import { useNavigate, useLocation } from 'react-router';
-import { adminNavItems, adminSocialLinks } from '../config/adminNav';
+import { adminNavItems } from '../config/adminNav';
+import { socialPlatformColors, socialPlatformIcons } from '../config/settingsOptions';
+import { useEnabledSocialLinks } from '../store/settingsStore';
 import { useAdminAuthStore } from '../store/adminAuthStore';
 
 export function AdminSidebar() {
     const navigate = useNavigate();
     const location = useLocation();
     const admin = useAdminAuthStore((s) => s.admin);
+    const socialLinks = useEnabledSocialLinks();
 
-    const isActive = (path: string) => location.pathname === path;
+    const isActive = (path: string) => {
+        if (path === '/admin/settings') {
+            return location.pathname.startsWith('/admin/settings');
+        }
+        if (path === '/admin/dashboard') {
+            return location.pathname === '/admin/dashboard' || location.pathname === '/admin';
+        }
+        return location.pathname === path;
+    };
 
     const fullName = admin ? `${admin.name} ` : 'مدیر سیستم';
-    const initials = admin
-        ? `${admin.name?.[0] ?? ''}}`
-        : 'م';
+    const initials = admin ? `${admin.name?.[0] ?? ''}` : 'م';
 
     return (
         <aside className="flex h-full w-72 flex-shrink-0 flex-col bg-slate-900 text-slate-300">
@@ -70,16 +79,16 @@ export function AdminSidebar() {
             <div className="border-t border-white/5 px-6 py-5">
                 <p className="mb-3 text-xs text-slate-500">ما را دنبال کنید</p>
                 <div className="flex items-center gap-3">
-                    {adminSocialLinks.map((social) => {
-                        const Icon = social.icon;
+                    {socialLinks.map((social) => {
+                        const Icon = socialPlatformIcons[social.platform];
                         return (
                             <a
-                                key={social.label}
+                                key={social.id}
                                 href={social.href}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title={social.label}
-                                className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition hover:bg-white/10 ${social.color}`}
+                                className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition hover:bg-white/10 ${socialPlatformColors[social.platform]}`}
                             >
                                 <Icon className="h-5 w-5" />
                             </a>

@@ -4,9 +4,13 @@ import { Heart, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
+import { useSettingsStore } from '../admin/store/settingsStore';
 
 export function Login() {
   const navigate = useNavigate();
+  const appName = useSettingsStore((s) => s.general.appName);
+  const logoUrl = useSettingsStore((s) => s.general.logoUrl);
+  const welcomeText = useSettingsStore((s) => s.content.welcomeText);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,11 +51,15 @@ export function Login() {
         <div className="w-full">
           {/* Logo & Header */}
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-              <Heart className="w-10 h-10 text-white fill-white" />
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg overflow-hidden">
+              {logoUrl ? (
+                <img src={logoUrl} alt={appName} className="h-full w-full object-cover" />
+              ) : (
+                <Heart className="w-10 h-10 text-white fill-white" />
+              )}
             </div>
-            <h1 className="text-3xl mb-2 text-gray-900">مدیرا AI</h1>
-            <p className="text-gray-600">همراه هوشمند سلامت شما</p>
+            <h1 className="text-3xl mb-2 text-gray-900">{appName}</h1>
+            <p className="text-gray-600">{welcomeText}</p>
           </div>
 
           {/* Login Card */}

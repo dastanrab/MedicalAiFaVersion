@@ -34,6 +34,16 @@ import { AdminUsers } from './admin/screens/AdminUsers';
 import { AdminAppointments } from './admin/screens/AdminAppointments';
 import { AdminPayments } from './admin/screens/AdminPayments';
 import { AdminChats } from './admin/screens/AdminChats';
+import { AdminReports } from './admin/screens/AdminReports';
+import { AdminSettingsLayout } from './admin/screens/settings/AdminSettingsLayout';
+import { AdminSettingsGeneral } from './admin/screens/settings/AdminSettingsGeneral';
+import { AdminSettingsAuth } from './admin/screens/settings/AdminSettingsAuth';
+import { AdminSettingsContent } from './admin/screens/settings/AdminSettingsContent';
+import { AdminSettingsServices } from './admin/screens/settings/AdminSettingsServices';
+import { AdminSettingsAdmins } from './admin/screens/settings/AdminSettingsAdmins';
+import { AdminSettingsProfile } from './admin/screens/settings/AdminSettingsProfile';
+import { ServiceFlowPlaceholder } from './screens/ServiceFlowPlaceholder';
+import { servicesCatalog } from './config/servicesCatalog';
 import { useAdminAuthStore } from './admin/store/adminAuthStore';
 // import FitnessApp from "./screens/FitnessApp";
 // import FitnessAppV1 from "./screens/FitnessAppV1";
@@ -189,6 +199,15 @@ function App() {
                     <Route path="appointments" element={<AdminAppointments />} />
                     <Route path="payments" element={<AdminPayments />} />
                     <Route path="chats" element={<AdminChats />} />
+                    <Route path="reports" element={<AdminReports />} />
+                    <Route path="settings" element={<AdminSettingsLayout />}>
+                        <Route path="general" element={<AdminSettingsGeneral />} />
+                        <Route path="auth" element={<AdminSettingsAuth />} />
+                        <Route path="content" element={<AdminSettingsContent />} />
+                        <Route path="services" element={<AdminSettingsServices />} />
+                        <Route path="admins" element={<AdminSettingsAdmins />} />
+                        <Route path="profile" element={<AdminSettingsProfile />} />
+                    </Route>
                 </Route>
 
                 <Route
@@ -446,6 +465,51 @@ function App() {
                         <VerifiedRoute>
                             <AppContainer showNavbar>
                                 <LabsFlow />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/services/pharmacy"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <ServiceFlowPlaceholder
+                                    title={servicesCatalog[1].title}
+                                    description={servicesCatalog[1].desc}
+                                    icon={servicesCatalog[1].icon}
+                                    gradient={servicesCatalog[1].gradient}
+                                />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/services/radiology"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <ServiceFlowPlaceholder
+                                    title={servicesCatalog[2].title}
+                                    description={servicesCatalog[2].desc}
+                                    icon={servicesCatalog[2].icon}
+                                    gradient={servicesCatalog[2].gradient}
+                                />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/services/nurse-home"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <ServiceFlowPlaceholder
+                                    title={servicesCatalog[3].title}
+                                    description={servicesCatalog[3].desc}
+                                    icon={servicesCatalog[3].icon}
+                                    gradient={servicesCatalog[3].gradient}
+                                />
                             </AppContainer>
                         </VerifiedRoute>
                     }

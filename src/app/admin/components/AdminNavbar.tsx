@@ -1,14 +1,23 @@
 import { useLocation } from 'react-router';
 import { Bell, LogOut } from 'lucide-react';
 import { adminNavItems } from '../config/adminNav';
+import { settingsTabs } from '../config/settingsOptions';
 import { useAdminAuthStore } from '../store/adminAuthStore';
 
 export function AdminNavbar() {
     const location = useLocation();
     const logout = useAdminAuthStore((s) => s.logout);
 
-    const current = adminNavItems.find((item) => item.path === location.pathname);
-    const title = current?.label ?? 'پنل مدیریت';
+    const settingsTab = settingsTabs.find((tab) => location.pathname === tab.path);
+    const current = adminNavItems.find((item) => {
+        if (item.path === '/admin/settings') {
+            return location.pathname.startsWith('/admin/settings');
+        }
+        return item.path === location.pathname;
+    });
+    const title = settingsTab
+        ? `تنظیمات — ${settingsTab.label}`
+        : current?.label ?? 'پنل مدیریت';
 
     return (
         <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
