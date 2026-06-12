@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { persist } from 'zustand/middleware';
 import {
     defaultSettings,
@@ -111,7 +112,9 @@ export const useSettingsStore = create<SettingsState>()(
 );
 
 export function useEnabledSocialLinks() {
-    return useSettingsStore((s) => s.general.socialLinks.filter((l) => l.enabled && l.href));
+    return useSettingsStore(
+        useShallow((s) => s.general.socialLinks.filter((l) => l.enabled && l.href))
+    );
 }
 
 export function useEnabledServices() {
