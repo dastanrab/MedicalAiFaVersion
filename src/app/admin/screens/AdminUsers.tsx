@@ -28,6 +28,10 @@ import {
     type UserStatus,
 } from '../config/userOptions';
 import { AddUserModal } from '../components/AddUserModal';
+import {
+    AdminUsersSkeleton,
+    AdminUsersTableSkeleton,
+} from '../components/AdminUsersSkeleton';
 import { useAdminAuthStore } from "../store/adminAuthStore";
 
 const PAGE_SIZE = 8;
@@ -119,7 +123,8 @@ export function AdminUsers() {
         per_page: PAGE_SIZE,
         current_page: 1,
     });
-    const [loading, setLoading] = useState(true);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const [name, setName] = useState('');
@@ -163,6 +168,7 @@ export function AdminUsers() {
     const fetchUsers = async () => {
         if (!token) {
             setError('توکن احراز هویت معتبر نیست.');
+            setInitialLoading(false);
             setLoading(false);
             return;
         }
@@ -199,6 +205,7 @@ export function AdminUsers() {
             console.error('Fetch users error:', err);
         } finally {
             setLoading(false);
+            setInitialLoading(false);
         }
     };
 
@@ -329,30 +336,24 @@ export function AdminUsers() {
     const selectClass =
         'h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15';
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center h-screen text-red-500">
-                <p>{error}</p>
-                <button
-                    onClick={fetchUsers}
-                    className="mt-4 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
-                >
-                    تلاش مجدد
-                </button>
-            </div>
-        );
+    if (initialLoading) {
+        return <AdminUsersSkeleton />;
     }
 
     return (
         <div className="space-y-6">
+            {error && (
+                <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <p>{error}</p>
+                    <button
+                        type="button"
+                        onClick={fetchUsers}
+                        className="shrink-0 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600"
+                    >
+                        تلاش مجدد
+                    </button>
+                </div>
+            )}
             {/* هدر */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -559,7 +560,9 @@ export function AdminUsers() {
                         </tr>
                         </thead>
                         <tbody>
-                        {paged.length === 0 ? (
+                        {loading ? (
+                            <AdminUsersTableSkeleton rows={PAGE_SIZE} />
+                        ) : paged.length === 0 ? (
                             <tr>
                                 <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                                     کاربری یافت نشد

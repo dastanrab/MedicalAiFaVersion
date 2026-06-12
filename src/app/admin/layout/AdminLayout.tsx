@@ -4,6 +4,8 @@ import { AdminNavbar } from '../components/AdminNavbar';
 import { AdminPageSkeleton } from '../components/AdminPageSkeleton';
 import { AdminDashboardSkeleton } from '../components/AdminDashboardSkeleton';
 import { AdminChatsSkeleton } from '../components/AdminChatsSkeleton';
+import { AdminSettingsSkeleton } from '../components/AdminSettingsSkeleton';
+import { AdminUsersSkeleton } from '../components/AdminUsersSkeleton';
 
 interface AdminLayoutProps {
     authLoading?: boolean;
@@ -14,6 +16,8 @@ export function AdminLayout({ authLoading = false }: AdminLayoutProps) {
     const isDashboardRoute =
         location.pathname === '/admin/dashboard' || location.pathname === '/admin';
     const isChatsRoute = location.pathname === '/admin/chats';
+    const isSettingsRoute = location.pathname.startsWith('/admin/settings');
+    const isUsersRoute = location.pathname === '/admin/users';
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-slate-100" dir="rtl">
@@ -28,6 +32,10 @@ export function AdminLayout({ authLoading = false }: AdminLayoutProps) {
                             <AdminDashboardSkeleton />
                         ) : isChatsRoute ? (
                             <AdminChatsSkeleton />
+                        ) : isSettingsRoute ? (
+                            <AdminSettingsSkeleton />
+                        ) : isUsersRoute ? (
+                            <AdminUsersSkeleton />
                         ) : (
                             <AdminPageSkeleton />
                         )

@@ -1,11 +1,24 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router';
 import { settingsTabs } from '../../config/settingsOptions';
+import { useSettingsStore } from '../../store/settingsStore';
+import { AdminSettingsSkeleton } from '../../components/AdminSettingsSkeleton';
 
 export function AdminSettingsLayout() {
     const location = useLocation();
+    const [hydrated, setHydrated] = useState(() => useSettingsStore.persist.hasHydrated());
+
+    useEffect(() => {
+        if (hydrated) return;
+        return useSettingsStore.persist.onFinishHydration(() => setHydrated(true));
+    }, [hydrated]);
 
     if (location.pathname === '/admin/settings') {
         return <Navigate to="/admin/settings/general" replace />;
+    }
+
+    if (!hydrated) {
+        return <AdminSettingsSkeleton />;
     }
 
     return (
