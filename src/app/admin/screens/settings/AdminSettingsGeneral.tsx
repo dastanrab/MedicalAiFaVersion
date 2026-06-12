@@ -65,7 +65,7 @@ export function AdminSettingsGeneral() {
                         <Link2 className="h-4 w-4 text-slate-500" />
                         <h3 className="text-sm font-semibold text-slate-700">شبکه‌های اجتماعی</h3>
                     </div>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         {general.socialLinks.map((link) => (
                             <div
                                 key={link.id}
@@ -149,12 +149,18 @@ export const inputClass =
 export const textareaClass =
     'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100';
 
+export const primaryButtonClass =
+    'inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-blue-500 to-blue-600 px-6 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-600 hover:to-blue-700 hover:shadow-xl active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50';
+
+export const primaryButtonSavedClass =
+    'inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition';
+
 export function SaveButton({ onClick, saved }: { onClick: () => void; saved: boolean }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500"
+            className={saved ? primaryButtonSavedClass : primaryButtonClass}
         >
             {saved ? (
                 <>

@@ -43,7 +43,7 @@ export function AdminSettingsAuth() {
                         <KeyRound className="h-4 w-4 text-slate-500" />
                         <h4 className="text-sm font-semibold text-slate-700">قوانین OTP</h4>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <Field label="طول کد OTP (رقم)">
                             <input
                                 type="number"

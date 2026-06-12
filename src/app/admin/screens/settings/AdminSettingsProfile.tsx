@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { User, Lock, Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react';
 import { useAdminAuthStore } from '../../store/adminAuthStore';
 import { adminRoleLabels, type AdminRole } from '../../config/settingsOptions';
-import { SettingsPanel, Field, inputClass } from './AdminSettingsGeneral';
+import {
+    SettingsPanel,
+    Field,
+    inputClass,
+    primaryButtonClass,
+} from './AdminSettingsGeneral';
 
 export function AdminSettingsProfile() {
     const admin = useAdminAuthStore((s) => s.admin);
@@ -105,7 +110,7 @@ export function AdminSettingsProfile() {
                     <button
                         type="button"
                         onClick={handleSaveAvatar}
-                        className="mt-3 rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                        className={`mt-3 ${primaryButtonClass}`}
                     >
                         ذخیره آواتار
                     </button>
@@ -117,7 +122,7 @@ export function AdminSettingsProfile() {
                         <h4 className="text-sm font-semibold text-slate-700">تغییر رمز عبور</h4>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <Field label="رمز عبور فعلی">
                             <PasswordInput
                                 value={currentPassword}
@@ -148,7 +153,7 @@ export function AdminSettingsProfile() {
                         type="button"
                         onClick={handleChangePassword}
                         disabled={loading}
-                        className="mt-4 flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                        className={`mt-4 ${primaryButtonClass}`}
                     >
                         {loading ? (
                             <>
