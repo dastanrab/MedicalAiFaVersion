@@ -245,12 +245,12 @@ export function Home() {
               return (
                 <Card
                   key={stat.label}
-                  className="border-0 p-3 text-center shadow-[0_4px_20px_rgba(0,0,0,0.08)] ring-1 ring-gray-100"
+                  className="border-0  py-1 px-3 text-center shadow-[0_4px_20px_rgba(0,0,0,0.08)] ring-1 ring-gray-100"
                 >
-                  <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
+                  <div className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
                     <Icon className="h-4 w-4 text-blue-600" />
                   </div>
-                  <p className="text-lg font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-2xl font-extrabold leading-none text-gray-900">{stat.value}</p>
                   <p className="text-[10px] font-medium text-gray-500">{stat.label}</p>
                 </Card>
               );

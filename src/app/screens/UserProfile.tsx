@@ -19,6 +19,7 @@ import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
 import { iranProvinces, iranCitiesByProvince } from '../data/iranLocations';
+import {useUserStore} from "../store/useUserStore";
 
 const pageClass =
   'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
@@ -36,8 +37,8 @@ type ProfileFormData = {
   age: string;
   weight: string;
   height: string;
-  province: string;
-  city: string;
+  province: number | '';   // شناسه عددی
+  city: number | '';       // شناسه عددی
 };
 
 function sanitizeNonNegative(value: string): string {
@@ -108,6 +109,7 @@ function IncompleteProfileWarning({ show }: { show: boolean }) {
 
 
 export function UserProfile() {
+  const fetchUserProfile = useUserStore((state) => state.fetchProfile);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
   const { accessToken, logout } = useAuthStore();
@@ -156,8 +158,8 @@ export function UserProfile() {
           age: user.age != null ? String(Math.max(0, user.age)) : '',
           weight: user.weight != null ? String(Math.max(0, user.weight)) : '',
           height: user.height != null ? String(Math.max(0, user.height)) : '',
-          province: user.province || '',
-          city: user.city || '',
+          province: user.province ?? '',
+          city: user.city ?? '',
         });
       }
     } catch (error) {
@@ -186,12 +188,15 @@ export function UserProfile() {
           age: parseInt(formData.age, 10),
           weight: parseFloat(formData.weight),
           height: parseFloat(formData.height),
+          province: formData.province,
+          city: formData.city,
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
+        await fetchUserProfile(true);
         navigate('/home');
       } else {
         const errorMsg = data.errors
@@ -207,6 +212,7 @@ export function UserProfile() {
     }
   };
 
+
   const updateField = (field: string, value: string) => {
     if (field === 'age' || field === 'weight' || field === 'height') {
       setFormData({ ...formData, [field]: sanitizeNonNegative(value) });
@@ -219,9 +225,9 @@ export function UserProfile() {
     setFormData({ ...formData, [field]: value });
   };
 
-  const availableCities = formData.province
-    ? iranCitiesByProvince[formData.province] || []
-    : [];
+  const availableCities = formData.province !== ''
+      ? (iranCitiesByProvince[formData.province] ?? [])
+      : [];
 
   if (loading) {
     return (
@@ -356,10 +362,8 @@ function LocationRow({
           className={selectClass}
         >
           <option value="">انتخاب استان</option>
-          {iranProvinces.map((province) => (
-            <option key={province} value={province}>
-              {province}
-            </option>
+          {iranProvinces.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
       </Field>
@@ -371,10 +375,8 @@ function LocationRow({
           className={`${selectClass} ${!formData.province ? 'cursor-not-allowed opacity-50' : ''}`}
         >
           <option value="">{formData.province ? 'انتخاب شهر' : 'ابتدا استان'}</option>
-          {availableCities.map((city) => (
-            <option key={city} value={city}>
-              {city}
-            </option>
+          {availableCities.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
       </Field>

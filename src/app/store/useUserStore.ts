@@ -15,7 +15,7 @@ interface UserState {
     isVerified: boolean | null;
     isLoading: boolean;
     error: string | null;
-    fetchProfile: () => Promise<void>;
+    fetchProfile: (force?: boolean) => Promise<void>;
     clearUser: () => void;
 }
 
@@ -25,10 +25,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     isLoading: false,
     error: null,
 
-    fetchProfile: async () => {
+    fetchProfile: async (force = false) => {
         const { user, isLoading } = get();
 
-        if (user || isLoading) return;
+        if (!force && (user || isLoading)) return;
 
         const { accessToken, logout } = useAuthStore.getState();
         if (!accessToken) return;
