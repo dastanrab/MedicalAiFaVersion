@@ -58,6 +58,7 @@ interface UsersApiResponse {
 }
 
 function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
+    console.log('API user raw:', JSON.stringify(user, null, 2)); // ← حذف بعد از debug
     const name = (user.name as string) ?? '';
     return {
         ...(user as AdminUserRow),
@@ -358,7 +359,7 @@ export function AdminUsers() {
     };
 
     const selectedIds = Array.from(selected);
-
+     console.log('here','paged',paged,selectedIds)
     const selectClass =
         'h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15';
 
@@ -479,15 +480,27 @@ export function AdminUsers() {
                         <label className="mb-1.5 block text-xs text-slate-500">استان</label>
                         <select
                             value={province}
-                            onChange={(e) => { setProvince(e.target.value); setCity('all'); resetPage(); }}
+                            onChange={(e) => {
+                                setProvince(e.target.value);
+                                setCity('all'); // با تغییر استان، شهر باید ریست شود
+                                resetPage();
+                            }}
                             className={selectClass}
                         >
                             <option value="all">همه استان‌ها</option>
-                            {iranProvinces.map((p) => (
-                                <option key={p} value={p}>{p}</option>
-                            ))}
+                            {iranProvinces.map((p: any) => {
+                                const provinceName = typeof p === 'string' ? p : p.name;
+                                const provinceKey = typeof p === 'string' ? p : p.id;
+
+                                return (
+                                    <option key={provinceKey} value={provinceName}>
+                                        {provinceName}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
+
 
                     <div>
                         <label className="mb-1.5 block text-xs text-slate-500">شهر</label>
@@ -498,9 +511,16 @@ export function AdminUsers() {
                             className={`${selectClass} disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400`}
                         >
                             <option value="all">همه شهرها</option>
-                            {cities.map((c) => (
-                                <option key={c} value={c}>{c}</option>
-                            ))}
+                            {cities.map((c: any) => {
+                                const cityName = typeof c === 'string' ? c : c.name;
+                                const cityKey = typeof c === 'string' ? c : c.id;
+
+                                return (
+                                    <option key={cityKey} value={cityName}>
+                                        {cityName}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
 

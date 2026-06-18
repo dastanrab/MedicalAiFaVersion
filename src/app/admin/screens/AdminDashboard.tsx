@@ -38,7 +38,7 @@ import {
     fetchAllAdminUsers,
     fetchActivityLog,
     buildSignupTrend,
-    buildAppointmentTrend,
+    buildAppointmentTrend, setAdminTokenGetter,
 } from '../services/adminApi';
 import {
     appointmentStatusLabels,
@@ -164,7 +164,8 @@ function SectionLink({ to, label }: { to: string; label: string }) {
 }
 
 export function AdminDashboard() {
-    const token = useAdminAuthStore((state) => state.token);
+    const accessToken = useAdminAuthStore((state) => state.token);
+
     const payments = useAdminDataStore((s) => s.payments);
     const localActivity = useAdminDataStore((s) => s.activityLog);
     const [users, setUsers] = useState<AdminUserRow[]>([]);
@@ -176,14 +177,8 @@ export function AdminDashboard() {
     const [refreshing, setRefreshing] = useState(false);
 
     const loadData = useCallback(async () => {
-        if (!token) {
-            setError('توکن احراز هویت معتبر نیست.');
-            setLoading(false);
-            return;
-        }
-
+        setAdminTokenGetter(() => accessToken);
         setError(null);
-        setTokenGetter(() => token);
         try {
             const [userData, apptRes, chatRes, apiActivity] = await Promise.all([
                 fetchAllAdminUsers(),
@@ -217,7 +212,7 @@ export function AdminDashboard() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [token, localActivity]);
+    }, [accessToken, localActivity]);
 
     useEffect(() => {
         loadData();

@@ -430,11 +430,15 @@ export function AdminAppointments() {
                             className={selectClass}
                         >
                             <option value="all">همه استان‌ها</option>
-                            {iranProvinces.map((p) => (
-                                <option key={p} value={p}>
-                                    {p}
-                                </option>
-                            ))}
+                            {iranProvinces.map((p: any) => {
+                                const provinceName = typeof p === 'string' ? p : p.name;
+                                const provinceKey = typeof p === 'string' ? p : (p.id || p.name);
+                                return (
+                                    <option key={provinceKey} value={provinceName}>
+                                        {provinceName}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
 
@@ -449,13 +453,18 @@ export function AdminAppointments() {
                             className={`${selectClass} disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400`}
                         >
                             <option value="all">همه شهرها</option>
-                            {cities.map((c) => (
-                                <option key={c} value={c}>
-                                    {c}
-                                </option>
-                            ))}
+                            {cities.map((c: any) => {
+                                const cityName = typeof c === 'string' ? c : c.name;
+                                const cityKey = typeof c === 'string' ? c : (c.id || c.name);
+                                return (
+                                    <option key={cityKey} value={cityName}>
+                                        {cityName}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
+
 
                     <div>
                         <label className="mb-1.5 block text-xs text-slate-500">وضعیت</label>
