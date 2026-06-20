@@ -292,9 +292,17 @@ export function DoctorProfile() {
     if (!reservationToken) return;
 
     setIsConfirming(true);
-    setConfirmError(null); // پاک کردن خطای قبلی
+    setConfirmError(null);
 
     try {
+      // ─────────────────────────────────────────────
+      // شبیه‌سازی authority و status از درگاه
+      // ─────────────────────────────────────────────
+      const mockAuthority = `A${String(Date.now()).slice(-35)}`;
+      const mockStatus = 'OK'; // برای تست، همیشه موفق فرض می‌شود
+
+      // در پروداکشن واقعی، این مقادیر از query parameters callback URL می‌آیند
+
       const response = await fetch('http://185.222.163.113:7000/api/user/reservations/confirm', {
         method: 'POST',
         headers: {
@@ -302,7 +310,9 @@ export function DoctorProfile() {
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          reservation_token: reservationToken
+          reservation_token: reservationToken,
+          authority: mockAuthority,  // ← اضافه شد
+          status: mockStatus          // ← اضافه شد
         })
       });
 
@@ -314,15 +324,15 @@ export function DoctorProfile() {
       const result = await response.json();
 
       if (result.success) {
-        // پاک کردن state های رزرو
         setReservationToken(null);
         setReservationExpiry(null);
         setSelectedSlot(null);
         setShowConfirmDialog(false);
 
-        // بروزرسانی لیست نوبت‌ها
         await fetchDoctorData();
 
+        // نمایش پیام موفقیت با RefID
+        alert(`رزرو با موفقیت تکمیل شد\nشماره پیگیری: ${result.data.payment.ref_id}`);
       }
     } catch (error) {
       setConfirmError(error instanceof Error ? error.message : 'خطا در تایید رزرو');
