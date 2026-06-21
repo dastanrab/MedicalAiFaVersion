@@ -26,6 +26,7 @@ import FoodExtractor from "./screens/FoodExtractor";
 import {MedicalServices} from "./screens/MedicalServices";
 import {LabsFlow} from "./screens/LabsFlow";
 import { PricingPlans } from './screens/PricingPlans';
+import { UserFinance } from './screens/UserFinance';
 import ExerciseExtractor from "./screens/ExerciseExtractor";
 import { AdminLogin } from './admin/screens/AdminLogin';
 import { AdminLayout } from './admin/layout/AdminLayout';
@@ -343,6 +344,16 @@ function App() {
                                 <PricingPlans />
                             </AppContainer>
                         </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/finance"
+                    element={
+                        <ProtectedRoute>
+                            <AppContainer showNavbar>
+                                <UserFinance />
+                            </AppContainer>
+                        </ProtectedRoute>
                     }
                 />
                 <Route
