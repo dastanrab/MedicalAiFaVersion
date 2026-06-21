@@ -1,0 +1,80 @@
+export type LabRequestStatus =
+    | 'new'
+    | 'confirmed'
+    | 'sampled'
+    | 'testing'
+    | 'ready'
+    | 'delivered'
+    | 'canceled';
+
+export type PharmacyRequestStatus =
+    | 'new'
+    | 'reviewing'
+    | 'preparing'
+    | 'ready'
+    | 'delivered'
+    | 'canceled';
+
+export type NurseRequestStatus =
+    | 'new'
+    | 'accepted'
+    | 'on_way'
+    | 'in_progress'
+    | 'completed'
+    | 'canceled';
+
+export const labStatusLabels: Record<LabRequestStatus, string> = {
+    new: 'جدید',
+    confirmed: 'تأیید شده',
+    sampled: 'نمونه‌گیری انجام شد',
+    testing: 'در حال آزمایش',
+    ready: 'نتیجه آماده',
+    delivered: 'تحویل داده شد',
+    canceled: 'لغو شده',
+};
+
+export const labStatusStyles: Record<LabRequestStatus, string> = {
+    new: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    confirmed: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+    sampled: 'bg-violet-50 text-violet-700 ring-violet-600/20',
+    testing: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    ready: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    delivered: 'bg-slate-100 text-slate-700 ring-slate-500/20',
+    canceled: 'bg-red-50 text-red-700 ring-red-600/20',
+};
+
+export const pharmacyStatusLabels: Record<PharmacyRequestStatus, string> = {
+    new: 'جدید',
+    reviewing: 'در بررسی',
+    preparing: 'در حال آماده‌سازی',
+    ready: 'آماده تحویل',
+    delivered: 'تحویل داده شد',
+    canceled: 'لغو شده',
+};
+
+export const pharmacyStatusStyles: Record<PharmacyRequestStatus, string> = {
+    new: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    reviewing: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    preparing: 'bg-violet-50 text-violet-700 ring-violet-600/20',
+    ready: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    delivered: 'bg-slate-100 text-slate-700 ring-slate-500/20',
+    canceled: 'bg-red-50 text-red-700 ring-red-600/20',
+};
+
+export const nurseStatusLabels: Record<NurseRequestStatus, string> = {
+    new: 'جدید',
+    accepted: 'پذیرفته شده',
+    on_way: 'در راه',
+    in_progress: 'در حال انجام',
+    completed: 'تکمیل',
+    canceled: 'لغو شده',
+};
+
+export const nurseStatusStyles: Record<NurseRequestStatus, string> = {
+    new: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    accepted: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+    on_way: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    in_progress: 'bg-violet-50 text-violet-700 ring-violet-600/20',
+    completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    canceled: 'bg-red-50 text-red-700 ring-red-600/20',
+};

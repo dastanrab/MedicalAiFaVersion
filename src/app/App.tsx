@@ -53,6 +53,7 @@ import { AdminAppointmentDetail } from './admin/screens/details/AdminAppointment
 import { AdminChatDetail } from './admin/screens/details/AdminChatDetail';
 import { ServiceFlowPlaceholder } from './screens/ServiceFlowPlaceholder';
 import { servicesCatalog } from './config/servicesCatalog';
+import { ProviderRoutes } from './provider/routes/ProviderRoutes';
 import { useAdminAuthStore } from './admin/store/adminAuthStore';
 // import FitnessApp from "./screens/FitnessApp";
 // import FitnessAppV1 from "./screens/FitnessAppV1";
@@ -227,6 +228,9 @@ function App() {
                         <Route path="profile" element={<AdminSettingsProfile />} />
                     </Route>
                 </Route>
+
+                {/* Provider panels (mock data — no API) */}
+                <Route path="/provider/*" element={<ProviderRoutes />} />
 
                 <Route
                     path="/chat-test"
