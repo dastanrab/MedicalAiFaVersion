@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from 'react-router';
 import { Loader2, Phone, ShieldCheck, ArrowRight } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../components/ui/input-otp';
 import { useSettingsStore } from '../../admin/store/settingsStore';
-import type { ProviderRole } from '../config/providerNav';
+import type { ProviderRole, NurseAccountType } from '../config/providerNav';
 import { providerBasePath, providerPath } from '../config/providerNav';
 import {
     providerLoginThemes,
@@ -37,6 +37,7 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [cooldown, setCooldown] = useState(0);
+    const [nurseAccountType, setNurseAccountType] = useState<NurseAccountType>('individual');
 
     useEffect(() => {
         if (cooldown <= 0) return;
@@ -88,9 +89,14 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
             }
 
             const mockToken = `provider-${role}-${Date.now()}`;
+            const defaultName =
+                role === 'nurse' && nurseAccountType === 'company'
+                    ? 'شرکت پرستاری سلامت'
+                    : providerDefaultNames[role];
             setAuth(role, mockToken, {
                 phone,
-                name: providerDefaultNames[role],
+                name: defaultName,
+                ...(role === 'nurse' ? { nurseAccountType } : {}),
             });
             navigate(providerPath(role, 'dashboard'), { replace: true });
         } catch {
@@ -225,6 +231,35 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                         </form>
                     ) : (
                         <form onSubmit={sendOtp} className="space-y-5">
+                            {role === 'nurse' && (
+                                <div>
+                                    <label className="mb-2 block text-sm text-slate-700">نوع حساب</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNurseAccountType('individual')}
+                                            className={`rounded-xl border px-3 py-2.5 text-sm transition ${
+                                                nurseAccountType === 'individual'
+                                                    ? 'border-rose-400 bg-rose-50 text-rose-700'
+                                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            پرستار مستقل
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNurseAccountType('company')}
+                                            className={`rounded-xl border px-3 py-2.5 text-sm transition ${
+                                                nurseAccountType === 'company'
+                                                    ? 'border-rose-400 bg-rose-50 text-rose-700'
+                                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            شرکت خدمات پرستاری
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             <div>
                                 <label className="mb-2 block text-sm text-slate-700">شماره موبایل</label>
                                 <div className="relative">

@@ -15,8 +15,12 @@ import { PharmacyDeliveryPage } from '../screens/pharmacy/PharmacyDeliveryPage';
 import { PharmacyMapPage } from '../screens/pharmacy/PharmacyMapPage';
 import { NurseDashboard } from '../screens/nurse/NurseDashboard';
 import { NurseRequestsPage, NurseRequestDetailPage } from '../screens/nurse/NurseRequestsPage';
+import { NurseCalendarPage } from '../screens/nurse/NurseCalendarPage';
 import { NurseSchedulePage } from '../screens/nurse/NurseSchedulePage';
 import { NurseCoveragePage } from '../screens/nurse/NurseCoveragePage';
+import { NursePersonnelPage } from '../screens/nurse/NursePersonnelPage';
+import { NurseServicesPage } from '../screens/nurse/NurseServicesPage';
+import { NurseRoleGate } from '../components/NurseRoleGate';
 import { ProviderFinancePage } from '../screens/shared/ProviderFinancePage';
 import { ProviderReviewsPage } from '../screens/shared/ProviderReviewsPage';
 import { ProviderSettingsPage } from '../screens/shared/ProviderSettingsPage';
@@ -94,10 +98,13 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
         <Routes>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<NurseDashboard />} />
+            <Route path="calendar" element={<NurseCalendarPage />} />
             <Route path="requests" element={<NurseRequestsPage />} />
             <Route path="requests/:id" element={<NurseRequestDetailRoute />} />
             <Route path="schedule" element={<NurseSchedulePage />} />
             <Route path="coverage" element={<NurseCoveragePage />} />
+            <Route path="personnel" element={<NurseRoleGate allowed={['company']}><NursePersonnelPage /></NurseRoleGate>} />
+            <Route path="services" element={<NurseRoleGate allowed={['company']}><NurseServicesPage /></NurseRoleGate>} />
             <Route path="finance" element={<SharedFinance role="nurse" />} />
             <Route path="reviews" element={<ProviderReviewsPage />} />
             <Route path="settings" element={<SharedSettings role="nurse" />} />

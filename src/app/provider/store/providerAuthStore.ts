@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ProviderRole } from '../config/providerNav';
+import type { ProviderRole, NurseAccountType } from '../config/providerNav';
 
 export interface ProviderUser {
     phone: string;
     name: string;
     avatar?: string | null;
+    /** نوع حساب پرستار: مستقل یا شرکت */
+    nurseAccountType?: NurseAccountType;
 }
 
 export interface ProviderSession {
@@ -50,6 +52,12 @@ export const useProviderAuthStore = create<ProviderAuthState>()(
 
 export function useProviderSession(role: ProviderRole) {
     return useProviderAuthStore((s) => s.sessions[role] ?? null);
+}
+
+export function useNurseAccountType(): NurseAccountType {
+    return useProviderAuthStore(
+        (s) => s.sessions.nurse?.user.nurseAccountType ?? 'individual'
+    );
 }
 
 export function useIsProviderAuthenticated(role: ProviderRole) {

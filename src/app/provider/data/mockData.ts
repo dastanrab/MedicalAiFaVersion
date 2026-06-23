@@ -77,14 +77,35 @@ export interface DrugInventoryItem {
     lowStock: boolean;
 }
 
+export interface NursePersonnel {
+    id: number;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    nationalCode: string;
+    active: boolean;
+}
+
+export interface NurseService {
+    id: number;
+    serviceKey: string;
+    name: string;
+    price: number;
+    description?: string;
+    active: boolean;
+}
+
 export interface NurseRequest {
     id: number;
     code: string;
     patientName: string;
     patientPhone: string;
     serviceType: string;
+    serviceKey: string;
     address: string;
     scheduledAt: string;
+    scheduledDate: string;
+    scheduledTime: string;
     note?: string;
     amount: number;
     status: NurseRequestStatus;
@@ -361,6 +382,66 @@ export const mockDrugDatabase: { name: string; defaultPrice: number }[] = [
     { name: 'سالبوتامول اسپری', defaultPrice: 185000 },
 ];
 
+export const mockNursePersonnel: NursePersonnel[] = [
+    {
+        id: 1,
+        firstName: 'مریم',
+        lastName: 'حسینی',
+        phone: '09121112233',
+        nationalCode: '0012345678',
+        active: true,
+    },
+    {
+        id: 2,
+        firstName: 'رضا',
+        lastName: 'کاظمی',
+        phone: '09124445566',
+        nationalCode: '0023456789',
+        active: true,
+    },
+    {
+        id: 3,
+        firstName: 'سمیه',
+        lastName: 'جعفری',
+        phone: '09127778899',
+        nationalCode: '0034567890',
+        active: false,
+    },
+];
+
+export const mockNurseServices: NurseService[] = [
+    {
+        id: 1,
+        serviceKey: 'injection',
+        name: 'تزریقات و سرم‌تراپی',
+        price: 450000,
+        description: 'تزریق دارو و سرم در منزل',
+        active: true,
+    },
+    {
+        id: 2,
+        serviceKey: 'wound',
+        name: 'پانسمان و مراقبت از زخم',
+        price: 380000,
+        active: true,
+    },
+    {
+        id: 3,
+        serviceKey: 'elderly',
+        name: 'مراقبت از سالمند',
+        price: 600000,
+        description: 'ویزیت و مراقبت روزانه',
+        active: true,
+    },
+    {
+        id: 4,
+        serviceKey: 'physio',
+        name: 'فیزیوتراپی',
+        price: 520000,
+        active: false,
+    },
+];
+
 export const mockNurseRequests: NurseRequest[] = [
     {
         id: 1,
@@ -368,8 +449,11 @@ export const mockNurseRequests: NurseRequest[] = [
         patientName: 'اکبر فرهادی',
         patientPhone: '09152223344',
         serviceType: 'تزریقات و سرم‌تراپی',
+        serviceKey: 'injection',
         address: 'تهران، تجریش، خیابان دربند',
         scheduledAt: '1404/03/20 — ۱۰:۰۰',
+        scheduledDate: '1404/03/20',
+        scheduledTime: '۱۰:۰۰',
         note: 'نیاز به تزریق ویتامین B12',
         amount: 450000,
         status: 'new',
@@ -381,8 +465,11 @@ export const mockNurseRequests: NurseRequest[] = [
         patientName: 'طاهره ملکی',
         patientPhone: '09155556677',
         serviceType: 'مراقبت از سالمند',
+        serviceKey: 'elderly',
         address: 'تهران، نیاوران، کوچه گلستان',
         scheduledAt: '1404/03/20 — ۱۴:۰۰',
+        scheduledDate: '1404/03/20',
+        scheduledTime: '۱۴:۰۰',
         amount: 600000,
         status: 'accepted',
         timeline: [
@@ -396,8 +483,11 @@ export const mockNurseRequests: NurseRequest[] = [
         patientName: 'پریسا اکبری',
         patientPhone: '09158889900',
         serviceType: 'پانسمان زخم',
+        serviceKey: 'wound',
         address: 'تهران، سعادت‌آباد، بلوار دریا',
         scheduledAt: '1404/03/19 — ۱۶:۰۰',
+        scheduledDate: '1404/03/19',
+        scheduledTime: '۱۶:۰۰',
         amount: 380000,
         status: 'in_progress',
         timeline: [
@@ -405,6 +495,164 @@ export const mockNurseRequests: NurseRequest[] = [
             { at: '1404/03/19 10:15', label: 'پذیرفته شد' },
             { at: '1404/03/19 15:45', label: 'در راه' },
             { at: '1404/03/19 16:00', label: 'شروع خدمت' },
+        ],
+    },
+    {
+        id: 4,
+        code: 'NRS-1404-004',
+        patientName: 'حسین نوری',
+        patientPhone: '09153334455',
+        serviceType: 'فیزیوتراپی',
+        serviceKey: 'physio',
+        address: 'تهران، ونک، خیابان ملاصدرا',
+        scheduledAt: '1404/03/21 — ۰۹:۰۰',
+        scheduledDate: '1404/03/21',
+        scheduledTime: '۰۹:۰۰',
+        amount: 520000,
+        status: 'accepted',
+        timeline: [
+            { at: '1404/03/18 11:00', label: 'درخواست ثبت شد' },
+            { at: '1404/03/18 12:00', label: 'پذیرفته شد' },
+        ],
+    },
+    {
+        id: 5,
+        code: 'NRS-1404-005',
+        patientName: 'زهرا صادقی',
+        patientPhone: '09156667788',
+        serviceType: 'مراقبت از نوزاد',
+        serviceKey: 'baby',
+        address: 'تهران، پاسداران، بوستان هفتم',
+        scheduledAt: '1404/03/21 — ۱۱:۰۰',
+        scheduledDate: '1404/03/21',
+        scheduledTime: '۱۱:۰۰',
+        amount: 550000,
+        status: 'new',
+        timeline: [{ at: '1404/03/20 09:00', label: 'درخواست ثبت شد' }],
+    },
+    {
+        id: 6,
+        code: 'NRS-1404-006',
+        patientName: 'محمد رضایی',
+        patientPhone: '09159990011',
+        serviceType: 'تزریقات و سرم‌تراپی',
+        serviceKey: 'injection',
+        address: 'تهران، شهرک غرب، فاز ۳',
+        scheduledAt: '1404/03/22 — ۱۶:۰۰',
+        scheduledDate: '1404/03/22',
+        scheduledTime: '۱۶:۰۰',
+        amount: 450000,
+        status: 'completed',
+        timeline: [
+            { at: '1404/03/17 14:00', label: 'درخواست ثبت شد' },
+            { at: '1404/03/17 15:00', label: 'پذیرفته شد' },
+            { at: '1404/03/22 16:30', label: 'تکمیل شد' },
+        ],
+    },
+    {
+        id: 7,
+        code: 'NRS-1404-007',
+        patientName: 'فاطمه کریمی',
+        patientPhone: '09151112233',
+        serviceType: 'مراقبت عمومی',
+        serviceKey: 'general',
+        address: 'تهران، یوسف‌آباد، خیابان جهان‌آرا',
+        scheduledAt: '1404/03/22 — ۱۰:۰۰',
+        scheduledDate: '1404/03/22',
+        scheduledTime: '۱۰:۰۰',
+        amount: 400000,
+        status: 'on_way',
+        timeline: [
+            { at: '1404/03/21 08:00', label: 'درخواست ثبت شد' },
+            { at: '1404/03/21 09:00', label: 'پذیرفته شد' },
+            { at: '1404/03/22 09:30', label: 'در راه' },
+        ],
+    },
+    {
+        id: 8,
+        code: 'NRS-1404-008',
+        patientName: 'علی احمدی',
+        patientPhone: '09154445566',
+        serviceType: 'پانسمان و مراقبت از زخم',
+        serviceKey: 'wound',
+        address: 'تهران، تهرانپارس، فلکه اول',
+        scheduledAt: '1404/03/15 — ۱۴:۰۰',
+        scheduledDate: '1404/03/15',
+        scheduledTime: '۱۴:۰۰',
+        amount: 380000,
+        status: 'completed',
+        timeline: [
+            { at: '1404/03/14 10:00', label: 'درخواست ثبت شد' },
+            { at: '1404/03/15 15:00', label: 'تکمیل شد' },
+        ],
+    },
+    {
+        id: 9,
+        code: 'NRS-1404-009',
+        patientName: 'نرگس جلالی',
+        patientPhone: '09157778899',
+        serviceType: 'مراقبت از سالمند',
+        serviceKey: 'elderly',
+        address: 'تهران، زعفرانیه، خیابان شهید',
+        scheduledAt: '1404/03/25 — ۰۸:۰۰',
+        scheduledDate: '1404/03/25',
+        scheduledTime: '۰۸:۰۰',
+        amount: 600000,
+        status: 'new',
+        timeline: [{ at: '1404/03/22 16:00', label: 'درخواست ثبت شد' }],
+    },
+    {
+        id: 10,
+        code: 'NRS-1404-010',
+        patientName: 'رضا موسوی',
+        patientPhone: '09158881234',
+        serviceType: 'تزریقات و سرم‌تراپی',
+        serviceKey: 'injection',
+        address: 'تهران، جردن، خیابان ناهید',
+        scheduledAt: '1404/03/25 — ۱۸:۰۰',
+        scheduledDate: '1404/03/25',
+        scheduledTime: '۱۸:۰۰',
+        amount: 450000,
+        status: 'canceled',
+        timeline: [
+            { at: '1404/03/20 12:00', label: 'درخواست ثبت شد' },
+            { at: '1404/03/24 10:00', label: 'لغو شد' },
+        ],
+    },
+    {
+        id: 11,
+        code: 'NRS-1404-011',
+        patientName: 'سارا باقری',
+        patientPhone: '09152225678',
+        serviceType: 'فیزیوتراپی',
+        serviceKey: 'physio',
+        address: 'تهران، سعادت‌آباد، میدان کاج',
+        scheduledAt: '1404/03/20 — ۱۸:۰۰',
+        scheduledDate: '1404/03/20',
+        scheduledTime: '۱۸:۰۰',
+        amount: 520000,
+        status: 'accepted',
+        timeline: [
+            { at: '1404/03/19 20:00', label: 'درخواست ثبت شد' },
+            { at: '1404/03/19 21:00', label: 'پذیرفته شد' },
+        ],
+    },
+    {
+        id: 12,
+        code: 'NRS-1404-012',
+        patientName: 'امیر حسینی',
+        patientPhone: '09153338901',
+        serviceType: 'مراقبت عمومی',
+        serviceKey: 'general',
+        address: 'تهران، نارمک، میدان هفت‌حوض',
+        scheduledAt: '1404/03/18 — ۱۲:۰۰',
+        scheduledDate: '1404/03/18',
+        scheduledTime: '۱۲:۰۰',
+        amount: 400000,
+        status: 'completed',
+        timeline: [
+            { at: '1404/03/17 09:00', label: 'درخواست ثبت شد' },
+            { at: '1404/03/18 13:00', label: 'تکمیل شد' },
         ],
     },
 ];

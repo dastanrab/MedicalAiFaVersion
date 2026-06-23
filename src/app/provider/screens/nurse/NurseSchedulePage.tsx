@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { PageHeader } from '../../components';
-import { mockNurseRequests, nurseBlockedSlots, nurseMaxVisitsPerDay } from '../../data/mockData';
+import { nurseBlockedSlots, nurseMaxVisitsPerDay } from '../../data/mockData';
+import { useNurseStore } from '../../store/nurseStore';
 
 const hours = ['۸:۰۰', '۱۰:۰۰', '۱۲:۰۰', '۱۴:۰۰', '۱۶:۰۰', '۱۸:۰۰'];
 
 export function NurseSchedulePage() {
+    const requests = useNurseStore((s) => s.requests);
     const [blocked, setBlocked] = useState<string[]>(nurseBlockedSlots);
     const [maxVisits] = useState(nurseMaxVisitsPerDay);
-    const todayCount = mockNurseRequests.filter((r) =>
+    const todayCount = requests.filter((r) =>
         ['accepted', 'on_way', 'in_progress'].includes(r.status)
     ).length;
 
@@ -51,7 +53,7 @@ export function NurseSchedulePage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
                 <p className="mb-4 text-sm font-semibold text-slate-700">ویزیت‌های رزرو شده</p>
                 <ul className="space-y-3">
-                    {mockNurseRequests.map((r) => (
+                    {requests.map((r) => (
                         <li
                             key={r.id}
                             className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 p-3 text-sm"

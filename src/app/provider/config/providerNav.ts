@@ -15,15 +15,20 @@ import {
     MapPin,
     Clock,
     Map,
+    Users,
+    Stethoscope,
     type LucideIcon,
 } from 'lucide-react';
 
 export type ProviderRole = 'lab' | 'pharmacy' | 'nurse';
+export type NurseAccountType = 'individual' | 'company';
 
 export interface ProviderNavItem {
     label: string;
     segment: string;
     icon: LucideIcon;
+    /** فقط برای پنل پرستار — در صورت تعریف، فقط برای این نوع حساب نمایش داده می‌شود */
+    nurseAccountTypes?: NurseAccountType[];
 }
 
 export const labNavItems: ProviderNavItem[] = [
@@ -53,14 +58,23 @@ export const pharmacyNavItems: ProviderNavItem[] = [
 
 export const nurseNavItems: ProviderNavItem[] = [
     { label: 'داشبورد', segment: 'dashboard', icon: LayoutDashboard },
-    { label: 'درخواست‌های پرستاری', segment: 'requests', icon: ClipboardList },
+    { label: 'تقویم درخواست‌ها', segment: 'calendar', icon: CalendarDays },
+    { label: 'لیست درخواست‌ها', segment: 'requests', icon: ClipboardList },
     { label: 'برنامه زمانی من', segment: 'schedule', icon: Clock },
     { label: 'محدوده خدمت‌رسانی', segment: 'coverage', icon: Map },
+    { label: 'پرسنل', segment: 'personnel', icon: Users, nurseAccountTypes: ['company'] },
+    { label: 'خدمات درمانی', segment: 'services', icon: Stethoscope, nurseAccountTypes: ['company'] },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات پروفایل', segment: 'settings', icon: Settings },
     { label: 'پشتیبانی', segment: 'support', icon: Headphones },
 ];
+
+export function getNurseNavItems(accountType: NurseAccountType): ProviderNavItem[] {
+    return nurseNavItems.filter(
+        (item) => !item.nurseAccountTypes || item.nurseAccountTypes.includes(accountType)
+    );
+}
 
 export const providerNavByRole: Record<ProviderRole, ProviderNavItem[]> = {
     lab: labNavItems,

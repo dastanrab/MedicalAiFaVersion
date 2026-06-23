@@ -5,11 +5,19 @@ import {
     providerNavByRole,
     providerBasePath,
     providerPath,
+    getNurseNavItems,
     type ProviderRole,
+    type ProviderNavItem,
 } from '../config/providerNav';
 import { providerRoleLabels, providerThemes, providerDefaultNames } from '../config/providerTheme';
 import { mockNotifications } from '../data/mockData';
-import { useProviderAuthStore } from '../store/providerAuthStore';
+import { useProviderAuthStore, useNurseAccountType } from '../store/providerAuthStore';
+
+function useNavItems(role: ProviderRole): ProviderNavItem[] {
+    const nurseAccountType = useNurseAccountType();
+    if (role === 'nurse') return getNurseNavItems(nurseAccountType);
+    return providerNavByRole[role];
+}
 
 interface ProviderSidebarProps {
     role: ProviderRole;
@@ -18,7 +26,7 @@ interface ProviderSidebarProps {
 export function ProviderSidebar({ role }: ProviderSidebarProps) {
     const navigate = useNavigate();
     const location = useLocation();
-    const navItems = providerNavByRole[role];
+    const navItems = useNavItems(role);
     const theme = providerThemes[role];
     const base = providerBasePath(role);
 
@@ -46,7 +54,8 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
                         const active =
                             location.pathname === path ||
                             (item.segment === 'requests' &&
-                                location.pathname.startsWith(`${base}/requests`));
+                                location.pathname.startsWith(`${base}/requests`)) ||
+                            (item.segment === 'calendar' && location.pathname.includes('/calendar'));
                         const Icon = item.icon;
                         return (
                             <li key={item.segment}>
@@ -85,7 +94,7 @@ interface ProviderNavbarProps {
 
 export function ProviderNavbar({ role }: ProviderNavbarProps) {
     const location = useLocation();
-    const navItems = providerNavByRole[role];
+    const navItems = useNavItems(role);
     const logout = useProviderAuthStore((s) => s.logout);
     const unread = mockNotifications.filter((n) => !n.read).length;
 
@@ -93,7 +102,8 @@ export function ProviderNavbar({ role }: ProviderNavbarProps) {
         const path = providerPath(role, item.segment);
         return (
             location.pathname === path ||
-            (item.segment === 'requests' && location.pathname.includes('/requests'))
+            (item.segment === 'requests' && location.pathname.includes('/requests')) ||
+            (item.segment === 'calendar' && location.pathname.includes('/calendar'))
         );
     });
 

@@ -8,19 +8,21 @@ import {
     type ChartConfig,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, StatusBadge } from '../../components';
-import { mockNurseRequests, mockChartData, mockNurseProfile } from '../../data/mockData';
+import { mockChartData, mockNurseProfile } from '../../data/mockData';
+import { useNurseStore } from '../../store/nurseStore';
 import { nurseStatusLabels, nurseStatusStyles } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
 
 const chartConfig = { count: { label: 'ویزیت', color: '#f43f5e' } } satisfies ChartConfig;
 
 export function NurseDashboard() {
-    const todayVisits = mockNurseRequests.filter((r) =>
+    const requests = useNurseStore((s) => s.requests);
+    const todayVisits = requests.filter((r) =>
         ['accepted', 'on_way', 'in_progress'].includes(r.status)
     ).length;
-    const newCount = mockNurseRequests.filter((r) => r.status === 'new').length;
-    const completed = mockNurseRequests.filter((r) => r.status === 'completed').length;
-    const revenue = mockNurseRequests.reduce((s, r) => s + r.amount, 0);
+    const newCount = requests.filter((r) => r.status === 'new').length;
+    const completed = requests.filter((r) => r.status === 'completed').length;
+    const revenue = requests.reduce((s, r) => s + r.amount, 0);
 
     return (
         <div className="space-y-6">
@@ -67,7 +69,7 @@ export function NurseDashboard() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="mb-4 text-sm font-semibold">ویزیت‌های امروز</p>
                     <ul className="space-y-3">
-                        {mockNurseRequests.map((r) => (
+                        {requests.slice(0, 5).map((r) => (
                             <li key={r.id} className="rounded-xl border border-slate-100 p-3">
                                 <p className="text-sm font-medium">{r.patientName}</p>
                                 <p className="text-xs text-slate-500">{r.scheduledAt}</p>
@@ -80,8 +82,8 @@ export function NurseDashboard() {
                             </li>
                         ))}
                     </ul>
-                    <Link to={providerPath('nurse', 'requests')} className="mt-3 block text-xs text-rose-600 hover:underline">
-                        مشاهده همه
+                    <Link to={providerPath('nurse', 'calendar')} className="mt-3 block text-xs text-rose-600 hover:underline">
+                        مشاهده تقویم
                     </Link>
                 </div>
             </div>
