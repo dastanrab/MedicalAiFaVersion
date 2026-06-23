@@ -35,3 +35,30 @@ export function isPositiveNumber(value: string | number): boolean {
     const n = typeof value === 'number' ? value : Number(toEnglishDigits(String(value)).replace(/,/g, ''));
     return Number.isFinite(n) && n > 0;
 }
+
+export const ALLOWED_RESULT_MIME_TYPES = [
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+];
+
+export const ALLOWED_RESULT_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
+
+export const MAX_RESULT_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
+export function validateResultFile(file: File): string | null {
+    if (!file) return 'انتخاب فایل الزامی است';
+    if (file.size > MAX_RESULT_FILE_SIZE_BYTES) {
+        return 'حجم فایل نباید بیشتر از ۵ مگابایت باشد';
+    }
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    const typeOk =
+        ALLOWED_RESULT_MIME_TYPES.includes(file.type) ||
+        ALLOWED_RESULT_EXTENSIONS.includes(ext);
+    if (!typeOk) {
+        return 'فقط فایل‌های PDF و تصویر (JPG, PNG) مجاز هستند';
+    }
+    return null;
+}

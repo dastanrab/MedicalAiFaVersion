@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileSpreadsheet, Wallet, TrendingUp } from 'lucide-react';
+import { FileSpreadsheet, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
     ChartContainer,
@@ -12,7 +12,7 @@ import { mockFinanceRows } from '../../data/mockData';
 import type { ProviderRole } from '../../config/providerNav';
 
 const chartConfig = {
-    amount: { label: 'مبلغ', color: '#6366f1' },
+    amount: { label: 'مبلغ', color: '#f59e0b' },
 } satisfies ChartConfig;
 
 interface ProviderFinancePageProps {
@@ -22,19 +22,20 @@ interface ProviderFinancePageProps {
 export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
     const [period, setPeriod] = useState<'day' | 'week' | 'month'>('month');
     const rows = mockFinanceRows;
+    const isLab = role === 'lab';
 
     const total = useMemo(() => rows.reduce((s, r) => s + r.amount, 0), [rows]);
-    const net = useMemo(() => rows.reduce((s, r) => s + r.net, 0), [rows]);
-    const fee = useMemo(() => rows.reduce((s, r) => s + r.fee, 0), [rows]);
-
     const chartData = rows.map((r) => ({ name: r.patientName.split(' ')[0], amount: r.amount }));
 
     const exportExcel = () => {
-        const header = ['ردیف', 'کد', 'بیمار', 'مبلغ', 'کارمزد', 'خالص', 'روش', 'تاریخ'];
+        const header = isLab
+            ? ['ردیف', 'کد', 'بیمار', 'درآمد', 'روش', 'تاریخ']
+            : ['ردیف', 'کد', 'بیمار', 'مبلغ', 'کارمزد', 'خالص', 'روش', 'تاریخ'];
         const body = rows
-            .map(
-                (r, i) =>
-                    `<tr><td>${i + 1}</td><td>${r.code}</td><td>${r.patientName}</td><td>${r.amount}</td><td>${r.fee}</td><td>${r.net}</td><td>${r.method}</td><td>${r.date}</td></tr>`
+            .map((r, i) =>
+                isLab
+                    ? `<tr><td>${i + 1}</td><td>${r.code}</td><td>${r.patientName}</td><td>${r.amount}</td><td>${r.method}</td><td>${r.date}</td></tr>`
+                    : `<tr><td>${i + 1}</td><td>${r.code}</td><td>${r.patientName}</td><td>${r.amount}</td><td>${r.fee}</td><td>${r.net}</td><td>${r.method}</td><td>${r.date}</td></tr>`
             )
             .join('');
         const html = `<html><head><meta charset="UTF-8"></head><body><table border="1"><thead><tr>${header.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
@@ -51,7 +52,7 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
         <div className="space-y-6">
             <PageHeader
                 title="گزارش مالی"
-                description="درآمد، کارمزد پلتفرم و تراکنش‌ها"
+                description={isLab ? 'درآمد کل آزمایشگاه' : 'درآمد، کارمزد پلتفرم و تراکنش‌ها'}
                 actions={
                     <>
                         <select
@@ -71,20 +72,36 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
                             <FileSpreadsheet className="h-4 w-4" />
                             خروجی Excel
                         </button>
-                        <button
-                            type="button"
-                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                            درخواست تسویه
-                        </button>
+                        {!isLab && (
+                            <button
+                                type="button"
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                                درخواست تسویه
+                            </button>
+                        )}
                     </>
                 }
             />
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className={`grid gap-4 ${isLab ? 'sm:grid-cols-1' : 'sm:grid-cols-3'}`}>
                 <KpiCard label="درآمد کل" value={`${formatPrice(total)} ت`} icon={Wallet} tone="indigo" />
-                <KpiCard label="کارمزد پلتفرم" value={`${formatPrice(fee)} ت`} icon={TrendingUp} tone="amber" />
-                <KpiCard label="مبلغ خالص" value={`${formatPrice(net)} ت`} icon={Wallet} tone="emerald" />
+                {!isLab && (
+                    <>
+                        <KpiCard
+                            label="کارمزد پلتفرم"
+                            value={`${formatPrice(rows.reduce((s, r) => s + r.fee, 0))} ت`}
+                            icon={Wallet}
+                            tone="amber"
+                        />
+                        <KpiCard
+                            label="مبلغ خالص"
+                            value={`${formatPrice(rows.reduce((s, r) => s + r.net, 0))} ت`}
+                            icon={Wallet}
+                            tone="emerald"
+                        />
+                    </>
+                )}
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -100,15 +117,21 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
                 </ChartContainer>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                 <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                         <tr>
                             <th className="px-4 py-3 text-right font-semibold">کد</th>
                             <th className="px-4 py-3 text-right font-semibold">بیمار</th>
-                            <th className="px-4 py-3 text-right font-semibold">مبلغ</th>
-                            <th className="px-4 py-3 text-right font-semibold">کارمزد</th>
-                            <th className="px-4 py-3 text-right font-semibold">خالص</th>
+                            <th className="px-4 py-3 text-right font-semibold">
+                                {isLab ? 'درآمد' : 'مبلغ'}
+                            </th>
+                            {!isLab && (
+                                <>
+                                    <th className="px-4 py-3 text-right font-semibold">کارمزد</th>
+                                    <th className="px-4 py-3 text-right font-semibold">خالص</th>
+                                </>
+                            )}
                             <th className="px-4 py-3 text-right font-semibold">روش</th>
                             <th className="px-4 py-3 text-right font-semibold">تاریخ</th>
                         </tr>
@@ -119,8 +142,12 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
                                 <td className="px-4 py-3 font-mono text-xs">{r.code}</td>
                                 <td className="px-4 py-3">{r.patientName}</td>
                                 <td className="px-4 py-3">{formatPrice(r.amount)}</td>
-                                <td className="px-4 py-3 text-amber-600">{formatPrice(r.fee)}</td>
-                                <td className="px-4 py-3 text-emerald-600">{formatPrice(r.net)}</td>
+                                {!isLab && (
+                                    <>
+                                        <td className="px-4 py-3 text-amber-600">{formatPrice(r.fee)}</td>
+                                        <td className="px-4 py-3 text-emerald-600">{formatPrice(r.net)}</td>
+                                    </>
+                                )}
                                 <td className="px-4 py-3">{r.method}</td>
                                 <td className="px-4 py-3 text-slate-500">{r.date}</td>
                             </tr>

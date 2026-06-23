@@ -16,19 +16,21 @@ import {
     type ChartConfig,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, StatusBadge, formatPrice } from '../../components';
-import { mockLabRequests, mockChartData, mockLabProfile } from '../../data/mockData';
+import { mockLabProfile, mockChartData } from '../../data/mockData';
+import { useLabStore } from '../../store/labStore';
 import { labStatusLabels, labStatusStyles } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
 
 const chartConfig = { count: { label: 'درخواست', color: '#f59e0b' } } satisfies ChartConfig;
 
 export function LabDashboard() {
-    const newCount = mockLabRequests.filter((r) => r.status === 'new').length;
-    const inProgress = mockLabRequests.filter((r) =>
+    const requests = useLabStore((s) => s.requests);
+    const newCount = requests.filter((r) => r.status === 'new').length;
+    const inProgress = requests.filter((r) =>
         ['confirmed', 'sampled', 'testing'].includes(r.status)
     ).length;
-    const ready = mockLabRequests.filter((r) => r.status === 'ready').length;
-    const totalRevenue = mockLabRequests.reduce((s, r) => s + r.totalPrice, 0);
+    const ready = requests.filter((r) => ['ready', 'completed'].includes(r.status)).length;
+    const totalRevenue = requests.reduce((s, r) => s + r.totalPrice, 0);
 
     return (
         <div className="space-y-6">
@@ -81,7 +83,7 @@ export function LabDashboard() {
                         </Link>
                     </div>
                     <ul className="space-y-3">
-                        {mockLabRequests.slice(0, 5).map((r) => (
+                        {requests.slice(0, 5).map((r) => (
                             <li key={r.id} className="rounded-xl border border-slate-100 p-3">
                                 <div className="flex items-start justify-between gap-2">
                                     <div>

@@ -1,98 +1,106 @@
-import { useState } from 'react';
-import { PageHeader } from '../../components';
-import { mockTimeSlots } from '../../data/mockData';
-
-const weekDays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه'];
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import { Eye } from 'lucide-react';
+import { JalaliCalendar } from '../../components/JalaliCalendar';
+import { EmptyState, PageHeader, StatusBadge } from '../../components';
+import { useLabStore } from '../../store/labStore';
+import { labStatusLabels, labStatusStyles } from '../../config/statusOptions';
+import { providerPath } from '../../config/providerNav';
+import { formatJalali, todayJalali, toFaDigits, type JalaliDate } from '../../utils/jalali';
 
 export function LabSchedulePage() {
-    const [slots, setSlots] = useState(mockTimeSlots);
-    const [activeDays, setActiveDays] = useState<string[]>(weekDays);
+    const requests = useLabStore((s) => s.requests);
+    const today = todayJalali();
+    const [selectedDate, setSelectedDate] = useState<JalaliDate>(today);
 
-    const toggleDay = (day: string) => {
-        setActiveDays((prev) =>
-            prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-        );
-    };
+    const selectedKey = formatJalali(selectedDate);
+
+    const dayRequests = useMemo(
+        () => requests.filter((r) => r.scheduledDate === selectedKey),
+        [requests, selectedKey]
+    );
+
+    const markedDates = useMemo(() => {
+        const map: Record<string, number> = {};
+        for (const r of requests) {
+            if (r.status !== 'canceled') {
+                map[r.scheduledDate] = (map[r.scheduledDate] ?? 0) + 1;
+            }
+        }
+        return map;
+    }, [requests]);
+
+    const workingDays = useMemo(() => {
+        const days = new Set<string>();
+        for (const r of requests) {
+            if (!['canceled'].includes(r.status)) {
+                days.add(r.scheduledDate);
+            }
+        }
+        return days;
+    }, [requests]);
 
     return (
         <div className="space-y-6">
-            <PageHeader title="زمان‌بندی نمونه‌گیری" description="بازه‌های زمانی، ظرفیت و روزهای کاری" />
+            <PageHeader
+                title="زمان‌بندی آزمایشگاه"
+                description="نمایش درخواست‌های آزمایش بر اساس روز — بدون زمان‌بندی ساعتی"
+            />
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                <p className="mb-3 text-sm font-semibold text-slate-700">روزهای کاری</p>
-                <div className="flex flex-wrap gap-2">
-                    {weekDays.map((day) => (
-                        <button
-                            key={day}
-                            type="button"
-                            onClick={() => toggleDay(day)}
-                            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                                activeDays.includes(day)
-                                    ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-200'
-                                    : 'bg-slate-100 text-slate-500'
-                            }`}
-                        >
-                            {day}
-                        </button>
-                    ))}
+            <div className="grid gap-6 lg:grid-cols-2">
+                <JalaliCalendar
+                    selectedDate={selectedDate}
+                    onSelectDate={setSelectedDate}
+                    markedDates={markedDates}
+                    workingDays={workingDays}
+                    accentClass="bg-amber-600 text-white"
+                />
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                    <div className="mb-4 border-b border-slate-100 pb-4">
+                        <p className="text-sm text-slate-500">درخواست‌های روز انتخاب‌شده</p>
+                        <h3 className="mt-1 text-lg font-semibold text-slate-800">
+                            {toFaDigits(selectedKey.replace(/\//g, '/'))}
+                        </h3>
+                        <p className="mt-1 text-xs text-slate-400">
+                            {dayRequests.length} درخواست
+                        </p>
+                    </div>
+
+                    {dayRequests.length === 0 ? (
+                        <EmptyState message="در این روز درخواستی ثبت نشده است." />
+                    ) : (
+                        <ul className="space-y-3">
+                            {dayRequests.map((r) => (
+                                <li
+                                    key={r.id}
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 p-3"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-slate-800">{r.patientName}</p>
+                                        <p className="text-xs text-slate-500">{r.code}</p>
+                                        <p className="mt-1 text-xs text-slate-400">
+                                            {r.tests.map((t) => t.name).join('، ')}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <StatusBadge
+                                            label={labStatusLabels[r.status]}
+                                            className={labStatusStyles[r.status]}
+                                        />
+                                        <Link
+                                            to={providerPath('lab', `requests/${r.id}`)}
+                                            className="flex h-8 w-8 items-center justify-center rounded-lg text-amber-600 hover:bg-amber-50"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </Link>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-                {slots.map((slot) => {
-                    const full = slot.booked >= slot.capacity;
-                    return (
-                        <div
-                            key={slot.id}
-                            className={`rounded-2xl border p-4 ${
-                                full ? 'border-red-100 bg-red-50/30' : 'border-slate-200 bg-white'
-                            }`}
-                        >
-                            <div className="flex items-center justify-between">
-                                <p className="font-semibold text-slate-800">{slot.label}</p>
-                                <span
-                                    className={`text-xs font-medium ${
-                                        slot.active ? 'text-emerald-600' : 'text-slate-400'
-                                    }`}
-                                >
-                                    {slot.active ? 'فعال' : 'غیرفعال'}
-                                </span>
-                            </div>
-                            <div className="mt-3">
-                                <div className="mb-1 flex justify-between text-xs text-slate-500">
-                                    <span>رزرو شده</span>
-                                    <span>
-                                        {slot.booked} / {slot.capacity}
-                                    </span>
-                                </div>
-                                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                                    <div
-                                        className={`h-full rounded-full ${full ? 'bg-red-400' : 'bg-amber-500'}`}
-                                        style={{ width: `${(slot.booked / slot.capacity) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setSlots((prev) =>
-                                        prev.map((s) =>
-                                            s.id === slot.id ? { ...s, active: !s.active } : s
-                                        )
-                                    )
-                                }
-                                className="mt-3 text-xs text-amber-600 hover:underline"
-                            >
-                                {slot.active ? 'مسدود کردن بازه' : 'فعال‌سازی'}
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
-
-            <button type="button" className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500 hover:border-amber-300 hover:text-amber-700">
-                + افزودن بازه زمانی جدید
-            </button>
         </div>
     );
 }

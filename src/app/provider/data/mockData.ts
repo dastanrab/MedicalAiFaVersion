@@ -18,10 +18,19 @@ export interface LabRequest {
     totalPrice: number;
     type: 'in_person' | 'home';
     address?: string;
+    scheduledDate: string;
     scheduledAt: string;
     note?: string;
     status: LabRequestStatus;
     timeline: TimelineEntry[];
+    result?: LabRequestResult;
+}
+
+export interface LabRequestResult {
+    fileName: string;
+    fileUrl: string;
+    notes?: string;
+    uploadedAt: string;
 }
 
 export interface LabTestCatalogItem {
@@ -35,6 +44,18 @@ export interface LabTestCatalogItem {
     description?: string;
 }
 
+/** عناوین مرجع برای Select Box افزودن آزمایش */
+export const labTestTitleOptions: { value: string; label: string; category: string; defaultPrice: number }[] = [
+    { value: 'cbc', label: 'CBC — آزمایش خون کامل', category: 'خون', defaultPrice: 120000 },
+    { value: 'fbs', label: 'FBS — قند خون ناشتا', category: 'خون', defaultPrice: 80000 },
+    { value: 'tsh', label: 'TSH — هورمون تیروئید', category: 'هورمون', defaultPrice: 170000 },
+    { value: 'vitamin_d3', label: 'Vitamin D3', category: 'ویتامین', defaultPrice: 210000 },
+    { value: 'lipid', label: 'Lipid Profile — چربی خون', category: 'خون', defaultPrice: 150000 },
+    { value: 'iron', label: 'Iron — آهن', category: 'خون', defaultPrice: 110000 },
+    { value: 'hba1c', label: 'HbA1c — قند سه‌ماهه', category: 'خون', defaultPrice: 130000 },
+    { value: 'urine', label: 'Urinalysis — ادرار', category: 'ادرار', defaultPrice: 70000 },
+];
+
 export interface TimeSlot {
     id: number;
     label: string;
@@ -45,10 +66,13 @@ export interface TimeSlot {
 
 export interface LabResult {
     id: number;
+    requestId: number;
     requestCode: string;
     patientName: string;
     uploadedAt: string;
     sent: boolean;
+    fileName?: string;
+    notes?: string;
 }
 
 export interface PharmacyRequest {
@@ -208,7 +232,8 @@ export const mockLabRequests: LabRequest[] = [
         ],
         totalPrice: 200000,
         type: 'in_person',
-        scheduledAt: '1404/03/20 — ۸ تا ۱۰',
+        scheduledDate: '1404/03/20',
+        scheduledAt: '1404/03/20',
         status: 'new',
         timeline: [{ at: '1404/03/19 14:30', label: 'درخواست ثبت شد' }],
     },
@@ -223,7 +248,8 @@ export const mockLabRequests: LabRequest[] = [
         totalPrice: 170000,
         type: 'home',
         address: 'مشهد، احمدآباد، کوچه ۵، واحد ۳',
-        scheduledAt: '1404/03/20 — ۱۶ تا ۱۸',
+        scheduledDate: '1404/03/20',
+        scheduledAt: '1404/03/20',
         note: 'ناشتا مراجعه می‌کنم',
         status: 'confirmed',
         timeline: [
@@ -245,7 +271,8 @@ export const mockLabRequests: LabRequest[] = [
         ],
         totalPrice: 320000,
         type: 'in_person',
-        scheduledAt: '1404/03/19 — ۱۸ تا ۲۰',
+        scheduledDate: '1404/03/19',
+        scheduledAt: '1404/03/19',
         status: 'testing',
         timeline: [
             { at: '1404/03/18 09:00', label: 'درخواست ثبت شد' },
@@ -265,8 +292,15 @@ export const mockLabRequests: LabRequest[] = [
         tests: [{ name: 'Lipid Profile', price: 150000 }],
         totalPrice: 150000,
         type: 'in_person',
-        scheduledAt: '1404/03/18 — ۱۰ تا ۱۲',
-        status: 'ready',
+        scheduledDate: '1404/03/18',
+        scheduledAt: '1404/03/18',
+        status: 'completed',
+        result: {
+            fileName: 'result-lipid.pdf',
+            fileUrl: '#',
+            notes: 'نتایج در محدوده نرمال',
+            uploadedAt: '1404/03/18 14:00',
+        },
         timeline: [
             { at: '1404/03/17 08:00', label: 'درخواست ثبت شد' },
             { at: '1404/03/17 09:00', label: 'تأیید شد' },
@@ -292,8 +326,8 @@ export const mockTimeSlots: TimeSlot[] = [
 ];
 
 export const mockLabResults: LabResult[] = [
-    { id: 1, requestCode: 'LAB-1404-004', patientName: 'مریم احمدی', uploadedAt: '1404/03/18 14:00', sent: false },
-    { id: 2, requestCode: 'LAB-1403-089', patientName: 'رضا نوری', uploadedAt: '1404/03/15 11:30', sent: true },
+    { id: 1, requestId: 4, requestCode: 'LAB-1404-004', patientName: 'مریم احمدی', uploadedAt: '1404/03/18 14:00', sent: false, fileName: 'result-lipid.pdf' },
+    { id: 2, requestId: 0, requestCode: 'LAB-1403-089', patientName: 'رضا نوری', uploadedAt: '1404/03/15 11:30', sent: true, fileName: 'result-cbc.pdf' },
 ];
 
 export const mockPharmacyRequests: PharmacyRequest[] = [

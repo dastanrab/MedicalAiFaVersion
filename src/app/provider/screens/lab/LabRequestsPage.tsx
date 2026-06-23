@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Eye } from 'lucide-react';
+import { Eye, FileUp } from 'lucide-react';
 import {
     FilterSelect,
     SearchInput,
@@ -9,13 +9,17 @@ import {
     EmptyState,
     formatPrice,
 } from '../../components';
-import { mockLabRequests } from '../../data/mockData';
+import { AddLabResultModal } from '../../components/AddLabResultModal';
+import { useLabStore } from '../../store/labStore';
 import {
     labStatusLabels,
     labStatusStyles,
+    labResultEligibleStatuses,
+    labManageableStatuses,
     type LabRequestStatus,
 } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
+import type { LabRequest } from '../../data/mockData';
 
 const statusFilterOptions = [
     { value: 'all', label: 'همه وضعیت‌ها' },
@@ -23,12 +27,17 @@ const statusFilterOptions = [
 ];
 
 export function LabRequestsPage() {
+    const requests = useLabStore((s) => s.requests);
+    const updateRequestStatus = useLabStore((s) => s.updateRequestStatus);
+    const addResult = useLabStore((s) => s.addResult);
+
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState<string>('all');
     const [type, setType] = useState<string>('all');
+    const [resultRequest, setResultRequest] = useState<LabRequest | null>(null);
 
     const filtered = useMemo(() => {
-        return mockLabRequests.filter((r) => {
+        return requests.filter((r) => {
             if (status !== 'all' && r.status !== status) return false;
             if (type !== 'all' && r.type !== type) return false;
             const q = search.trim();
@@ -39,7 +48,7 @@ export function LabRequestsPage() {
                 r.code.includes(q)
             );
         });
-    }, [search, status, type]);
+    }, [requests, search, status, type]);
 
     return (
         <div className="space-y-6">
@@ -63,82 +72,135 @@ export function LabRequestsPage() {
             {filtered.length === 0 ? (
                 <EmptyState message="درخواستی یافت نشد." />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    <table className="w-full text-sm">
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                    <table className="w-full min-w-[800px] text-sm">
                         <thead className="bg-slate-50 text-slate-600">
                             <tr>
                                 <th className="px-4 py-3 text-right font-semibold">کد</th>
                                 <th className="px-4 py-3 text-right font-semibold">بیمار</th>
                                 <th className="px-4 py-3 text-right font-semibold">آزمایش‌ها</th>
-                                <th className="px-4 py-3 text-right font-semibold">زمان</th>
+                                <th className="px-4 py-3 text-right font-semibold">تاریخ</th>
                                 <th className="px-4 py-3 text-right font-semibold">مبلغ</th>
                                 <th className="px-4 py-3 text-right font-semibold">نوع</th>
                                 <th className="px-4 py-3 text-right font-semibold">وضعیت</th>
-                                <th className="px-4 py-3 text-right font-semibold" />
+                                <th className="px-4 py-3 text-right font-semibold">عملیات</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((r) => (
-                                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
-                                    <td className="px-4 py-3 font-mono text-xs">{r.code}</td>
-                                    <td className="px-4 py-3">
-                                        <p>{r.patientName}</p>
-                                        <p className="text-xs text-slate-400">{r.patientPhone}</p>
-                                    </td>
-                                    <td className="px-4 py-3 text-xs">{r.tests.map((t) => t.name).join('، ')}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-500">{r.scheduledAt}</td>
-                                    <td className="px-4 py-3">{formatPrice(r.totalPrice)}</td>
-                                    <td className="px-4 py-3">{r.type === 'home' ? 'در منزل' : 'حضوری'}</td>
-                                    <td className="px-4 py-3">
-                                        <StatusBadge
-                                            label={labStatusLabels[r.status]}
-                                            className={labStatusStyles[r.status]}
-                                        />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <Link
-                                            to={providerPath('lab', `requests/${r.id}`)}
-                                            className="inline-flex items-center gap-1 text-amber-600 hover:text-amber-800"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                            جزئیات
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
+                            {filtered.map((r) => {
+                                const canAddResult = labResultEligibleStatuses.includes(r.status);
+                                return (
+                                    <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                                        <td className="px-4 py-3 font-mono text-xs">{r.code}</td>
+                                        <td className="px-4 py-3">
+                                            <p>{r.patientName}</p>
+                                            <p className="text-xs text-slate-400">{r.patientPhone}</p>
+                                        </td>
+                                        <td className="px-4 py-3 text-xs">{r.tests.map((t) => t.name).join('، ')}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-500">{r.scheduledDate}</td>
+                                        <td className="px-4 py-3">{formatPrice(r.totalPrice)}</td>
+                                        <td className="px-4 py-3">{r.type === 'home' ? 'در منزل' : 'حضوری'}</td>
+                                        <td className="px-4 py-3">
+                                            <select
+                                                value={r.status}
+                                                onChange={(e) =>
+                                                    updateRequestStatus(
+                                                        r.id,
+                                                        e.target.value as LabRequestStatus,
+                                                        labStatusLabels[e.target.value as LabRequestStatus]
+                                                    )
+                                                }
+                                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+                                            >
+                                                {Object.entries(labStatusLabels).map(([val, label]) => (
+                                                    <option key={val} value={val}>
+                                                        {label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <Link
+                                                    to={providerPath('lab', `requests/${r.id}`)}
+                                                    className="inline-flex items-center gap-1 text-amber-600 hover:text-amber-800"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Link>
+                                                <button
+                                                    type="button"
+                                                    disabled={!canAddResult}
+                                                    onClick={() => setResultRequest(r)}
+                                                    title={
+                                                        canAddResult
+                                                            ? 'افزودن نتیجه آزمایش'
+                                                            : 'فقط برای وضعیت تأیید شده یا در حال آزمایش'
+                                                    }
+                                                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                >
+                                                    <FileUp className="h-3.5 w-3.5" />
+                                                    افزودن نتیجه
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
             )}
+
+            <AddLabResultModal
+                open={!!resultRequest}
+                onClose={() => setResultRequest(null)}
+                request={resultRequest}
+                onSubmit={async (payload) => {
+                    if (!resultRequest) return;
+                    await addResult({
+                        requestId: resultRequest.id,
+                        status: payload.status,
+                        file: payload.file,
+                        notes: payload.notes,
+                    });
+                }}
+            />
         </div>
     );
 }
 
 export function LabRequestDetailPage({ requestId }: { requestId: number }) {
-    const request = mockLabRequests.find((r) => r.id === requestId);
+    const request = useLabStore((s) => s.requests.find((r) => r.id === requestId));
+    const updateRequestStatus = useLabStore((s) => s.updateRequestStatus);
+    const addResult = useLabStore((s) => s.addResult);
+    const [resultOpen, setResultOpen] = useState(false);
 
     if (!request) {
         return <EmptyState message="درخواست یافت نشد." />;
     }
 
-    const nextActions: Partial<Record<LabRequestStatus, string[]>> = {
-        new: ['تأیید', 'رد', 'تماس با بیمار'],
-        confirmed: ['ثبت نمونه‌گیری', 'تغییر زمان', 'لغو'],
-        sampled: ['شروع آزمایش'],
-        testing: ['آپلود نتیجه'],
-        ready: ['ارسال به بیمار'],
-    };
-
-    const actions = nextActions[request.status] ?? ['لغو'];
+    const canAddResult = labResultEligibleStatuses.includes(request.status);
 
     return (
         <div className="space-y-6">
             <PageHeader
                 title={`درخواست ${request.code}`}
                 actions={
-                    <Link to={providerPath('lab', 'requests')} className="text-sm text-slate-500 hover:text-slate-700">
-                        بازگشت به لیست
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        {canAddResult && (
+                            <button
+                                type="button"
+                                onClick={() => setResultOpen(true)}
+                                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                            >
+                                <FileUp className="h-4 w-4" />
+                                افزودن نتیجه آزمایش
+                            </button>
+                        )}
+                        <Link to={providerPath('lab', 'requests')} className="text-sm text-slate-500 hover:text-slate-700">
+                            بازگشت به لیست
+                        </Link>
+                    </div>
                 }
             />
 
@@ -186,6 +248,16 @@ export function LabRequestDetailPage({ requestId }: { requestId: number }) {
                         </table>
                     </Section>
 
+                    {request.result && (
+                        <Section title="نتیجه ثبت‌شده">
+                            <InfoRow label="فایل" value={request.result.fileName} />
+                            {request.result.notes && (
+                                <InfoRow label="توضیحات" value={request.result.notes} />
+                            )}
+                            <InfoRow label="تاریخ آپلود" value={request.result.uploadedAt} />
+                        </Section>
+                    )}
+
                     {request.address && (
                         <Section title="آدرس">
                             <p className="text-sm text-slate-600">{request.address}</p>
@@ -205,17 +277,29 @@ export function LabRequestDetailPage({ requestId }: { requestId: number }) {
                             label={labStatusLabels[request.status]}
                             className={labStatusStyles[request.status]}
                         />
-                        <p className="mt-3 text-sm text-slate-500">زمان: {request.scheduledAt}</p>
-                        <div className="mt-4 flex flex-col gap-2">
-                            {actions.map((a) => (
-                                <button
-                                    key={a}
-                                    type="button"
-                                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-amber-50 hover:border-amber-200"
-                                >
-                                    {a}
-                                </button>
-                            ))}
+                        <p className="mt-3 text-sm text-slate-500">تاریخ: {request.scheduledDate}</p>
+
+                        <div className="mt-4">
+                            <label className="mb-1.5 block text-xs text-slate-500">تغییر وضعیت</label>
+                            <select
+                                value={request.status}
+                                onChange={(e) =>
+                                    updateRequestStatus(
+                                        request.id,
+                                        e.target.value as LabRequestStatus,
+                                        labStatusLabels[e.target.value as LabRequestStatus]
+                                    )
+                                }
+                                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
+                            >
+                                {labManageableStatuses.map((s) => (
+                                    <option key={s} value={s}>
+                                        {labStatusLabels[s]}
+                                    </option>
+                                ))}
+                                <option value="new">{labStatusLabels.new}</option>
+                                <option value="canceled">{labStatusLabels.canceled}</option>
+                            </select>
                         </div>
                     </div>
 
@@ -232,6 +316,20 @@ export function LabRequestDetailPage({ requestId }: { requestId: number }) {
                     </div>
                 </div>
             </div>
+
+            <AddLabResultModal
+                open={resultOpen}
+                onClose={() => setResultOpen(false)}
+                request={request}
+                onSubmit={async (payload) => {
+                    await addResult({
+                        requestId: request.id,
+                        status: payload.status,
+                        file: payload.file,
+                        notes: payload.notes,
+                    });
+                }}
+            />
         </div>
     );
 }
