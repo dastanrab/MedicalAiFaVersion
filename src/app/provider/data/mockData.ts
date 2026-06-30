@@ -96,9 +96,7 @@ export interface PharmacyRequest {
 export interface DrugInventoryItem {
     id: number;
     name: string;
-    stock: number;
     price: number;
-    lowStock: boolean;
 }
 
 export interface NursePersonnel {
@@ -393,14 +391,14 @@ export const mockPharmacyRequests: PharmacyRequest[] = [
 ];
 
 export const mockDrugInventory: DrugInventoryItem[] = [
-    { id: 1, name: 'آموکسی‌سیلین ۵۰۰', stock: 120, price: 85000, lowStock: false },
-    { id: 2, name: 'متفورمین ۵۰۰', stock: 45, price: 95000, lowStock: false },
-    { id: 3, name: 'لوزارتان ۵۰', stock: 8, price: 120000, lowStock: true },
-    { id: 4, name: 'استامینوفن ۵۰۰', stock: 200, price: 25000, lowStock: false },
-    { id: 5, name: 'ویتامین D', stock: 3, price: 45000, lowStock: true },
+    { id: 1, name: 'آموکسی‌سیلین ۵۰۰', price: 85000 },
+    { id: 2, name: 'متفورمین ۵۰۰', price: 95000 },
+    { id: 3, name: 'لوزارتان ۵۰', price: 120000 },
+    { id: 4, name: 'استامینوفن ۵۰۰', price: 25000 },
+    { id: 5, name: 'ویتامین D', price: 45000 },
 ];
 
-/** پایگاه مرجع دارو — برای جستجو هنگام افزودن به موجودی */
+/** پایگاه مرجع دارو — برای انتخاب عنوان هنگام افزودن به لیست */
 export const mockDrugDatabase: { name: string; defaultPrice: number }[] = [
     { name: 'آموکسی‌سیلین ۵۰۰', defaultPrice: 85000 },
     { name: 'متفورمین ۵۰۰', defaultPrice: 95000 },
