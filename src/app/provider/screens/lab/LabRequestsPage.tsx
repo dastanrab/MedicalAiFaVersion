@@ -1,40 +1,126 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { Eye, FileUp } from 'lucide-react';
 import {
     FilterSelect,
     SearchInput,
-    StatusBadge,
     PageHeader,
     EmptyState,
     formatPrice,
 } from '../../components';
 import { AddLabResultModal } from '../../components/AddLabResultModal';
 import { useLabStore } from '../../store/labStore';
+// مسیر این ایمپورت را بر اساس محل قرارگیری فایل استور احراز هویت تنظیم کنید
+import { useProviderSession } from '../../store/providerAuthStore';
 import {
     labStatusLabels,
-    labStatusStyles,
     labResultEligibleStatuses,
-    labManageableStatuses,
     type LabRequestStatus,
 } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
-import type { LabRequest } from '../../data/mockData';
+
+// تایپ پاسخ API
+interface ApiRequestItem {
+    request_id: number;
+    visit_type: number | null;
+    request_status: number;
+    total_price: string;
+    request_date: string;
+    user_id: number;
+    user_name: string;
+    user_phone: string;
+    prescription_type_id: number;
+    prescription_details: { code: string; files: string[] };
+    tests: Array<{
+        lab_request_id: number;
+        test_pack_id: number;
+        test_name: string;
+        test_price: string | null;
+    }>;
+}
 
 const statusFilterOptions = [
     { value: 'all', label: 'همه وضعیت‌ها' },
     ...Object.entries(labStatusLabels).map(([value, label]) => ({ value, label })),
 ];
 
+// تبدیل وضعیت دیتابیس به فرانت‌اند
+const mapApiStatusToLocal = (status: number): LabRequestStatus => {
+    switch (status) {
+        case 0: return 'new';
+        case 1: return 'accepted';
+        case 2: return 'in_progress';
+        case 3: return 'completed';
+        case 4: return 'cancelled';
+        default: return 'new';
+    }
+};
+
 export function LabRequestsPage() {
     const requests = useLabStore((s) => s.requests);
+    const setRequests = useLabStore((s) => s.setRequests);
     const updateRequestStatus = useLabStore((s) => s.updateRequestStatus);
     const addResult = useLabStore((s) => s.addResult);
 
+    // دریافت سشن مربوط به آزمایشگاه
+    const labSession = useProviderSession('lab');
+    const token = labSession?.token || '';
+
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState<string>('all');
     const [type, setType] = useState<string>('all');
-    const [resultRequest, setResultRequest] = useState<LabRequest | null>(null);
+    const [resultRequest, setResultRequest] = useState<any | null>(null);
+
+    useEffect(() => {
+        const fetchRequests = async () => {
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                setLoading(true);
+                const response = await fetch('http://185.222.163.113:7000/api/owner/lab/requests', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`, // استفاده از توکن استور
+                        'Accept': 'application/json'
+                    }
+                });
+                const result = await response.json();
+
+                if (result.status && result.data) {
+                    const mappedRequests = result.data.map((item: ApiRequestItem) => ({
+                        id: item.request_id,
+                        code: `REQ-${item.request_id}`,
+                        patientName: item.user_name || 'نامشخص',
+                        patientPhone: item.user_phone || '-',
+                        nationalCode: '-',
+                        tests: item.tests?.map(t => ({
+                            name: t.test_name,
+                            price: parseFloat(t.test_price || '0')
+                        })) || [],
+                        scheduledDate: item.request_date,
+                        totalPrice: parseFloat(item.total_price || '0'),
+                        type: item.visit_type === 0 ? 'home' : 'in_person',
+                        status: mapApiStatusToLocal(item.request_status),
+                        prescriptionType: item.prescription_type_id === 2 ? 'digital' : (item.prescription_type_id === 3 ? 'file' : 'none'),
+                        prescriptionCode: item.prescription_details?.code || '',
+                        prescriptionFiles: item.prescription_details?.files || [],
+                        timeline: [],
+                    }));
+
+                    setRequests(mappedRequests);
+                }
+            } catch (error) {
+                console.error("Error fetching requests:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRequests();
+    }, [setRequests, token]); // اضافه کردن token به وابستگی‌های useEffect
 
     const filtered = useMemo(() => {
         return requests.filter((r) => {
@@ -43,18 +129,22 @@ export function LabRequestsPage() {
             const q = search.trim();
             if (!q) return true;
             return (
-                r.patientName.includes(q) ||
-                r.nationalCode.includes(q) ||
-                r.code.includes(q)
+                r.patientName?.includes(q) ||
+                r.nationalCode?.includes(q) ||
+                r.code?.includes(q)
             );
         });
     }, [requests, search, status, type]);
+
+    if (loading) {
+        return <div className="flex h-40 items-center justify-center text-slate-500">در حال دریافت اطلاعات...</div>;
+    }
 
     return (
         <div className="space-y-6">
             <PageHeader title="درخواست‌های آزمایش" description="لیست، فیلتر و مدیریت درخواست‌ها" />
 
-            <div className="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <SearchInput value={search} onChange={setSearch} placeholder="نام، کد ملی، شماره درخواست..." />
                 <FilterSelect label="وضعیت" value={status} onChange={setStatus} options={statusFilterOptions} />
                 <FilterSelect
@@ -72,80 +162,81 @@ export function LabRequestsPage() {
             {filtered.length === 0 ? (
                 <EmptyState message="درخواستی یافت نشد." />
             ) : (
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <table className="w-full min-w-[800px] text-sm">
                         <thead className="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th className="px-4 py-3 text-right font-semibold">کد</th>
-                                <th className="px-4 py-3 text-right font-semibold">بیمار</th>
-                                <th className="px-4 py-3 text-right font-semibold">آزمایش‌ها</th>
-                                <th className="px-4 py-3 text-right font-semibold">تاریخ</th>
-                                <th className="px-4 py-3 text-right font-semibold">مبلغ</th>
-                                <th className="px-4 py-3 text-right font-semibold">نوع</th>
-                                <th className="px-4 py-3 text-right font-semibold">وضعیت</th>
-                                <th className="px-4 py-3 text-right font-semibold">عملیات</th>
-                            </tr>
+                        <tr>
+                            <th className="px-4 py-3 text-right font-semibold">کد</th>
+                            <th className="px-4 py-3 text-right font-semibold">بیمار</th>
+                            <th className="px-4 py-3 text-right font-semibold">آزمایش‌ها</th>
+                            <th className="px-4 py-3 text-right font-semibold">تاریخ</th>
+                            <th className="px-4 py-3 text-right font-semibold">مبلغ</th>
+                            <th className="px-4 py-3 text-right font-semibold">نوع</th>
+                            <th className="px-4 py-3 text-right font-semibold">وضعیت</th>
+                            <th className="px-4 py-3 text-right font-semibold">عملیات</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((r) => {
-                                const canAddResult = labResultEligibleStatuses.includes(r.status);
-                                return (
-                                    <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
-                                        <td className="px-4 py-3 font-mono text-xs">{r.code}</td>
-                                        <td className="px-4 py-3">
-                                            <p>{r.patientName}</p>
-                                            <p className="text-xs text-slate-400">{r.patientPhone}</p>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs">{r.tests.map((t) => t.name).join('، ')}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-500">{r.scheduledDate}</td>
-                                        <td className="px-4 py-3">{formatPrice(r.totalPrice)}</td>
-                                        <td className="px-4 py-3">{r.type === 'home' ? 'در منزل' : 'حضوری'}</td>
-                                        <td className="px-4 py-3">
-                                            <select
-                                                value={r.status}
-                                                onChange={(e) =>
-                                                    updateRequestStatus(
-                                                        r.id,
-                                                        e.target.value as LabRequestStatus,
-                                                        labStatusLabels[e.target.value as LabRequestStatus]
-                                                    )
-                                                }
-                                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+                        {filtered.map((r) => {
+                            const canAddResult = labResultEligibleStatuses.includes(r.status);
+                            return (
+                                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{r.code}</td>
+                                    <td className="px-4 py-3">
+                                        <p className="font-medium text-slate-800">{r.patientName}</p>
+                                        <p className="text-xs text-slate-400">{r.patientPhone}</p>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs leading-relaxed max-w-xs truncate">
+                                        {r.tests?.map((t) => t.name).join('، ')}
+                                    </td>
+                                    <td className="px-4 py-3 text-xs text-slate-500" dir="ltr">{r.scheduledDate}</td>
+                                    <td className="px-4 py-3">{formatPrice(r.totalPrice)}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+    <span className={`inline-flex rounded-full px-2 py-1 text-sm font-medium ${r.type === 'home' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700'}`}>
+        {r.type === 'home' ? 'در منزل' : 'حضوری'}
+    </span>
+                                    </td>
+
+                                    <td className="px-4 py-3">
+                                        <select
+                                            value={r.status}
+                                            onChange={(e) =>
+                                                updateRequestStatus(
+                                                    r.id,
+                                                    e.target.value as LabRequestStatus,
+                                                    labStatusLabels[e.target.value as LabRequestStatus]
+                                                )
+                                            }
+                                            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-amber-500"
+                                        >
+                                            {Object.entries(labStatusLabels).map(([val, label]) => (
+                                                <option key={val} value={val}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <Link
+                                                to={providerPath('lab', `requests/${r.id}`)}
+                                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
                                             >
-                                                {Object.entries(labStatusLabels).map(([val, label]) => (
-                                                    <option key={val} value={val}>
-                                                        {label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <Link
-                                                    to={providerPath('lab', `requests/${r.id}`)}
-                                                    className="inline-flex items-center gap-1 text-amber-600 hover:text-amber-800"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Link>
-                                                <button
-                                                    type="button"
-                                                    disabled={!canAddResult}
-                                                    onClick={() => setResultRequest(r)}
-                                                    title={
-                                                        canAddResult
-                                                            ? 'افزودن نتیجه آزمایش'
-                                                            : 'فقط برای وضعیت تأیید شده یا در حال آزمایش'
-                                                    }
-                                                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                >
-                                                    <FileUp className="h-3.5 w-3.5" />
-                                                    افزودن نتیجه
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                                                <Eye className="h-4 w-4" />
+                                                جزئیات
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                disabled={!canAddResult}
+                                                onClick={() => setResultRequest(r)}
+                                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                <FileUp className="h-4 w-4" />
+                                                نتیجه
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                         </tbody>
                     </table>
                 </div>
@@ -163,191 +254,9 @@ export function LabRequestsPage() {
                         file: payload.file,
                         notes: payload.notes,
                     });
+                    setResultRequest(null);
                 }}
             />
-        </div>
-    );
-}
-
-export function LabRequestDetailPage({ requestId }: { requestId: number }) {
-    const request = useLabStore((s) => s.requests.find((r) => r.id === requestId));
-    const updateRequestStatus = useLabStore((s) => s.updateRequestStatus);
-    const addResult = useLabStore((s) => s.addResult);
-    const [resultOpen, setResultOpen] = useState(false);
-
-    if (!request) {
-        return <EmptyState message="درخواست یافت نشد." />;
-    }
-
-    const canAddResult = labResultEligibleStatuses.includes(request.status);
-
-    return (
-        <div className="space-y-6">
-            <PageHeader
-                title={`درخواست ${request.code}`}
-                actions={
-                    <div className="flex items-center gap-2">
-                        {canAddResult && (
-                            <button
-                                type="button"
-                                onClick={() => setResultOpen(true)}
-                                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
-                            >
-                                <FileUp className="h-4 w-4" />
-                                افزودن نتیجه آزمایش
-                            </button>
-                        )}
-                        <Link to={providerPath('lab', 'requests')} className="text-sm text-slate-500 hover:text-slate-700">
-                            بازگشت به لیست
-                        </Link>
-                    </div>
-                }
-            />
-
-            <div className="grid gap-6 lg:grid-cols-3">
-                <div className="space-y-4 lg:col-span-2">
-                    <Section title="اطلاعات بیمار">
-                        <InfoRow label="نام" value={request.patientName} />
-                        <InfoRow label="موبایل" value={request.patientPhone} />
-                        <InfoRow label="کد ملی" value={request.nationalCode} />
-                        {request.insuranceNumber && (
-                            <InfoRow label="بیمه" value={request.insuranceNumber} />
-                        )}
-                    </Section>
-
-                    <Section title="نسخه">
-                        <InfoRow
-                            label="نوع"
-                            value={request.prescriptionType === 'digital' ? 'کد دیجیتال' : 'عکس نسخه'}
-                        />
-                        {request.prescriptionCode && (
-                            <InfoRow label="کد" value={request.prescriptionCode} />
-                        )}
-                    </Section>
-
-                    <Section title="آزمایش‌ها">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-slate-500">
-                                    <th className="pb-2 text-right font-medium">نام</th>
-                                    <th className="pb-2 text-right font-medium">قیمت</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {request.tests.map((t, i) => (
-                                    <tr key={i} className="border-t border-slate-100">
-                                        <td className="py-2">{t.name}</td>
-                                        <td className="py-2">{formatPrice(t.price)}</td>
-                                    </tr>
-                                ))}
-                                <tr className="border-t border-slate-200 font-semibold">
-                                    <td className="py-2">جمع</td>
-                                    <td className="py-2">{formatPrice(request.totalPrice)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </Section>
-
-                    {request.result && (
-                        <Section title="نتیجه ثبت‌شده">
-                            <InfoRow label="فایل" value={request.result.fileName} />
-                            {request.result.notes && (
-                                <InfoRow label="توضیحات" value={request.result.notes} />
-                            )}
-                            <InfoRow label="تاریخ آپلود" value={request.result.uploadedAt} />
-                        </Section>
-                    )}
-
-                    {request.address && (
-                        <Section title="آدرس">
-                            <p className="text-sm text-slate-600">{request.address}</p>
-                        </Section>
-                    )}
-
-                    {request.note && (
-                        <Section title="یادداشت بیمار">
-                            <p className="text-sm text-slate-600">{request.note}</p>
-                        </Section>
-                    )}
-                </div>
-
-                <div className="space-y-4">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <StatusBadge
-                            label={labStatusLabels[request.status]}
-                            className={labStatusStyles[request.status]}
-                        />
-                        <p className="mt-3 text-sm text-slate-500">تاریخ: {request.scheduledDate}</p>
-
-                        <div className="mt-4">
-                            <label className="mb-1.5 block text-xs text-slate-500">تغییر وضعیت</label>
-                            <select
-                                value={request.status}
-                                onChange={(e) =>
-                                    updateRequestStatus(
-                                        request.id,
-                                        e.target.value as LabRequestStatus,
-                                        labStatusLabels[e.target.value as LabRequestStatus]
-                                    )
-                                }
-                                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
-                            >
-                                {labManageableStatuses.map((s) => (
-                                    <option key={s} value={s}>
-                                        {labStatusLabels[s]}
-                                    </option>
-                                ))}
-                                <option value="new">{labStatusLabels.new}</option>
-                                <option value="canceled">{labStatusLabels.canceled}</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="mb-3 text-sm font-semibold text-slate-700">تاریخچه</p>
-                        <ol className="space-y-3">
-                            {request.timeline.map((e, i) => (
-                                <li key={i} className="text-sm">
-                                    <p className="font-medium text-slate-700">{e.label}</p>
-                                    <p className="text-xs text-slate-400">{e.at}</p>
-                                </li>
-                            ))}
-                        </ol>
-                    </div>
-                </div>
-            </div>
-
-            <AddLabResultModal
-                open={resultOpen}
-                onClose={() => setResultOpen(false)}
-                request={request}
-                onSubmit={async (payload) => {
-                    await addResult({
-                        requestId: request.id,
-                        status: payload.status,
-                        file: payload.file,
-                        notes: payload.notes,
-                    });
-                }}
-            />
-        </div>
-    );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="mb-3 text-sm font-semibold text-slate-700">{title}</p>
-            {children}
-        </div>
-    );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex justify-between gap-4 border-b border-slate-50 py-2 text-sm last:border-0">
-            <span className="text-slate-500">{label}</span>
-            <span className="font-medium text-slate-800">{value}</span>
         </div>
     );
 }

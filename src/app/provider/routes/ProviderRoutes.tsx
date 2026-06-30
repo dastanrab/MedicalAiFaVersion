@@ -3,7 +3,7 @@ import { ProviderLayoutShell } from '../layout/ProviderLayout';
 import type { ProviderRole } from '../config/providerNav';
 import { providerPath } from '../config/providerNav';
 import { LabDashboard } from '../screens/lab/LabDashboard';
-import { LabRequestsPage, LabRequestDetailPage } from '../screens/lab/LabRequestsPage';
+import {LabRequestsPage, LabRequestsPagee} from '../screens/lab/LabRequestsPage';
 import { LabCatalogPage } from '../screens/lab/LabCatalogPage';
 import { LabSchedulePage } from '../screens/lab/LabSchedulePage';
 import { LabHomeSamplingPage } from '../screens/lab/LabHomeSamplingPage';
@@ -30,6 +30,7 @@ import {
     ProviderAuthGate,
     ProviderPublicRoute,
 } from '../screens/ProviderLogin';
+import {LabRequestDetailPage} from "../screens/lab/LabRequestDetailPage";
 
 function LabRequestDetailRoute() {
     const { id } = useParams();

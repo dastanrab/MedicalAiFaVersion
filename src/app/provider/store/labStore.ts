@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
     mockLabCatalog,
-    mockLabRequests,
+    mockLabRequests, // اگر کلا به API وصل شده‌اید می‌توانید این را حذف کرده و مقدار اولیه requests را [] قرار دهید
     mockLabResults,
     type LabRequest,
     type LabRequestResult,
@@ -25,6 +25,9 @@ interface LabDataState {
     results: LabResult[];
     nextCatalogId: number;
     nextResultId: number;
+
+    // متد جدید برای جایگذاری کامل ریکوئست‌ها از سمت سرور
+    setRequests: (requests: LabRequest[]) => void;
 
     addCatalogItem: (input: LabCatalogInput) => LabTestCatalogItem;
     updateCatalogItem: (id: number, patch: Partial<LabCatalogInput>) => void;
@@ -55,10 +58,13 @@ export const useLabStore = create<LabDataState>()(
     persist(
         (set, get) => ({
             catalog: mockLabCatalog,
-            requests: mockLabRequests,
+            requests: mockLabRequests, // داده‌های پیش‌فرض که بعد از fetch جایگزین می‌شوند
             results: mockLabResults,
             nextCatalogId: Math.max(...mockLabCatalog.map((c) => c.id), 0) + 1,
             nextResultId: Math.max(...mockLabResults.map((r) => r.id), 0) + 1,
+
+            // پیاده‌سازی متد جدید
+            setRequests: (requests) => set({ requests }),
 
             addCatalogItem: (input) => {
                 const id = get().nextCatalogId;
@@ -87,16 +93,16 @@ export const useLabStore = create<LabDataState>()(
                     requests: s.requests.map((r) =>
                         r.id === id
                             ? {
-                                  ...r,
-                                  status,
-                                  timeline: [
-                                      ...r.timeline,
-                                      {
-                                          at: nowFa(),
-                                          label: label ?? `وضعیت: ${status}`,
-                                      },
-                                  ],
-                              }
+                                ...r,
+                                status,
+                                timeline: [
+                                    ...r.timeline,
+                                    {
+                                        at: nowFa(),
+                                        label: label ?? `وضعیت: ${status}`,
+                                    },
+                                ],
+                            }
                             : r
                     ),
                 })),
@@ -106,17 +112,17 @@ export const useLabStore = create<LabDataState>()(
                     requests: s.requests.map((r) =>
                         r.id === requestId
                             ? {
-                                  ...r,
-                                  status: newStatus,
-                                  result: {
-                                      ...result,
-                                      uploadedAt: result.uploadedAt ?? nowFa(),
-                                  },
-                                  timeline: [
-                                      ...r.timeline,
-                                      { at: nowFa(), label: 'نتیجه آزمایش ثبت شد' },
-                                  ],
-                              }
+                                ...r,
+                                status: newStatus,
+                                result: {
+                                    ...result,
+                                    uploadedAt: result.uploadedAt ?? nowFa(),
+                                },
+                                timeline: [
+                                    ...r.timeline,
+                                    { at: nowFa(), label: 'نتیجه آزمایش ثبت شد' },
+                                ],
+                            }
                             : r
                     ),
                 })),

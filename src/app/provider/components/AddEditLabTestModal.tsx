@@ -1,72 +1,108 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ProviderModal, ProviderFormField, inputClass } from './ProviderModal';
-import { labTestTitleOptions } from '../data/mockData';
-import type { LabTestCatalogItem } from '../data/mockData';
-import type { LabCatalogInput } from '../store/labStore';
 import { isPositiveNumber } from '../utils/validation';
+import {useProviderSession} from "../store/providerAuthStore";
+
+export interface ApiTestPack {
+    id: number;
+    name: string;
+}
+
+export interface LabTestPayload {
+    test_pack_id: number;
+    price: number;
+    status: number;
+    description: string;
+}
 
 interface AddEditLabTestModalProps {
     open: boolean;
     onClose: () => void;
-    onSubmit: (input: LabCatalogInput) => Promise<void>;
-    initial?: LabTestCatalogItem | null;
+    onSubmit: (payload: LabTestPayload) => Promise<void>;
+    initial?: any | null;
 }
 
 export function AddEditLabTestModal({ open, onClose, onSubmit, initial }: AddEditLabTestModalProps) {
-    const [titleKey, setTitleKey] = useState(labTestTitleOptions[0]?.value ?? '');
+    const labSession = useProviderSession('lab');
+
+    const [testPacks, setTestPacks] = useState<ApiTestPack[]>([]);
+    const [loadingPacks, setLoadingPacks] = useState(false);
+
+    const [testPackId, setTestPackId] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
-    const [active, setActive] = useState(true);
+    const [status, setStatus] = useState<number>(1);
+
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitError, setSubmitError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // دریافت لیست Test Packs هنگام باز شدن مودال
+    useEffect(() => {
+        if (open && testPacks.length === 0) {
+            const fetchTestPacks = async () => {
+                setLoadingPacks(true);
+                try {
+                    const res = await fetch('http://185.222.163.113:7000/api/owner/lab/test-packs', {
+                        headers: {
+                            'Authorization': `Bearer ${labSession?.token}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const json = await res.json();
+                    if (json.status) {
+                        setTestPacks(json.data);
+                    }
+                } catch (error) {
+                    console.error('Error fetching test packs:', error);
+                } finally {
+                    setLoadingPacks(false);
+                }
+            };
+            fetchTestPacks();
+        }
+    }, [open, labSession?.token, testPacks.length]);
+
+    // تنظیم مقادیر اولیه برای ویرایش یا افزودن
     useEffect(() => {
         if (!open) return;
         if (initial) {
-            const match = labTestTitleOptions.find((o) => o.label.startsWith(initial.name) || initial.name.includes(o.label.split('—')[0]?.trim() ?? ''));
-            setTitleKey(match?.value ?? labTestTitleOptions[0]?.value ?? '');
+            setTestPackId(String(initial.test_pack_id));
             setDescription(initial.description ?? '');
             setPrice(String(initial.price));
-            setActive(initial.active);
+            setStatus(initial.active ? 1 : 0);
         } else {
-            const first = labTestTitleOptions[0];
-            setTitleKey(first?.value ?? '');
+            setTestPackId('');
             setDescription('');
-            setPrice(first ? String(first.defaultPrice) : '');
-            setActive(true);
+            setPrice('');
+            setStatus(1); // پیش‌فرض فعال
         }
         setErrors({});
         setSubmitError('');
     }, [open, initial]);
 
-    const selectedOption = labTestTitleOptions.find((o) => o.value === titleKey);
-
     const validate = () => {
         const next: Record<string, string> = {};
-        if (!titleKey) next.title = 'انتخاب عنوان آزمایش الزامی است';
+        if (!testPackId) next.test_pack_id = 'انتخاب نوع آزمایش الزامی است';
         if (!isPositiveNumber(price)) next.price = 'نرخ آزمایش باید عدد مثبت باشد';
         if (description.trim().length > 500) next.description = 'توضیحات حداکثر ۵۰۰ کاراکتر';
+
         setErrors(next);
         return Object.keys(next).length === 0;
     };
 
     const handleSubmit = async () => {
         setSubmitError('');
-        if (!validate() || !selectedOption) return;
+        if (!validate()) return;
 
         setLoading(true);
         try {
-            const name = selectedOption.label.split('—')[0]?.trim() || selectedOption.label;
             await onSubmit({
-                name,
-                category: selectedOption.category,
+                test_pack_id: Number(testPackId),
                 price: Number(price.replace(/,/g, '')),
-                turnaround: '۲۴ ساعت',
-                fasting: false,
-                active,
-                description: description.trim() || undefined,
+                status: status,
+                description: description.trim(),
             });
             onClose();
         } catch (e) {
@@ -95,7 +131,7 @@ export function AddEditLabTestModal({ open, onClose, onSubmit, initial }: AddEdi
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={loading}
+                        disabled={loading || loadingPacks}
                         className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -105,23 +141,25 @@ export function AddEditLabTestModal({ open, onClose, onSubmit, initial }: AddEdi
             }
         >
             <div className="grid gap-4">
-                <ProviderFormField label="عنوان آزمایش" required error={errors.title}>
-                    <select
-                        className={inputClass}
-                        value={titleKey}
-                        onChange={(e) => {
-                            const key = e.target.value;
-                            setTitleKey(key);
-                            const opt = labTestTitleOptions.find((o) => o.value === key);
-                            if (opt && !initial) setPrice(String(opt.defaultPrice));
-                        }}
-                    >
-                        {labTestTitleOptions.map((o) => (
-                            <option key={o.value} value={o.value}>
-                                {o.label}
-                            </option>
-                        ))}
-                    </select>
+                <ProviderFormField label="نوع آزمایش (Test Pack)" required error={errors.test_pack_id}>
+                    <div className="relative">
+                        <select
+                            className={inputClass}
+                            value={testPackId}
+                            onChange={(e) => setTestPackId(e.target.value)}
+                            disabled={loadingPacks || !!initial} // در صورت ویرایش معمولاً نوع آزمایش ثابت می‌ماند
+                        >
+                            <option value="">انتخاب کنید...</option>
+                            {testPacks.map((pack) => (
+                                <option key={pack.id} value={pack.id}>
+                                    {pack.name}
+                                </option>
+                            ))}
+                        </select>
+                        {loadingPacks && (
+                            <Loader2 className="absolute left-3 top-3 h-4 w-4 animate-spin text-slate-400" />
+                        )}
+                    </div>
                 </ProviderFormField>
 
                 <ProviderFormField label="توضیحات آزمایش" error={errors.description}>
@@ -147,11 +185,11 @@ export function AddEditLabTestModal({ open, onClose, onSubmit, initial }: AddEdi
                 <ProviderFormField label="وضعیت">
                     <select
                         className={inputClass}
-                        value={active ? 'active' : 'inactive'}
-                        onChange={(e) => setActive(e.target.value === 'active')}
+                        value={status.toString()}
+                        onChange={(e) => setStatus(Number(e.target.value))}
                     >
-                        <option value="active">فعال</option>
-                        <option value="inactive">غیرفعال</option>
+                        <option value="1">فعال</option>
+                        <option value="0">غیرفعال</option>
                     </select>
                 </ProviderFormField>
             </div>

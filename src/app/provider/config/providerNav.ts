@@ -36,12 +36,12 @@ export const labNavItems: ProviderNavItem[] = [
     { label: 'درخواست‌های آزمایش', segment: 'requests', icon: ClipboardList },
     { label: 'کاتالوگ آزمایش‌ها', segment: 'catalog', icon: FlaskConical },
     { label: 'زمان‌بندی نمونه‌گیری', segment: 'schedule', icon: CalendarDays },
-    { label: 'نمونه‌گیری در منزل', segment: 'home-sampling', icon: Home },
+    //{ label: 'نمونه‌گیری در منزل', segment: 'home-sampling', icon: Home },
     { label: 'نتایج آزمایش', segment: 'results', icon: FileText },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات آزمایشگاه', segment: 'settings', icon: Settings },
-    { label: 'پشتیبانی', segment: 'support', icon: Headphones },
+    //{ label: 'پشتیبانی', segment: 'support', icon: Headphones },
 ];
 
 export const pharmacyNavItems: ProviderNavItem[] = [

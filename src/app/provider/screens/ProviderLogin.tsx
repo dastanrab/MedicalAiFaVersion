@@ -11,6 +11,7 @@ import {
     providerDefaultNames,
 } from '../config/providerTheme';
 import { useProviderAuthStore } from '../store/providerAuthStore';
+import { labAuthService } from '../services/labAuthService';
 
 /** کد OTP نمایشی — تا اتصال API واقعی؛ با طول تنظیم‌شده در پنل ادمین هماهنگ است */
 function mockOtpForLength(length: number): string {
@@ -59,15 +60,19 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
         setError('');
 
         try {
-            // آماده برای API — فعلاً mock
-            await new Promise((r) => setTimeout(r, 600));
-            setPendingOtp(mockOtpForLength(otpLength));
+            if (role === 'lab') {
+                await labAuthService.sendOtp(normalized);
+            } else {
+                // mock سایر رول‌ها
+                await new Promise((r) => setTimeout(r, 600));
+                setPendingOtp(mockOtpForLength(otpLength));
+            }
             setPhone(normalized);
             setStep('otp');
             setOtp('');
             setCooldown(resendCooldownSec);
-        } catch {
-            setError('خطا در ارسال کد تأیید');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'خطا در ارسال کد تأیید');
         } finally {
             setLoading(false);
         }
@@ -81,40 +86,62 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
         setError('');
 
         try {
-            await new Promise((r) => setTimeout(r, 500));
+            if (role === 'lab') {
+                const { token, user } = await labAuthService.verifyOtp(phone, otp);
 
-            if (otp !== pendingOtp) {
-                setError('کد تأیید نادرست است');
-                return;
+                // دریافت پروفایل کامل آزمایشگاه
+                let profileName = (user.name as string) ?? providerDefaultNames[role];
+                try {
+                    const profileRes = await labAuthService.getLabProfile(token);
+                    if (profileRes?.data?.name) {
+                        profileName = profileRes.data.name ?? providerDefaultNames[role];
+                    }
+                } catch {
+                    // اگه پروفایل دریافت نشد، از name توکن استفاده می‌کنیم
+                }
+
+                setAuth(role, token, {
+                    phone,
+                    name: profileName,
+                });
+            } else {
+                // mock سایر رول‌ها
+                await new Promise((r) => setTimeout(r, 500));
+                if (otp !== pendingOtp) {
+                    setError('کد تأیید نادرست است');
+                    return;
+                }
+                const mockToken = `provider-${role}-${Date.now()}`;
+                setAuth(role, mockToken, {
+                    phone,
+                    name: providerDefaultNames[role],
+                    ...(role === 'nurse' ? { nurseAccountType } : {}),
+                });
             }
-
-            const mockToken = `provider-${role}-${Date.now()}`;
-            const defaultName =
-                role === 'nurse' && nurseAccountType === 'company'
-                    ? 'شرکت پرستاری سلامت'
-                    : providerDefaultNames[role];
-            setAuth(role, mockToken, {
-                phone,
-                name: defaultName,
-                ...(role === 'nurse' ? { nurseAccountType } : {}),
-            });
             navigate(providerPath(role, 'dashboard'), { replace: true });
-        } catch {
-            setError('خطا در تأیید کد');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'خطا در تأیید کد');
         } finally {
             setLoading(false);
         }
     };
 
+// در resendOtp:
     const resendOtp = async () => {
         if (cooldown > 0) return;
         setLoading(true);
         setError('');
         try {
-            await new Promise((r) => setTimeout(r, 400));
-            setPendingOtp(mockOtpForLength(otpLength));
+            if (role === 'lab') {
+                await labAuthService.sendOtp(phone);
+            } else {
+                await new Promise((r) => setTimeout(r, 400));
+                setPendingOtp(mockOtpForLength(otpLength));
+            }
             setOtp('');
             setCooldown(resendCooldownSec);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'خطا در ارسال مجدد کد');
         } finally {
             setLoading(false);
         }

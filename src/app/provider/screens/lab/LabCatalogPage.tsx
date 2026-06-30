@@ -1,35 +1,111 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import { PageHeader, formatPrice } from '../../components';
-import { AddEditLabTestModal } from '../../components/AddEditLabTestModal';
-import { useLabStore } from '../../store/labStore';
-import type { LabTestCatalogItem } from '../../data/mockData';
+import {AddEditLabTestModal, LabTestPayload} from '../../components/AddEditLabTestModal';
+import {useProviderSession} from "../../store/providerAuthStore";
+
+// تعریف تایپ بر اساس خروجی API
+export interface ApiLabTest {
+    id: number;
+    test_pack_id: number;
+    price: string;
+    status: number;
+    description: string;
+    test_pack_name: string;
+}
 
 export function LabCatalogPage() {
-    const catalog = useLabStore((s) => s.catalog);
-    const addCatalogItem = useLabStore((s) => s.addCatalogItem);
-    const updateCatalogItem = useLabStore((s) => s.updateCatalogItem);
-    const toggleCatalogActive = useLabStore((s) => s.toggleCatalogActive);
+    const labSession = useProviderSession('lab');
+    const [tests, setTests] = useState<ApiLabTest[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState<LabTestCatalogItem | null>(null);
+    // برای ویرایش می‌توانید تایپ را با تایپ مودال خود هماهنگ کنید
+    const [editing, setEditing] = useState<any | null>(null);
+
+    const fetchTests = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('http://185.222.163.113:7000/api/owner/lab/tests', {
+                headers: {
+                    'Authorization': `Bearer ${labSession?.token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const json = await res.json();
+            if (json.status) {
+                setTests(json.data);
+            }
+        } catch (error) {
+            console.error('Error fetching tests:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (labSession?.token) {
+            fetchTests();
+        }
+    }, [labSession?.token]);
 
     const openAdd = () => {
         setEditing(null);
         setModalOpen(true);
     };
 
-    const openEdit = (item: LabTestCatalogItem) => {
-        setEditing(item);
+    const openEdit = (item: ApiLabTest) => {
+        // مپ کردن داده‌های API به ساختاری که مودال شما انتظار دارد
+        setEditing({
+            id: item.id,
+            name: item.test_pack_name,
+            price: Number(item.price),
+            active: item.status === 1,
+            description: item.description,
+            test_pack_id: item.test_pack_id
+        });
         setModalOpen(true);
     };
 
-    const handleSubmit = async (input: Parameters<typeof addCatalogItem>[0]) => {
-        if (editing) {
-            updateCatalogItem(editing.id, input);
-        } else {
-            addCatalogItem(input);
+    // درون کامپوننت LabCatalogPage
+
+    const handleSubmit = async (payload: LabTestPayload) => {
+        try {
+            const url = editing
+                ? `http://185.222.163.113:7000/api/owner/lab/tests/${editing.id}` // مسیر آپدیت (PUT)
+                : 'http://185.222.163.113:7000/api/owner/lab/tests'; // مسیر ذخیره (POST)
+
+            const method = editing ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${labSession?.token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const json = await res.json();
+
+            if (json.status) {
+                // بستن مودال و رفرش لیست
+                setModalOpen(false);
+                fetchTests();
+            } else {
+                // مدیریت خطای ولیدیشن (مثلا خطای ۴۲۲)
+                throw new Error(json.message || 'خطا در ذخیره اطلاعات');
+            }
+        } catch (error: any) {
+            throw new Error(error.message); // پرتاب خطا به مودال برای نمایش به کاربر
         }
+    };
+
+
+    const toggleStatus = async (id: number, currentStatus: number) => {
+        // اینجا باید API مربوط به تغییر وضعیت را صدا بزنید
+        console.log('Toggle status for', id, 'to', currentStatus === 1 ? 0 : 1);
     };
 
     return (
@@ -52,39 +128,52 @@ export function LabCatalogPage() {
             <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                 <table className="w-full min-w-[640px] text-sm">
                     <thead className="bg-slate-50 text-slate-600">
-                        <tr>
-                            <th className="px-4 py-3 text-right font-semibold">نام</th>
-                            <th className="px-4 py-3 text-right font-semibold">دسته</th>
-                            <th className="px-4 py-3 text-right font-semibold">نرخ</th>
-                            <th className="px-4 py-3 text-right font-semibold">زمان نتیجه</th>
-                            <th className="px-4 py-3 text-right font-semibold">وضعیت</th>
-                            <th className="px-4 py-3 text-right font-semibold">عملیات</th>
-                        </tr>
+                    <tr>
+                        <th className="px-4 py-3 text-right font-semibold">نام</th>
+                        <th className="px-4 py-3 text-right font-semibold">نرخ</th>
+                        <th className="px-4 py-3 text-right font-semibold">وضعیت</th>
+                        <th className="px-4 py-3 text-right font-semibold">عملیات</th>
+                    </tr>
                     </thead>
                     <tbody>
-                        {catalog.map((item) => (
+                    {loading ? (
+                        <tr>
+                            <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                                در حال بارگذاری...
+                            </td>
+                        </tr>
+                    ) : tests.length === 0 ? (
+                        <tr>
+                            <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                                آزمایشی یافت نشد.
+                            </td>
+                        </tr>
+                    ) : (
+                        tests.map((item) => (
                             <tr key={item.id} className="border-t border-slate-100">
                                 <td className="px-4 py-3">
-                                    <p className="font-medium">{item.name}</p>
+                                    <p className="font-medium">{item.test_pack_name}</p>
                                     {item.description && (
-                                        <p className="text-xs text-slate-400">{item.description}</p>
+                                        <p className="text-xs text-slate-400 mt-1 max-w-md truncate">
+                                            {item.description}
+                                        </p>
                                     )}
                                 </td>
-                                <td className="px-4 py-3">{item.category}</td>
-                                <td className="px-4 py-3">{formatPrice(item.price)}</td>
-                                <td className="px-4 py-3">{item.turnaround}</td>
-                                <td className="px-4 py-3">
-                                    <span
-                                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                            item.active
-                                                ? 'bg-emerald-50 text-emerald-700'
-                                                : 'bg-slate-100 text-slate-500'
-                                        }`}
-                                    >
-                                        {item.active ? 'فعال' : 'غیرفعال'}
-                                    </span>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                    {formatPrice(Number(item.price))}
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                        <span
+                                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                item.status === 1
+                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                    : 'bg-slate-100 text-slate-500'
+                                            }`}
+                                        >
+                                            {item.status === 1 ? 'فعال' : 'غیرفعال'}
+                                        </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
                                     <div className="flex items-center gap-3">
                                         <button
                                             type="button"
@@ -96,15 +185,16 @@ export function LabCatalogPage() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => toggleCatalogActive(item.id)}
+                                            onClick={() => toggleStatus(item.id, item.status)}
                                             className="text-xs text-slate-500 hover:text-amber-600"
                                         >
-                                            {item.active ? 'غیرفعال' : 'فعال'}
+                                            {item.status === 1 ? 'غیرفعال' : 'فعال'}
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                        ))
+                    )}
                     </tbody>
                 </table>
             </div>
