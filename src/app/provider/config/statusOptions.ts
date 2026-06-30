@@ -87,3 +87,33 @@ export const nurseStatusStyles: Record<NurseRequestStatus, string> = {
     completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
     canceled: 'bg-red-50 text-red-700 ring-red-600/20',
 };
+
+export type DoctorAppointmentStatus = 'scheduled' | 'in_progress' | 'completed' | 'canceled';
+export type DoctorAppointmentFilter = 'today' | 'upcoming' | 'completed' | 'canceled';
+export type DoctorConsultationStatus = 'active' | 'pending' | 'closed';
+
+export const doctorAppointmentStatusLabels: Record<DoctorAppointmentStatus, string> = {
+    scheduled: 'رزرو شده',
+    in_progress: 'در حال ویزیت',
+    completed: 'انجام شده',
+    canceled: 'لغو شده',
+};
+
+export const doctorAppointmentStatusStyles: Record<DoctorAppointmentStatus, string> = {
+    scheduled: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    in_progress: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    canceled: 'bg-red-50 text-red-700 ring-red-600/20',
+};
+
+export const doctorConsultationStatusLabels: Record<DoctorConsultationStatus, string> = {
+    active: 'فعال',
+    pending: 'در انتظار',
+    closed: 'بسته شده',
+};
+
+export const doctorConsultationStatusStyles: Record<DoctorConsultationStatus, string> = {
+    active: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    closed: 'bg-slate-100 text-slate-600 ring-slate-500/20',
+};

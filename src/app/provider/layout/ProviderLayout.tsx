@@ -12,6 +12,7 @@ import {
 import { providerRoleLabels, providerThemes, providerDefaultNames } from '../config/providerTheme';
 import { mockNotifications } from '../data/mockData';
 import { useProviderAuthStore, useNurseAccountType } from '../store/providerAuthStore';
+import { useDoctorAuthStore } from '../doctor/store/doctorAuthStore';
 
 function useNavItems(role: ProviderRole): ProviderNavItem[] {
     const nurseAccountType = useNurseAccountType();
@@ -31,7 +32,11 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
     const base = providerBasePath(role);
 
     const session = useProviderAuthStore((s) => s.sessions[role]);
-    const profileName = session?.user.name ?? providerDefaultNames[role];
+    const doctor = useDoctorAuthStore((s) => s.doctor);
+    const profileName =
+        role === 'doctor'
+            ? (doctor?.name ?? providerDefaultNames[role])
+            : (session?.user.name ?? providerDefaultNames[role]);
 
     return (
         <aside className="flex h-full w-72 flex-shrink-0 flex-col bg-slate-900 text-slate-300">
@@ -43,7 +48,14 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
                 </div>
                 <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-white">{profileName}</p>
-                    <p className="truncate text-xs text-slate-500">{providerRoleLabels[role]}</p>
+                    <p className="truncate text-xs text-slate-500">
+                        {providerRoleLabels[role]}
+                        {role === 'doctor' && (
+                            <span className="mr-1.5 inline-flex rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
+                                doctor
+                            </span>
+                        )}
+                    </p>
                 </div>
             </div>
 
@@ -55,7 +67,11 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
                             location.pathname === path ||
                             (item.segment === 'requests' &&
                                 location.pathname.startsWith(`${base}/requests`)) ||
-                            (item.segment === 'calendar' && location.pathname.includes('/calendar'));
+                            (item.segment === 'calendar' && location.pathname.includes('/calendar')) ||
+                            (item.segment === 'appointments' &&
+                                location.pathname.startsWith(`${base}/appointments`)) ||
+                            (item.segment === 'patients' &&
+                                location.pathname.startsWith(`${base}/patients`));
                         const Icon = item.icon;
                         return (
                             <li key={item.segment}>
@@ -78,7 +94,12 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
             </nav>
 
             <div className="border-t border-white/5 px-6 py-4">
-                {session?.user.phone && (
+                {role === 'doctor' && doctor?.email && (
+                    <p className="text-xs text-slate-500" dir="ltr">
+                        {doctor.email}
+                    </p>
+                )}
+                {role !== 'doctor' && session?.user.phone && (
                     <p className="text-xs text-slate-500" dir="ltr">
                         {session.user.phone}
                     </p>
@@ -95,15 +116,26 @@ interface ProviderNavbarProps {
 export function ProviderNavbar({ role }: ProviderNavbarProps) {
     const location = useLocation();
     const navItems = useNavItems(role);
-    const logout = useProviderAuthStore((s) => s.logout);
+    const logoutProvider = useProviderAuthStore((s) => s.logout);
+    const logoutDoctor = useDoctorAuthStore((s) => s.logout);
     const unread = mockNotifications.filter((n) => !n.read).length;
+
+    const logout = () => {
+        if (role === 'doctor') {
+            logoutDoctor();
+        } else {
+            logoutProvider(role);
+        }
+    };
 
     const current = navItems.find((item) => {
         const path = providerPath(role, item.segment);
         return (
             location.pathname === path ||
             (item.segment === 'requests' && location.pathname.includes('/requests')) ||
-            (item.segment === 'calendar' && location.pathname.includes('/calendar'))
+            (item.segment === 'calendar' && location.pathname.includes('/calendar')) ||
+            (item.segment === 'appointments' && location.pathname.includes('/appointments')) ||
+            (item.segment === 'patients' && location.pathname.includes('/patients'))
         );
     });
 
@@ -125,7 +157,7 @@ export function ProviderNavbar({ role }: ProviderNavbarProps) {
                 </button>
                 <button
                     type="button"
-                    onClick={() => logout(role)}
+                    onClick={() => logout()}
                     title="خروج از حساب"
                     className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                 >

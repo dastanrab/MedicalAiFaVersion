@@ -1,11 +1,12 @@
 import type { ProviderRole } from './providerNav';
 import type { LucideIcon } from 'lucide-react';
-import { FlaskConical, Pill, HeartPulse } from 'lucide-react';
+import { FlaskConical, Pill, HeartPulse, Stethoscope } from 'lucide-react';
 
 export const providerRoleLabels: Record<ProviderRole, string> = {
     lab: 'آزمایشگاه',
     pharmacy: 'داروخانه',
     nurse: 'پرستار در منزل',
+    doctor: 'پزشک',
 };
 
 export const providerThemes: Record<
@@ -32,6 +33,13 @@ export const providerThemes: Record<
         sidebar: 'from-rose-500/20 to-pink-500/10 ring-rose-500/20',
         ring: 'ring-rose-500/20',
         badge: 'bg-rose-100 text-rose-700',
+    },
+    doctor: {
+        accent: 'text-blue-600',
+        accentLight: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+        sidebar: 'from-blue-500/20 to-sky-500/10 ring-blue-500/20',
+        ring: 'ring-blue-500/20',
+        badge: 'bg-blue-100 text-blue-700',
     },
 };
 
@@ -117,10 +125,31 @@ export const providerLoginThemes: Record<ProviderRole, ProviderLoginTheme> = {
         loginImage: '/provider/login-nurse.jpg',
         imageOverlay: 'bg-gradient-to-br from-rose-900/80 via-pink-900/70 to-slate-900/85',
     },
+    doctor: {
+        icon: Stethoscope,
+        brandGradient: 'from-blue-500 via-sky-600 to-slate-900',
+        blurPrimary: 'bg-blue-400/30',
+        blurSecondary: 'bg-sky-500/20',
+        iconRing: 'ring-blue-200',
+        iconColor: 'text-blue-600',
+        iconBg: 'bg-blue-50',
+        buttonGradient: 'from-blue-500 to-sky-600',
+        buttonShadow: 'shadow-blue-600/20',
+        focusBorder: 'focus:border-blue-500',
+        focusRing: 'focus:ring-blue-500/20',
+        headline: 'پنل پزشک',
+        description: 'مدیریت نوبت‌ها، بیماران، نسخه‌ها و مشاوره‌های پزشکی از یک داشبورد یکپارچه.',
+        loginTitle: 'ورود پنل پزشک',
+        loginSubtitle: 'ایمیل و رمز عبور حساب پزشک را وارد کنید',
+        footerNote: 'این بخش مخصوص پزشکان همکار است.',
+        loginImage: '/provider/login-doctor.jpg',
+        imageOverlay: 'bg-gradient-to-br from-blue-900/80 via-sky-900/70 to-slate-900/85',
+    },
 };
 
 export const providerDefaultNames: Record<ProviderRole, string> = {
     lab: 'آزمایشگاه پارس',
     pharmacy: 'داروخانه سلامت',
     nurse: 'زهرا موسوی',
+    doctor: 'دکتر سارا احمدی',
 };

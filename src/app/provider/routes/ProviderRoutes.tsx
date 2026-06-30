@@ -31,6 +31,22 @@ import {
     ProviderPublicRoute,
 } from '../screens/ProviderLogin';
 import {LabRequestDetailPage} from "../screens/lab/LabRequestDetailPage";
+import {
+    DoctorLoginPage,
+    DoctorAuthGate,
+    DoctorPublicRoute,
+} from '../doctor/screens/DoctorLoginPage';
+import { DoctorDashboardPage } from '../doctor/screens/DoctorDashboardPage';
+import { DoctorAppointmentsPage } from '../doctor/screens/DoctorAppointmentsPage';
+import { DoctorAppointmentDetailPage } from '../doctor/screens/DoctorAppointmentDetailPage';
+import { DoctorPatientsPage } from '../doctor/screens/DoctorPatientsPage';
+import { DoctorPatientDetailPage } from '../doctor/screens/DoctorPatientDetailPage';
+import { DoctorSchedulePage } from '../doctor/screens/DoctorSchedulePage';
+import { DoctorConsultationsPage } from '../doctor/screens/DoctorConsultationsPage';
+import { DoctorPrescriptionsPage } from '../doctor/screens/DoctorPrescriptionsPage';
+import { DoctorFinancePage } from '../doctor/screens/DoctorFinancePage';
+import { DoctorReviewsPage } from '../doctor/screens/DoctorReviewsPage';
+import { DoctorSettingsPage } from '../doctor/screens/DoctorSettingsPage';
 
 function LabRequestDetailRoute() {
     const { id } = useParams();
@@ -45,6 +61,16 @@ function PharmacyRequestDetailRoute() {
 function NurseRequestDetailRoute() {
     const { id } = useParams();
     return <NurseRequestDetailPage requestId={Number(id)} />;
+}
+
+function DoctorAppointmentDetailRoute() {
+    const { id } = useParams();
+    return <DoctorAppointmentDetailPage appointmentId={Number(id)} />;
+}
+
+function DoctorPatientDetailRoute() {
+    const { id } = useParams();
+    return <DoctorPatientDetailPage patientId={Number(id)} />;
 }
 
 function SharedFinance({ role }: { role: ProviderRole }) {
@@ -95,6 +121,26 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
         );
     }
 
+    if (role === 'doctor') {
+        return (
+            <Routes>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<DoctorDashboardPage />} />
+                <Route path="appointments" element={<DoctorAppointmentsPage />} />
+                <Route path="appointments/:id" element={<DoctorAppointmentDetailRoute />} />
+                <Route path="patients" element={<DoctorPatientsPage />} />
+                <Route path="patients/:id" element={<DoctorPatientDetailRoute />} />
+                <Route path="schedule" element={<DoctorSchedulePage />} />
+                <Route path="consultations" element={<DoctorConsultationsPage />} />
+                <Route path="prescriptions" element={<DoctorPrescriptionsPage />} />
+                <Route path="finance" element={<DoctorFinancePage />} />
+                <Route path="reviews" element={<DoctorReviewsPage />} />
+                <Route path="settings" element={<DoctorSettingsPage />} />
+                <Route path="*" element={<Navigate to="dashboard" replace />} />
+            </Routes>
+        );
+    }
+
     return (
         <Routes>
             <Route index element={<Navigate to="dashboard" replace />} />
@@ -124,6 +170,14 @@ function ProviderRoleLayout({ role }: { role: ProviderRole }) {
 }
 
 function ProtectedRolePanel({ role }: { role: ProviderRole }) {
+    if (role === 'doctor') {
+        return (
+            <DoctorAuthGate>
+                <ProviderRoleLayout role={role} />
+            </DoctorAuthGate>
+        );
+    }
+
     return (
         <ProviderAuthGate role={role}>
             <ProviderRoleLayout role={role} />
@@ -163,6 +217,16 @@ export function ProviderRoutes() {
                 }
             />
             <Route path="nurse/*" element={<ProtectedRolePanel role="nurse" />} />
+
+            <Route
+                path="doctor/login"
+                element={
+                    <DoctorPublicRoute>
+                        <DoctorLoginPage />
+                    </DoctorPublicRoute>
+                }
+            />
+            <Route path="doctor/*" element={<ProtectedRolePanel role="doctor" />} />
 
             <Route index element={<Navigate to={providerPath('lab', 'login')} replace />} />
         </Routes>

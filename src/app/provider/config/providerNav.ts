@@ -20,7 +20,9 @@ import {
     type LucideIcon,
 } from 'lucide-react';
 
-export type ProviderRole = 'lab' | 'pharmacy' | 'nurse';
+import { doctorNavItems } from '../doctor/config/doctorNav';
+
+export type ProviderRole = 'lab' | 'pharmacy' | 'nurse' | 'doctor';
 export type NurseAccountType = 'individual' | 'company';
 
 export interface ProviderNavItem {
@@ -80,6 +82,7 @@ export const providerNavByRole: Record<ProviderRole, ProviderNavItem[]> = {
     lab: labNavItems,
     pharmacy: pharmacyNavItems,
     nurse: nurseNavItems,
+    doctor: doctorNavItems,
 };
 
 export function providerBasePath(role: ProviderRole) {
