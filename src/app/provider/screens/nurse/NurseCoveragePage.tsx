@@ -1,28 +1,116 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { PageHeader } from '../../components';
-import { mockNurseProfile } from '../../data/mockData';
+import {useProviderSession} from "../../store/providerAuthStore";
 
-const areas = [
-    'نیاوران',
-    'جماران',
-    'ولنجک',
-    'اقدسیه',
-    'زعفرانیه',
-    'سعادت‌آباد',
-    'شهرک غرب',
-];
 
-export function NurseCoveragePage() {
-    const [coverage, setCoverage] = useState(mockNurseProfile.coverage);
-    const [radius, setRadius] = useState(8);
-    const [selectedAreas, setSelectedAreas] = useState<string[]>(['نیاوران', 'جماران', 'ولنجک', 'اقدسیه']);
+// تعریف تایپ برای مناطق درایفتی از سرور
+interface Region {
+    id: number;
+    name: string;
+}
 
-    const toggleArea = (area: string) => {
+export default function NurseCoveragePage() {
+    const { token } = useProviderSession('nurse');
+
+    // استیت‌های مقادیر فرم
+    const [coverage, setCoverage] = useState('');
+    const [radius, setRadius] = useState(8); // فعلا فقط نمایشی
+    const [selectedAreas, setSelectedAreas] = useState<number[]>([]); // ذخیره بر اساس ID منطقه
+
+    // استیت‌های دیتای پایه و وضعیت‌ها
+    const [availableRegions, setAvailableRegions] = useState<Region[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const BASE_URL = 'http://185.222.163.113:7000/api/owner/medical-center/coverage';
+
+    // دریافت اطلاعات اولیه (تنظیمات فعلی + لیست مناطق)
+    useEffect(() => {
+        if (!token) return;
+
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                // 1. دریافت لیست مناطق (مثلا شهر تهران = 1)
+                const regionsRes = await fetch(`${BASE_URL}/regions?city_id=1`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                const regionsData = await regionsRes.json();
+                if (regionsData.status) {
+                    setAvailableRegions(regionsData.data);
+                    console.log(availableRegions,'available')
+                }
+
+                // 2. دریافت تنظیمات پوشش فعلی مرکز
+                const coverageRes = await fetch(BASE_URL, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                const coverageData = await coverageRes.json();
+
+                if (coverageData.success) {
+                    // مقداردهی استیت‌ها از دیتابیس
+                    setCoverage(coverageData.data.coverage_description || '');
+                    setSelectedAreas(coverageData.data.selectedAreaIds || []);
+                    // اگر می‌خواهید شعاع هم از دیتابیس لود شود این خط را از کامنت خارج کنید:
+                    // if (coverageData.data.coverage_radius) setRadius(coverageData.data.coverage_radius);
+                }
+            } catch (error) {
+                console.error("خطا در دریافت اطلاعات:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [token]);
+
+    const toggleArea = (id: number) => {
         setSelectedAreas((prev) =>
-            prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]
+            prev.includes(id) ? prev.filter((areaId) => areaId !== id) : [...prev, id]
         );
     };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const response = await fetch(BASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    coverage_description: coverage,
+                    selectedAreaIds: selectedAreas
+                    // شعاع در اینجا ارسال نمی‌شود (طبق درخواست شما، فعلا نمایشی است)
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('تنظیمات با موفقیت ذخیره شد.');
+            } else {
+                alert(result.message || 'خطا در ذخیره‌سازی');
+            }
+        } catch (error) {
+            console.error("خطا در ذخیره اطلاعات:", error);
+            alert('خطا در ارتباط با سرور');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (isLoading) {
+        return <div className="p-6 text-center text-slate-500">در حال بارگذاری اطلاعات...</div>;
+    }
 
     return (
         <div className="space-y-6">
@@ -36,11 +124,12 @@ export function NurseCoveragePage() {
                             value={coverage}
                             onChange={(e) => setCoverage(e.target.value)}
                             className="rounded-xl border border-slate-200 px-3 py-2"
+                            placeholder="مثلا: سراسر مناطق شمال تهران"
                         />
                     </label>
 
                     <label className="flex flex-col gap-1 text-sm">
-                        <span className="text-slate-500">شعاع (کیلومتر)</span>
+                        <span className="text-slate-500">شعاع (کیلومتر) - فقط نمایشی</span>
                         <input
                             type="range"
                             min={3}
@@ -54,33 +143,43 @@ export function NurseCoveragePage() {
 
                     <div>
                         <p className="mb-2 text-sm font-medium text-slate-700">انتخاب مناطق</p>
-                        <div className="flex flex-wrap gap-2">
-                            {areas.map((area) => (
+                        <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-slate-100 rounded-xl bg-slate-50">
+                            {availableRegions.map((region) => (
                                 <button
-                                    key={area}
+                                    key={region.id}
                                     type="button"
-                                    onClick={() => toggleArea(area)}
-                                    className={`rounded-full px-3 py-1 text-xs font-medium ${
-                                        selectedAreas.includes(area)
+                                    onClick={() => toggleArea(region.id)}
+                                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                        selectedAreas.includes(region.id)
                                             ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-200'
-                                            : 'bg-slate-100 text-slate-500'
+                                            : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100'
                                     }`}
                                 >
-                                    {area}
+                                    {region.name}
                                 </button>
                             ))}
+                            {availableRegions.length === 0 && (
+                                <span className="text-xs text-slate-500">منطقه‌ای یافت نشد.</span>
+                            )}
                         </div>
                     </div>
 
-                    <button type="button" className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-medium text-white">
-                        ذخیره محدوده
+                    <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className={`w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-colors ${
+                            isSaving ? 'bg-rose-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'
+                        }`}
+                    >
+                        {isSaving ? 'در حال ذخیره...' : 'ذخیره محدوده'}
                     </button>
                 </div>
 
                 <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-rose-200 bg-rose-50/30 p-8 text-center">
                     <MapPin className="h-12 w-12 text-rose-500" />
                     <p className="mt-4 text-sm font-medium text-slate-700">نقشه محدوده (نمایشی)</p>
-                    <p className="mt-2 text-xs text-slate-500">{coverage}</p>
+                    <p className="mt-2 text-xs text-slate-500">{coverage || 'بدون توضیحات'}</p>
                     <p className="mt-4 text-xs text-rose-600">
                         {selectedAreas.length} منطقه انتخاب شده — شعاع {radius}km
                     </p>

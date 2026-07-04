@@ -62,7 +62,6 @@ export const nurseNavItems: ProviderNavItem[] = [
     { label: 'داشبورد', segment: 'dashboard', icon: LayoutDashboard },
     { label: 'تقویم درخواست‌ها', segment: 'calendar', icon: CalendarDays },
     { label: 'لیست درخواست‌ها', segment: 'requests', icon: ClipboardList },
-    { label: 'برنامه زمانی من', segment: 'schedule', icon: Clock },
     { label: 'محدوده خدمت‌رسانی', segment: 'coverage', icon: Map },
     { label: 'پرسنل', segment: 'personnel', icon: Users, nurseAccountTypes: ['company'] },
     { label: 'خدمات درمانی', segment: 'services', icon: Stethoscope, nurseAccountTypes: ['company'] },

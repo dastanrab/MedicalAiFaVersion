@@ -12,6 +12,7 @@ import {
 } from '../config/providerTheme';
 import { useProviderAuthStore } from '../store/providerAuthStore';
 import { labAuthService } from '../services/labAuthService';
+import { medicalCenterAuthService } from '../services/medicalCenterAuthService';
 
 /** کد OTP نمایشی — تا اتصال API واقعی؛ با طول تنظیم‌شده در پنل ادمین هماهنگ است */
 function mockOtpForLength(length: number): string {
@@ -62,6 +63,9 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
         try {
             if (role === 'lab') {
                 await labAuthService.sendOtp(normalized);
+            }
+            else if (role === 'nurse') {
+                await medicalCenterAuthService.sendOtp(normalized);
             } else {
                 // mock سایر رول‌ها
                 await new Promise((r) => setTimeout(r, 600));
@@ -104,6 +108,23 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                     phone,
                     name: profileName,
                 });
+            }else if (role === 'nurse') {
+                const { token, user } = await medicalCenterAuthService.verifyOtp(phone, otp);
+
+                let profileName = (user.name as string) ?? providerDefaultNames[role];
+                try {
+                    const profileRes = await medicalCenterAuthService.getMedicalCenterProfile(token);
+                    if (profileRes?.data?.name) {
+                        profileName = profileRes.data.name ?? providerDefaultNames[role];
+                    }
+                } catch {
+                    // اگه پروفایل دریافت نشد، از name توکن استفاده می‌کنیم
+                }
+
+                setAuth(role, token, {
+                    phone,
+                    name: profileName,
+                });
             } else {
                 // mock سایر رول‌ها
                 await new Promise((r) => setTimeout(r, 500));
@@ -134,6 +155,8 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
         try {
             if (role === 'lab') {
                 await labAuthService.sendOtp(phone);
+            }else if (role === 'nurse') {
+                await medicalCenterAuthService.sendOtp(phone);
             } else {
                 await new Promise((r) => setTimeout(r, 400));
                 setPendingOtp(mockOtpForLength(otpLength));

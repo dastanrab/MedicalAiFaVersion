@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { ArrowDownUp, Eye, Loader2 } from 'lucide-react';
 import {
     FilterSelect,
@@ -11,8 +11,6 @@ import {
     formatPrice,
 } from '../../components';
 import { ProviderPagination } from '../../components/ProviderPagination';
-import { useNurseStore } from '../../store/nurseStore';
-import { fetchNurseRequests } from '../../services/nurseApi';
 import {
     nurseStatusLabels,
     nurseStatusStyles,
@@ -22,7 +20,12 @@ import { providerPath } from '../../config/providerNav';
 import { nurseServiceLabels } from '../../data/mockData';
 import type { NurseRequest } from '../../data/mockData';
 
+// استور احراز هویت را ایمپورت کنید
+import { useProviderSession } from '../../store/providerAuthStore';
+
 const PAGE_SIZE = 8;
+const API_BASE_URL = 'http://185.222.163.113:7000/api/owner/medical-center';
+const MEDICAL_CENTER_ID = 1; // این مقدار را بر اساس اطلاعات کاربر لاگین شده تغییر دهید
 
 const statusOptions = [
     { value: 'all', label: 'همه' },
@@ -35,6 +38,10 @@ const serviceOptions = [
 ];
 
 export function NurseRequestsPage() {
+    // دریافت سشن (مقدار 'nurse' یا 'medicalCenter' را بسته به پیاده‌سازی خودتان تنظیم کنید)
+    const session = useProviderSession('nurse');
+    const token = session?.token || '';
+
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('all');
     const [serviceType, setServiceType] = useState('all');
@@ -52,25 +59,45 @@ export function NurseRequestsPage() {
     }>({ items: [], total: 0, totalPages: 1 });
 
     const load = useCallback(async () => {
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
-            const res = await fetchNurseRequests({
-                page,
-                pageSize: PAGE_SIZE,
+            const queryParams = new URLSearchParams({
+                medical_center_id: String(MEDICAL_CENTER_ID),
+                page: String(page),
+                pageSize: String(PAGE_SIZE),
                 sortOrder,
-                search,
-                status: status as NurseRequestStatus | 'all',
-                serviceType,
-                patientName,
-                patientPhone,
-                dateFrom: dateFrom || undefined,
-                dateTo: dateTo || undefined,
+                ...(search && { search }),
+                ...(status !== 'all' && { status }),
+                ...(patientName && { patientName }),
+                ...(patientPhone && { patientPhone }),
+                ...(dateFrom && { dateFrom }),
+                ...(dateTo && { dateTo }),
+                ...(serviceType !== 'all' && { serviceType }),
             });
-            setResult({ items: res.items, total: res.total, totalPages: res.totalPages });
+
+            // افزودن هدر برای توکن
+            const res = await fetch(`${API_BASE_URL}/requests?${queryParams}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const json = await res.json();
+
+            if (json.success) {
+                setResult(json.data);
+            }
+        } catch (error) {
+            console.error("خطا در دریافت لیست:", error);
         } finally {
             setLoading(false);
         }
-    }, [page, sortOrder, search, status, serviceType, patientName, patientPhone, dateFrom, dateTo]);
+    }, [page, sortOrder, search, status, serviceType, patientName, patientPhone, dateFrom, dateTo, token]); // token به وابستگی‌ها اضافه شد
 
     useEffect(() => {
         load();
@@ -155,45 +182,45 @@ export function NurseRequestsPage() {
                     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                         <table className="w-full min-w-[720px] text-sm">
                             <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">کد</th>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">بیمار</th>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">موبایل</th>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">خدمت</th>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">تاریخ</th>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">ساعت</th>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">مبلغ</th>
-                                    <th className="px-4 py-3 text-right font-semibold text-slate-600">وضعیت</th>
-                                    <th className="px-4 py-3" />
-                                </tr>
+                            <tr>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">کد</th>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">بیمار</th>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">موبایل</th>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">خدمت</th>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">تاریخ</th>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">ساعت</th>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">مبلغ</th>
+                                <th className="px-4 py-3 text-right font-semibold text-slate-600">وضعیت</th>
+                                <th className="px-4 py-3" />
+                            </tr>
                             </thead>
                             <tbody>
-                                {result.items.map((r) => (
-                                    <tr key={r.id} className="border-t border-slate-100">
-                                        <td className="px-4 py-3 font-mono text-xs">{r.code}</td>
-                                        <td className="px-4 py-3">{r.patientName}</td>
-                                        <td className="px-4 py-3 dir-ltr text-left text-xs">{r.patientPhone}</td>
-                                        <td className="px-4 py-3">{r.serviceType}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-500">{r.scheduledDate}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-500">{r.scheduledTime}</td>
-                                        <td className="px-4 py-3">{formatPrice(r.amount)}</td>
-                                        <td className="px-4 py-3">
-                                            <StatusBadge
-                                                label={nurseStatusLabels[r.status]}
-                                                className={nurseStatusStyles[r.status]}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                to={providerPath('nurse', `requests/${r.id}`)}
-                                                className="inline-flex items-center gap-1 text-rose-600 hover:underline"
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                                جزئیات
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
+                            {result.items.map((r) => (
+                                <tr key={r.id} className="border-t border-slate-100">
+                                    <td className="px-4 py-3 font-mono text-xs">{r.code}</td>
+                                    <td className="px-4 py-3">{r.patientName}</td>
+                                    <td className="px-4 py-3 dir-ltr text-left text-xs">{r.patientPhone}</td>
+                                    <td className="px-4 py-3">{r.serviceType}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-500">{r.scheduledDate}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-500">{r.scheduledTime}</td>
+                                    <td className="px-4 py-3">{formatPrice(r.amount)}</td>
+                                    <td className="px-4 py-3">
+                                        <StatusBadge
+                                            label={nurseStatusLabels[r.status] || r.status}
+                                            className={nurseStatusStyles[r.status] || ''}
+                                        />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <Link
+                                            to={providerPath('nurse', `requests/${r.id}`)}
+                                            className="inline-flex items-center gap-1 text-rose-600 hover:underline"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                            جزئیات
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))}
                             </tbody>
                         </table>
                     </div>
@@ -210,8 +237,17 @@ export function NurseRequestsPage() {
     );
 }
 
-export function NurseRequestDetailPage({ requestId }: { requestId: number }) {
-    const request = useNurseStore((s) => s.requests.find((r) => r.id === requestId));
+// --- صفحه جزئیات ---
+
+export function NurseRequestDetailPage() {
+    const { id } = useParams<{ id: string }>();
+
+    // اضافه کردن توکن در صفحه جزئیات
+    const session = useProviderSession('nurse');
+    const token = session?.token || '';
+
+    const [request, setRequest] = useState<NurseRequest | null>(null);
+    const [loading, setLoading] = useState(true);
     const [report, setReport] = useState({
         duration: '۴۵',
         services: '',
@@ -219,6 +255,44 @@ export function NurseRequestDetailPage({ requestId }: { requestId: number }) {
         advice: '',
         followUp: false,
     });
+
+    useEffect(() => {
+        async function fetchDetail() {
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/requests/${id}?medical_center_id=${MEDICAL_CENTER_ID}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                const json = await res.json();
+                if (json.success) {
+                    setRequest(json.data);
+                }
+            } catch (error) {
+                console.error("خطا در دریافت جزئیات:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        if (id) {
+            fetchDetail();
+        }
+    }, [id, token]); // token اضافه شد
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-slate-400">
+                <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+        );
+    }
 
     if (!request) return <EmptyState message="درخواست یافت نشد." />;
 
@@ -307,8 +381,8 @@ export function NurseRequestDetailPage({ requestId }: { requestId: number }) {
                 <div className="space-y-4">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                         <StatusBadge
-                            label={nurseStatusLabels[request.status]}
-                            className={nurseStatusStyles[request.status]}
+                            label={nurseStatusLabels[request.status] || request.status}
+                            className={nurseStatusStyles[request.status] || ''}
                         />
                         <div className="mt-4 flex flex-col gap-2">
                             {(actions[request.status] ?? []).map((a) => (
@@ -324,7 +398,7 @@ export function NurseRequestDetailPage({ requestId }: { requestId: number }) {
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                         <p className="mb-3 text-sm font-semibold">تاریخچه</p>
-                        <Timeline entries={request.timeline} />
+                        <Timeline entries={request.timeline || []} />
                     </div>
                 </div>
             </div>
