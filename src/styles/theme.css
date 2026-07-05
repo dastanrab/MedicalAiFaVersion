@@ -197,31 +197,12 @@
   }
 }
 
-/* Blog Slider Styles */
-.blog-slider-container {
-  padding-left: 1.5rem;
-  position: relative;
+/* Hide scrollbars on horizontally-scrollable carousels while keeping scroll functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.blog-slider-container .slick-slider {
-  margin: 0;
-}
-
-.blog-slider-container .slick-list {
-  margin: 0;
-  padding: 0;
-  overflow: visible;
-}
-
-.blog-slider-container .slick-track {
-  display: flex;
-  gap: 0;
-}
-
-.blog-slider-container .slick-slide {
-  height: auto;
-}
-
-.blog-slider-container .slick-slide > div {
-  height: 100%;
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
