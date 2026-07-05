@@ -32,7 +32,7 @@ export default function NurseCoveragePage() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                // 1. دریافت لیست مناطق (مثلا شهر تهران = 1)
+                // 1. ابتدا لیست مناطق
                 const regionsRes = await fetch(`${BASE_URL}/regions?city_id=1`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -42,10 +42,9 @@ export default function NurseCoveragePage() {
                 const regionsData = await regionsRes.json();
                 if (regionsData.status) {
                     setAvailableRegions(regionsData.data);
-                    console.log(availableRegions,'available')
                 }
 
-                // 2. دریافت تنظیمات پوشش فعلی مرکز
+                // 2. سپس تنظیمات فعلی
                 const coverageRes = await fetch(BASE_URL, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -54,12 +53,13 @@ export default function NurseCoveragePage() {
                 });
                 const coverageData = await coverageRes.json();
 
-                if (coverageData.success) {
-                    // مقداردهی استیت‌ها از دیتابیس
+                if (coverageData.status && coverageData.data) {
                     setCoverage(coverageData.data.coverage_description || '');
-                    setSelectedAreas(coverageData.data.selectedAreaIds || []);
-                    // اگر می‌خواهید شعاع هم از دیتابیس لود شود این خط را از کامنت خارج کنید:
-                    // if (coverageData.data.coverage_radius) setRadius(coverageData.data.coverage_radius);
+
+                    // این خط مهم است - باید آرایه‌ای از اعداد باشد
+                    const areaIds = coverageData.data.selectedAreaIds || [];
+                    console.log('araes',areaIds)
+                    setSelectedAreas(Array.isArray(areaIds) ? areaIds : []);
                 }
             } catch (error) {
                 console.error("خطا در دریافت اطلاعات:", error);
