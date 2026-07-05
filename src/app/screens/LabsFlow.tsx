@@ -53,17 +53,34 @@ export function LabsFlow() {
 
     return (
         <div className="h-[100dvh] bg-gradient-to-b from-blue-50 to-white text-right font-[YekanBakhFaNum] flex flex-col pb-24" dir="rtl">
-            <AppBar />
+            <AppBar backTo="/services" />
 
             <div className="flex-1 overflow-y-auto flex flex-col px-5 pt-20 max-w-md mx-auto w-full relative">
 
-                {/* Header & New Stepper */}
+                {/* Header & Stepper */}
                 <div className="mb-8 shrink-0">
-                    <h1 className="text-2xl font-black text-slate-800 tracking-tight text-center mb-6">درخواست آزمایش</h1>
+                    <div className="mb-6 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-sky-500 to-blue-600 p-4 shadow-lg shadow-blue-200">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                            <TestTube className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="truncate text-lg font-black tracking-tight text-white">درخواست آزمایش</h1>
+                            <p className="mt-0.5 text-[11px] text-white/80">
+                                مرحله {step} از {stepsData.length} · {stepsData[step - 1].title}
+                            </p>
+                        </div>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-black text-white ring-1 ring-white/25">
+                            {step}/{stepsData.length}
+                        </div>
+                    </div>
 
                     <div className="relative flex justify-between items-center px-2">
-                        {/* خط پس‌زمینه بین مراحل */}
-                        <div className="absolute top-5 left-6 right-6 h-[2px] bg-blue-100 -z-10" />
+                        <div className="absolute top-5 left-6 right-6 -z-10 h-1 overflow-hidden rounded-full bg-blue-100">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-l from-sky-500 to-blue-600 transition-all duration-500 ease-out"
+                                style={{ width: `${((step - 1) / (stepsData.length - 1)) * 100}%`, marginRight: "auto" }}
+                            />
+                        </div>
 
                         {stepsData.map((s) => {
                             const isCompleted = step > s.id;
@@ -71,20 +88,20 @@ export function LabsFlow() {
                             const StepIcon = isCompleted ? Check : s.icon;
 
                             return (
-                                <div key={s.id} className="flex flex-col items-center gap-2 bg-transparent z-10">
+                                <div key={s.id} className="z-10 flex flex-col items-center gap-2 bg-transparent">
                                     <div
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
+                                        className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-500 ${
                                             isCompleted
                                                 ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200"
                                                 : isCurrent
-                                                    ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 ring-4 ring-white"
+                                                    ? "scale-110 bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200 ring-4 ring-white"
                                                     : "bg-white border-blue-200 text-blue-300 ring-4 ring-white"
                                         }`}
                                     >
-                                        <StepIcon className={`w-5 h-5 ${isCompleted ? "animate-in zoom-in duration-300" : ""}`} />
+                                        <StepIcon className={`h-5 w-5 ${isCompleted ? "animate-in zoom-in duration-300" : ""}`} />
                                     </div>
                                     <span
-                                        className={`text-[11px] font-bold transition-colors duration-300 bg-white/80 px-1 rounded ${
+                                        className={`text-[11px] font-bold transition-colors duration-300 ${
                                             isCompleted
                                                 ? "text-emerald-600"
                                                 : isCurrent

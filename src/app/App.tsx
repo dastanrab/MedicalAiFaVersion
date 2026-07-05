@@ -25,6 +25,9 @@ import MapPage from "./screens/MapPage";
 import FoodExtractor from "./screens/FoodExtractor";
 import {MedicalServices} from "./screens/MedicalServices";
 import {LabsFlow} from "./screens/LabsFlow";
+import { PharmacyFlow } from "./screens/PharmacyFlow";
+import { RadiologyFlow } from "./screens/RadiologyFlow";
+import { NurseHomeFlow } from "./screens/NurseHomeFlow";
 import { PricingPlans } from './screens/PricingPlans';
 import { UserFinance } from './screens/UserFinance';
 import ExerciseExtractor from "./screens/ExerciseExtractor";
@@ -52,8 +55,6 @@ import { AdminSubscriptions } from './admin/screens/AdminSubscriptions';
 import { AdminUserDetail } from './admin/screens/details/AdminUserDetail';
 import { AdminAppointmentDetail } from './admin/screens/details/AdminAppointmentDetail';
 import { AdminChatDetail } from './admin/screens/details/AdminChatDetail';
-import { ServiceFlowPlaceholder } from './screens/ServiceFlowPlaceholder';
-import { servicesCatalog } from './config/servicesCatalog';
 import { ProviderRoutes } from './provider/routes/ProviderRoutes';
 import { useAdminAuthStore } from './admin/store/adminAuthStore';
 // import FitnessApp from "./screens/FitnessApp";
@@ -507,12 +508,7 @@ function App() {
                     element={
                         <VerifiedRoute>
                             <AppContainer showNavbar>
-                                <ServiceFlowPlaceholder
-                                    title={servicesCatalog[1].title}
-                                    description={servicesCatalog[1].desc}
-                                    icon={servicesCatalog[1].icon}
-                                    gradient={servicesCatalog[1].gradient}
-                                />
+                                <PharmacyFlow />
                             </AppContainer>
                         </VerifiedRoute>
                     }
@@ -522,12 +518,7 @@ function App() {
                     element={
                         <VerifiedRoute>
                             <AppContainer showNavbar>
-                                <ServiceFlowPlaceholder
-                                    title={servicesCatalog[2].title}
-                                    description={servicesCatalog[2].desc}
-                                    icon={servicesCatalog[2].icon}
-                                    gradient={servicesCatalog[2].gradient}
-                                />
+                                <RadiologyFlow />
                             </AppContainer>
                         </VerifiedRoute>
                     }
@@ -537,12 +528,7 @@ function App() {
                     element={
                         <VerifiedRoute>
                             <AppContainer showNavbar>
-                                <ServiceFlowPlaceholder
-                                    title={servicesCatalog[3].title}
-                                    description={servicesCatalog[3].desc}
-                                    icon={servicesCatalog[3].icon}
-                                    gradient={servicesCatalog[3].gradient}
-                                />
+                                <NurseHomeFlow />
                             </AppContainer>
                         </VerifiedRoute>
                     }
