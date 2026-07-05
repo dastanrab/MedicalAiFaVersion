@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { AppBar } from "../components/AppBar";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -11,7 +12,7 @@ import {
     ArrowLeft,
     FileText,
     Check,
-    CalendarDays
+    PartyPopper,
 } from "lucide-react";
 
 const mockTests = [
@@ -23,24 +24,17 @@ const mockTests = [
     { id: 6, name: "آهن خون", desc: "بررسی کم‌خونی", price: 110000, icon: Syringe },
 ];
 
-const timeSlots = [
-    { day: "امروز", time: "۱۸ تا ۲۰", val: "امروز عصر" },
-    { day: "فردا", time: "۸ تا ۱۰", val: "فردا صبح" },
-    { day: "فردا", time: "۱۶ تا ۱۸", val: "فردا عصر" },
-    { day: "پس‌فردا", time: "۸ تا ۱۰", val: "پس‌فردا صبح" },
-];
-
 const stepsData = [
     { id: 1, title: "نسخه", icon: FileText },
     { id: 2, title: "آزمایش‌ها", icon: TestTube },
-    { id: 3, title: "زمان‌بندی", icon: CalendarDays },
 ];
 
 export function LabsFlow() {
+    const navigate = useNavigate();
     const [step, setStep] = useState(1);
+    const [submitted, setSubmitted] = useState(false);
     const [prescriptionType, setPrescriptionType] = useState<"digital" | "paper">("digital");
     const [selectedTests, setSelectedTests] = useState<number[]>([]);
-    const [selectedTime, setSelectedTime] = useState("");
 
     const toggleTest = (id: number) => {
         setSelectedTests((prev) =>
@@ -51,11 +45,34 @@ export function LabsFlow() {
     const selectedItems = mockTests.filter((t) => selectedTests.includes(t.id));
     const totalPrice = selectedItems.reduce((sum, t) => sum + t.price, 0);
 
+    if (submitted) {
+        return (
+            <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white text-right font-[YekanBakhFaNum]" dir="rtl">
+                <AppBar backTo="/services" />
+                <div className="flex min-h-[calc(100%-1px)] flex-col items-center justify-center px-6 pt-24">
+                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-sky-500 to-blue-600 shadow-lg shadow-blue-200">
+                        <PartyPopper className="h-10 w-10 text-white" />
+                    </div>
+                    <h1 className="mb-2 text-xl font-black text-slate-800">درخواست شما ثبت شد</h1>
+                    <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
+                        درخواست آزمایش شما ثبت شد. زمان مراجعه نمونه‌گیر به آدرس شما پس از تأیید آزمایشگاه پیامک می‌شود.
+                    </p>
+                    <Button
+                        className="rounded-2xl h-12 px-8 bg-blue-600 text-white hover:bg-blue-700"
+                        onClick={() => navigate("/services")}
+                    >
+                        بازگشت به خدمات
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="h-[100dvh] bg-gradient-to-b from-blue-50 to-white text-right font-[YekanBakhFaNum] flex flex-col pb-24" dir="rtl">
+        <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
             <AppBar backTo="/services" />
 
-            <div className="flex-1 overflow-y-auto flex flex-col px-5 pt-20 max-w-md mx-auto w-full relative">
+            <div className="relative z-10 px-5 pt-24 pb-4 text-right sm:px-6">
 
                 {/* Header & Stepper */}
                 <div className="mb-8 shrink-0">
@@ -166,7 +183,7 @@ export function LabsFlow() {
                         </div>
                     )}
 
-                    {/* STEP 2: Grid Tests Selection */}
+                    {/* STEP 2: Test selection + summary */}
                     {step === 2 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <h2 className="text-lg font-bold text-slate-800 mb-4">آزمایش‌های مورد نیاز</h2>
@@ -209,36 +226,8 @@ export function LabsFlow() {
                                     );
                                 })}
                             </div>
-                        </div>
-                    )}
 
-                    {/* STEP 3: Time & Checkout */}
-                    {step === 3 && (
-                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">زمان نمونه‌گیری</h2>
-
-                            <div className="flex overflow-x-auto gap-3 pb-6 shrink-0 [-ms-overflow-style:none] [scrollbar-width:none]">
-                                {timeSlots.map((slot) => (
-                                    <button
-                                        key={slot.val}
-                                        onClick={() => setSelectedTime(slot.val)}
-                                        className={`min-w-[110px] shrink-0 p-4 rounded-3xl transition-all border-2 shadow-sm ${
-                                            selectedTime === slot.val
-                                                ? "border-blue-500 bg-blue-50/80"
-                                                : "border-transparent bg-white hover:border-blue-200"
-                                        }`}
-                                    >
-                                        <div className={`text-sm font-bold mb-2 ${selectedTime === slot.val ? "text-blue-700" : "text-slate-700"}`}>
-                                            {slot.day}
-                                        </div>
-                                        <div className={`text-xs ${selectedTime === slot.val ? "text-blue-600" : "text-slate-500"}`}>
-                                            ساعت {slot.time}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="mt-2">
+                            {selectedItems.length > 0 && (
                                 <div className="bg-white rounded-3xl p-5 shadow-sm border border-blue-50 space-y-4">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-slate-500">تعداد آزمایش‌ها</span>
@@ -257,19 +246,22 @@ export function LabsFlow() {
                                             <span className="text-xs text-slate-500 mr-1">تومان</span>
                                         </div>
                                     </div>
+                                    <p className="text-xs text-slate-500 leading-relaxed pt-1">
+                                        زمان مراجعه نمونه‌گیر پس از تأیید درخواست توسط آزمایشگاه با شما هماهنگ می‌شود.
+                                    </p>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
                 </div>
 
                 {/* دکمه‌های مستقل شده */}
-                <div className="mt-auto sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-white via-white to-transparent z-10">
-                    <div className="flex gap-3 bg-white/80 backdrop-blur-md p-2 rounded-3xl border border-slate-100 shadow-sm">
+                <div className="mt-auto sticky bottom-0 pt-6 pb-2 bg-gradient-to-t from-white via-white/95 to-transparent z-10">
+                    <div className="flex items-center justify-center gap-3">
                         {step > 1 && (
                             <Button
                                 variant="outline"
-                                className="h-14 rounded-2xl px-4 border-blue-200 text-blue-600 hover:bg-blue-50 bg-white"
+                                className="h-12 w-12 shrink-0 rounded-full border-blue-100 bg-white p-0 text-blue-600 shadow-md shadow-blue-100/80 hover:bg-blue-50 hover:text-blue-700"
                                 onClick={() => setStep(step - 1)}
                             >
                                 <ArrowLeft className="w-5 h-5 rotate-180" />
@@ -277,29 +269,22 @@ export function LabsFlow() {
                         )}
 
                         {step === 1 && (
-                            <Button className="flex-1 rounded-2xl h-14 text-base font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20" onClick={() => setStep(2)}>
+                            <Button
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
+                                onClick={() => setStep(2)}
+                            >
                                 مرحله بعد
-                                <ArrowLeft className="w-5 h-5 mr-2" />
+                                <ArrowLeft className="w-4 h-4 mr-2" />
                             </Button>
                         )}
 
                         {step === 2 && (
                             <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-lg shadow-blue-600/20"
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
                                 disabled={selectedTests.length === 0}
-                                onClick={() => setStep(3)}
+                                onClick={() => setSubmitted(true)}
                             >
-                                مرحله بعد
-                                {selectedTests.length > 0 && ` (${selectedItems.length} مورد)`}
-                            </Button>
-                        )}
-
-                        {step === 3 && (
-                            <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20 disabled:bg-slate-200 disabled:text-slate-400"
-                                disabled={!selectedTime}
-                            >
-                                پرداخت و ثبت نهایی
+                                ثبت نهایی درخواست
                             </Button>
                         )}
                     </div>

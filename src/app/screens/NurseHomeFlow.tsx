@@ -12,12 +12,10 @@ import {
     Check,
     ListChecks,
     MapPin,
-    CalendarDays,
     ArrowLeft,
     PartyPopper,
     Users,
     Zap,
-    Home as HomeIcon,
 } from "lucide-react";
 
 const nurseServices = [
@@ -29,13 +27,6 @@ const nurseServices = [
     { id: 6, key: "general", name: "مراقبت عمومی", desc: "کمک در امور روزمره", price: 400000, icon: HeartHandshake },
 ];
 
-const timeSlots = [
-    { day: "امروز", time: "۱۸ تا ۲۰", val: "امروز عصر" },
-    { day: "فردا", time: "۸ تا ۱۰", val: "فردا صبح" },
-    { day: "فردا", time: "۱۶ تا ۱۸", val: "فردا عصر" },
-    { day: "پس‌فردا", time: "۸ تا ۱۰", val: "پس‌فردا صبح" },
-];
-
 const genderOptions: { value: "any" | "female" | "male"; label: string }[] = [
     { value: "any", label: "فرقی ندارد" },
     { value: "female", label: "پرستار خانم" },
@@ -45,7 +36,6 @@ const genderOptions: { value: "any" | "female" | "male"; label: string }[] = [
 const stepsData = [
     { id: 1, title: "نوع خدمت", icon: ListChecks },
     { id: 2, title: "اطلاعات بیمار", icon: MapPin },
-    { id: 3, title: "زمان‌بندی", icon: CalendarDays },
 ];
 
 export function NurseHomeFlow() {
@@ -59,8 +49,6 @@ export function NurseHomeFlow() {
     const [address, setAddress] = useState("");
     const [condition, setCondition] = useState("");
     const [urgent, setUrgent] = useState(false);
-
-    const [selectedTime, setSelectedTime] = useState("");
 
     const service = nurseServices.find((s) => s.id === selectedService) ?? null;
 
@@ -90,10 +78,10 @@ export function NurseHomeFlow() {
     }
 
     return (
-        <div className="h-[100dvh] bg-gradient-to-b from-rose-50 to-white text-right font-[YekanBakhFaNum] flex flex-col pb-24" dir="rtl">
+        <div className="h-full overflow-y-auto bg-gradient-to-b from-rose-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
             <AppBar backTo="/services" />
 
-            <div className="flex-1 overflow-y-auto flex flex-col px-5 pt-20 max-w-md mx-auto w-full relative">
+            <div className="relative z-10 px-5 pt-24 pb-4 text-right sm:px-6">
                 <div className="mb-8 shrink-0">
                     <div className="mb-6 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 p-4 shadow-lg shadow-rose-200">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
@@ -244,7 +232,7 @@ export function NurseHomeFlow() {
 
                             <button
                                 onClick={() => setUrgent((v) => !v)}
-                                className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all shadow-sm ${
+                                className={`flex items-center justify-between p-4 rounded-2xl border-2 mb-5 transition-all shadow-sm ${
                                     urgent ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white"
                                 }`}
                             >
@@ -259,82 +247,44 @@ export function NurseHomeFlow() {
                                     <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${urgent ? "right-0.5" : "right-5"}`} />
                                 </div>
                             </button>
-                        </div>
-                    )}
 
-                    {/* STEP 3: Schedule + summary */}
-                    {step === 3 && (
-                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">زمان مراجعه پرستار</h2>
-
-                            {!urgent && (
-                                <div className="flex overflow-x-auto gap-3 pb-6 shrink-0 [-ms-overflow-style:none] [scrollbar-width:none]">
-                                    {timeSlots.map((slot) => (
-                                        <button
-                                            key={slot.val}
-                                            onClick={() => setSelectedTime(slot.val)}
-                                            className={`min-w-[110px] shrink-0 p-4 rounded-3xl transition-all border-2 shadow-sm ${
-                                                selectedTime === slot.val ? "border-rose-500 bg-rose-50/80" : "border-transparent bg-white hover:border-rose-200"
-                                            }`}
-                                        >
-                                            <div className={`text-sm font-bold mb-2 ${selectedTime === slot.val ? "text-rose-700" : "text-slate-700"}`}>
-                                                {slot.day}
-                                            </div>
-                                            <div className={`text-xs ${selectedTime === slot.val ? "text-rose-600" : "text-slate-500"}`}>
-                                                ساعت {slot.time}
-                                            </div>
-                                        </button>
-                                    ))}
+                            <div className="bg-white rounded-3xl p-5 shadow-sm border border-rose-50 space-y-3">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-500">نوع خدمت</span>
+                                    <span className="font-bold text-slate-800">{service?.name}</span>
                                 </div>
-                            )}
-
-                            {urgent && (
-                                <div className="mb-6 flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                                    <Zap className="h-4 w-4 shrink-0" />
-                                    <span>پرستار در کمتر از ۲ ساعت به آدرس شما اعزام می‌شود.</span>
+                                <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
+                                    <span className="text-slate-500">ترجیح جنسیت</span>
+                                    <span className="font-bold text-slate-800">
+                                        {genderOptions.find((g) => g.value === genderPref)?.label}
+                                    </span>
                                 </div>
-                            )}
-
-                            <div className="mt-2">
-                                <div className="bg-white rounded-3xl p-5 shadow-sm border border-rose-50 space-y-3">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-500">نوع خدمت</span>
-                                        <span className="font-bold text-slate-800">{service?.name}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-500">ترجیح جنسیت</span>
-                                        <span className="font-bold text-slate-800">
-                                            {genderOptions.find((g) => g.value === genderPref)?.label}
+                                <div className="flex justify-between items-end pt-2">
+                                    <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
+                                    <div className="text-left">
+                                        <span className="text-2xl font-black text-rose-600 tracking-tight">
+                                            {(service?.price ?? 0).toLocaleString("fa-IR")}
                                         </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
-                                        <span className="text-slate-500">نوع درخواست</span>
-                                        <span className={`font-bold ${urgent ? "text-rose-600" : "text-slate-800"}`}>
-                                            {urgent ? "فوری" : "زمان‌بندی شده"}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-end pt-2">
-                                        <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
-                                        <div className="text-left">
-                                            <span className="text-2xl font-black text-rose-600 tracking-tight">
-                                                {(service?.price ?? 0).toLocaleString("fa-IR")}
-                                            </span>
-                                            <span className="text-xs text-slate-500 mr-1">تومان</span>
-                                        </div>
+                                        <span className="text-xs text-slate-500 mr-1">تومان</span>
                                     </div>
                                 </div>
+                                <p className="text-xs text-slate-500 leading-relaxed pt-1 border-t border-slate-100">
+                                    {urgent
+                                        ? "پرستار در کمتر از ۲ ساعت به آدرس شما اعزام می‌شود."
+                                        : "زمان دقیق مراجعه پرستار پس از تأیید درخواست با شما هماهنگ می‌شود."}
+                                </p>
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* Footer buttons */}
-                <div className="mt-auto sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-white via-white to-transparent z-10">
-                    <div className="flex gap-3 bg-white/80 backdrop-blur-md p-2 rounded-3xl border border-slate-100 shadow-sm">
+                <div className="mt-auto sticky bottom-0 pt-6 pb-2 bg-gradient-to-t from-white via-white/95 to-transparent z-10">
+                    <div className="flex items-center justify-center gap-3">
                         {step > 1 && (
                             <Button
                                 variant="outline"
-                                className="h-14 rounded-2xl px-4 border-rose-200 text-rose-600 hover:bg-rose-50 bg-white"
+                                className="h-12 w-12 shrink-0 rounded-full border-rose-100 bg-white p-0 text-rose-600 shadow-md shadow-rose-100/80 hover:bg-rose-50 hover:text-rose-700"
                                 onClick={() => setStep(step - 1)}
                             >
                                 <ArrowLeft className="w-5 h-5 rotate-180" />
@@ -343,29 +293,19 @@ export function NurseHomeFlow() {
 
                         {step === 1 && (
                             <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-rose-600 text-white hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-lg shadow-rose-600/20"
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
                                 disabled={selectedService === null}
                                 onClick={() => setStep(2)}
                             >
                                 مرحله بعد
-                                <ArrowLeft className="w-5 h-5 mr-2" />
+                                <ArrowLeft className="w-4 h-4 mr-2" />
                             </Button>
                         )}
 
                         {step === 2 && (
                             <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-rose-600 text-white hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-lg shadow-rose-600/20"
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
                                 disabled={!isStep2Valid}
-                                onClick={() => setStep(3)}
-                            >
-                                مرحله بعد
-                            </Button>
-                        )}
-
-                        {step === 3 && (
-                            <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-600/20 disabled:bg-slate-200 disabled:text-slate-400"
-                                disabled={!urgent && !selectedTime}
                                 onClick={() => setSubmitted(true)}
                             >
                                 ثبت نهایی درخواست

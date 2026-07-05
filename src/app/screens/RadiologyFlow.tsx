@@ -13,7 +13,6 @@ import {
     Bone,
     Brain,
     Camera,
-    CalendarDays,
     ArrowLeft,
     CheckCircle2,
     X,
@@ -32,18 +31,10 @@ const mockExams = [
     { id: 6, name: "دانسیتومتری استخوان", desc: "سنجش تراکم استخوان", price: 550000, icon: Bone },
 ];
 
-const timeSlots = [
-    { day: "امروز", time: "۱۸ تا ۲۰", val: "امروز عصر" },
-    { day: "فردا", time: "۸ تا ۱۰", val: "فردا صبح" },
-    { day: "فردا", time: "۱۶ تا ۱۸", val: "فردا عصر" },
-    { day: "پس‌فردا", time: "۸ تا ۱۰", val: "پس‌فردا صبح" },
-];
-
 const stepsData = [
     { id: 1, title: "نسخه", icon: FileText },
     { id: 2, title: "خدمات", icon: ScanLine },
     { id: 3, title: "ملاحظات", icon: ClipboardList },
-    { id: 4, title: "زمان‌بندی", icon: CalendarDays },
 ];
 
 export function RadiologyFlow() {
@@ -63,8 +54,6 @@ export function RadiologyFlow() {
     const [hasMetalImplant, setHasMetalImplant] = useState<"yes" | "no" | "">("");
     const [contrastAllergy, setContrastAllergy] = useState<"yes" | "no" | "">("");
     const [medicalNote, setMedicalNote] = useState("");
-
-    const [selectedTime, setSelectedTime] = useState("");
 
     const toggleExam = (id: number) => {
         setSelectedExams((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
@@ -101,10 +90,10 @@ export function RadiologyFlow() {
     }
 
     return (
-        <div className="h-[100dvh] bg-gradient-to-b from-violet-50 to-white text-right font-[YekanBakhFaNum] flex flex-col pb-24" dir="rtl">
+        <div className="h-full overflow-y-auto bg-gradient-to-b from-violet-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
             <AppBar backTo="/services" />
 
-            <div className="flex-1 overflow-y-auto flex flex-col px-5 pt-20 max-w-md mx-auto w-full relative">
+            <div className="relative z-10 px-5 pt-24 pb-4 text-right sm:px-6">
                 <div className="mb-8 shrink-0">
                     <div className="mb-6 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 p-4 shadow-lg shadow-violet-200">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
@@ -309,7 +298,7 @@ export function RadiologyFlow() {
                                 accent="violet"
                             />
 
-                            <div className="mt-1">
+                            <div className="mb-5">
                                 <label className="text-xs font-bold text-slate-600 mb-2 px-1 block">توضیحات تکمیلی (اختیاری)</label>
                                 <textarea
                                     value={medicalNote}
@@ -319,70 +308,41 @@ export function RadiologyFlow() {
                                     className="w-full rounded-2xl border border-violet-100 bg-white p-4 text-sm shadow-sm resize-none focus:border-violet-500 focus:ring-violet-500 focus:outline-none"
                                 />
                             </div>
-                        </div>
-                    )}
-
-                    {/* STEP 4: Time & checkout */}
-                    {step === 4 && (
-                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">زمان مراجعه به مرکز تصویربرداری</h2>
 
                             <div className="mb-4 flex items-center gap-2 rounded-2xl border border-violet-100 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm">
                                 <MapPin className="h-4 w-4 shrink-0 text-violet-500" />
                                 <span>این خدمت نیازمند مراجعه حضوری به مرکز تصویربرداری منتخب است.</span>
                             </div>
 
-                            <div className="flex overflow-x-auto gap-3 pb-6 shrink-0 [-ms-overflow-style:none] [scrollbar-width:none]">
-                                {timeSlots.map((slot) => (
-                                    <button
-                                        key={slot.val}
-                                        onClick={() => setSelectedTime(slot.val)}
-                                        className={`min-w-[110px] shrink-0 p-4 rounded-3xl transition-all border-2 shadow-sm ${
-                                            selectedTime === slot.val ? "border-violet-500 bg-violet-50/80" : "border-transparent bg-white hover:border-violet-200"
-                                        }`}
-                                    >
-                                        <div className={`text-sm font-bold mb-2 ${selectedTime === slot.val ? "text-violet-700" : "text-slate-700"}`}>
-                                            {slot.day}
-                                        </div>
-                                        <div className={`text-xs ${selectedTime === slot.val ? "text-violet-600" : "text-slate-500"}`}>
-                                            ساعت {slot.time}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="mt-2">
-                                <div className="bg-white rounded-3xl p-5 shadow-sm border border-violet-50 space-y-4">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-500">تعداد خدمات</span>
-                                        <span className="font-bold text-slate-800">{selectedItems.length} مورد</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-4">
-                                        <span className="text-slate-500">هزینه مراجعه</span>
-                                        <span className="font-bold text-emerald-600">رایگان</span>
-                                    </div>
-                                    <div className="flex justify-between items-end pt-2">
-                                        <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
-                                        <div className="text-left">
-                                            <span className="text-2xl font-black text-violet-600 tracking-tight">
-                                                {totalPrice.toLocaleString("fa-IR")}
-                                            </span>
-                                            <span className="text-xs text-slate-500 mr-1">تومان</span>
-                                        </div>
+                            <div className="bg-white rounded-3xl p-5 shadow-sm border border-violet-50 space-y-4">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-500">تعداد خدمات</span>
+                                    <span className="font-bold text-slate-800">{selectedItems.length} مورد</span>
+                                </div>
+                                <div className="flex justify-between items-end pt-2">
+                                    <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
+                                    <div className="text-left">
+                                        <span className="text-2xl font-black text-violet-600 tracking-tight">
+                                            {totalPrice.toLocaleString("fa-IR")}
+                                        </span>
+                                        <span className="text-xs text-slate-500 mr-1">تومان</span>
                                     </div>
                                 </div>
+                                <p className="text-xs text-slate-500 leading-relaxed pt-1 border-t border-slate-100">
+                                    زمان دقیق نوبت پس از تأیید درخواست توسط مرکز تصویربرداری برای شما پیامک می‌شود.
+                                </p>
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* Footer buttons */}
-                <div className="mt-auto sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-white via-white to-transparent z-10">
-                    <div className="flex gap-3 bg-white/80 backdrop-blur-md p-2 rounded-3xl border border-slate-100 shadow-sm">
+                <div className="mt-auto sticky bottom-0 pt-6 pb-2 bg-gradient-to-t from-white via-white/95 to-transparent z-10">
+                    <div className="flex items-center justify-center gap-3">
                         {step > 1 && (
                             <Button
                                 variant="outline"
-                                className="h-14 rounded-2xl px-4 border-violet-200 text-violet-600 hover:bg-violet-50 bg-white"
+                                className="h-12 w-12 shrink-0 rounded-full border-violet-100 bg-white p-0 text-violet-600 shadow-md shadow-violet-100/80 hover:bg-violet-50 hover:text-violet-700"
                                 onClick={() => setStep(step - 1)}
                             >
                                 <ArrowLeft className="w-5 h-5 rotate-180" />
@@ -391,18 +351,18 @@ export function RadiologyFlow() {
 
                         {step === 1 && (
                             <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-violet-600 text-white hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-lg shadow-violet-600/20"
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-600/30 hover:shadow-xl hover:shadow-violet-600/40 transition-all"
                                 disabled={!isStep1Valid}
                                 onClick={() => setStep(2)}
                             >
                                 مرحله بعد
-                                <ArrowLeft className="w-5 h-5 mr-2" />
+                                <ArrowLeft className="w-4 h-4 mr-2" />
                             </Button>
                         )}
 
                         {step === 2 && (
                             <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-violet-600 text-white hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-lg shadow-violet-600/20"
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-600/30 hover:shadow-xl hover:shadow-violet-600/40 transition-all"
                                 disabled={selectedExams.length === 0}
                                 onClick={() => setStep(3)}
                             >
@@ -413,18 +373,8 @@ export function RadiologyFlow() {
 
                         {step === 3 && (
                             <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-violet-600 text-white hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-lg shadow-violet-600/20"
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-600/30 hover:shadow-xl hover:shadow-violet-600/40 transition-all"
                                 disabled={!isStep3Valid}
-                                onClick={() => setStep(4)}
-                            >
-                                مرحله بعد
-                            </Button>
-                        )}
-
-                        {step === 4 && (
-                            <Button
-                                className="flex-1 rounded-2xl h-14 text-base font-bold bg-violet-600 text-white hover:bg-violet-700 shadow-lg shadow-violet-600/20 disabled:bg-slate-200 disabled:text-slate-400"
-                                disabled={!selectedTime}
                                 onClick={() => setSubmitted(true)}
                             >
                                 پرداخت و ثبت نهایی
