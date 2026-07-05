@@ -33,7 +33,7 @@ export function MedicalServices() {
   if (services.length === 0) {
     return (
       <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
-        <AppBar />
+        <AppBar backTo="/home" />
         <div className="flex flex-col items-center justify-center px-6 pt-32 text-center">
           <HeartPulse className="mb-4 h-12 w-12 text-slate-300" />
           <p className="text-gray-600">در حال حاضر هیچ خدمتی فعال نیست.</p>
@@ -44,7 +44,7 @@ export function MedicalServices() {
 
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
-      <AppBar />
+      <AppBar backTo="/home" />
 
       <div className="px-4 pb-8 pt-24">
         <ServicesHero />

@@ -9,7 +9,6 @@ import { Label } from '../components/ui/label';
 import { Progress } from '../components/ui/progress';
 import { Textarea } from '../components/ui/textarea';
 import { AppBar } from '../components/AppBar';
-import { SymptomFlowBack } from '../components/SymptomFlowBack';
 
 const symptoms = [
   { id: 'headache', label: 'سردرد' },
@@ -193,16 +192,9 @@ export function QuestionnaireV1() {
 
   return (
       <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto pb-24" dir="rtl">
-        <AppBar />
+        <AppBar backTo="/symptoms" backState={symptomFormState} />
 
         <div className="px-6 pt-24 py-8">
-          <SymptomFlowBack
-              to="/symptoms"
-              label="بازگشت به علائم"
-              state={symptomFormState}
-              className="mb-4"
-          />
-
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm text-gray-600">

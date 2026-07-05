@@ -73,7 +73,7 @@ export function UserFinance() {
 
   return (
     <div className={pageClass}>
-      <AppBar />
+      <AppBar backTo="/home" />
 
       <div className="mx-auto w-full max-w-lg px-3 pb-6 pt-24 sm:px-4">
         <FinanceHero wallet={mockUserWallet} />

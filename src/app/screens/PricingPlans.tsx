@@ -59,7 +59,7 @@ export function PricingPlans() {
 
   return (
     <div className={pageClass}>
-      <AppBar />
+      <AppBar backTo="/home" />
 
       <div className="mx-auto max-w-md px-6 pb-8 pt-24">
         <PlansHero />

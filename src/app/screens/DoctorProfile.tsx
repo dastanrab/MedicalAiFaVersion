@@ -459,7 +459,7 @@ export function DoctorProfile() {
 
   return (
       <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white" dir="rtl">
-        <AppBar />
+        <AppBar backTo="/doctors" />
         <div className="pt-24 px-6 pb-24">
 
           {/* کارت پروفایل پزشک */}

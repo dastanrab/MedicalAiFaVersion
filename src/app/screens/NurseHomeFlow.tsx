@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AppBar } from "../components/AppBar";
-import { BackButton } from "../components/BackButton";
 import { Button } from "../components/ui/button";
 import {
     Syringe,
@@ -70,7 +69,7 @@ export function NurseHomeFlow() {
     if (submitted) {
         return (
             <div className="h-[100dvh] bg-gradient-to-b from-rose-50 to-white text-right font-[YekanBakhFaNum] flex flex-col" dir="rtl">
-                <AppBar />
+                <AppBar backTo="/services" />
                 <div className="flex-1 flex flex-col items-center justify-center px-6 pt-20">
                     <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 shadow-lg shadow-rose-200">
                         <PartyPopper className="h-10 w-10 text-white" />
@@ -92,10 +91,9 @@ export function NurseHomeFlow() {
 
     return (
         <div className="h-[100dvh] bg-gradient-to-b from-rose-50 to-white text-right font-[YekanBakhFaNum] flex flex-col pb-24" dir="rtl">
-            <AppBar />
+            <AppBar backTo="/services" />
 
             <div className="flex-1 overflow-y-auto flex flex-col px-5 pt-20 max-w-md mx-auto w-full relative">
-                <BackButton to="/services" label="بازگشت به خدمات" className="mb-3 self-start" />
                 <div className="mb-8 shrink-0">
                     <div className="mb-6 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 p-4 shadow-lg shadow-rose-200">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">

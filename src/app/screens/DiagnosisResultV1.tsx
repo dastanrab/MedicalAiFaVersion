@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from 'react-router';
 import { ArrowRight, Star, Loader2, User, Stethoscope, Send, Calendar, UserCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
-import { SymptomFlowBack } from '../components/SymptomFlowBack';
 import type { SymptomFormState } from './SymptomSelection';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from "../store/authStore";
@@ -337,16 +336,9 @@ export function DiagnosisResultV1() {
 
     return (
         <div className="flex flex-col h-dvh bg-gradient-to-b from-blue-50 to-white" dir="rtl">
-            <AppBar />
+            <AppBar backTo="/symptoms" backState={symptomFormState} />
 
             <div className="flex-1 overflow-y-auto w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-4 flex flex-col">
-                <SymptomFlowBack
-                    to="/symptoms"
-                    label="بازگشت به علائم"
-                    state={symptomFormState}
-                    className="mb-4 shrink-0"
-                />
-
                 {/* محیط چت باکس */}
                 <div className="flex-1 space-y-4 mb-4">
                     {messages.map((msg, idx) => {

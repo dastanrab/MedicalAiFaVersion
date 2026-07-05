@@ -667,7 +667,7 @@ export function Chats() {
           <div className="px-4 py-3 border-b border-gray-100 space-y-2">
             <div className="flex items-center justify-between">
               <button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/home')}
                   aria-label="بازگشت"
                   className="text-gray-400 hover:text-gray-600"
               >

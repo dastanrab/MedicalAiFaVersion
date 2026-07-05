@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from 'react-router';
 import {ArrowRight, Star, Loader2, User, Stethoscope} from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
-import { SymptomFlowBack } from '../components/SymptomFlowBack';
 import type { SymptomFormState } from './SymptomSelection';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from "../store/authStore";
@@ -230,16 +229,9 @@ export function DiagnosisResult() {
 
     return (
         <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto relative" dir="rtl">
-            <AppBar />
+            <AppBar backTo="/symptoms" backState={symptomFormState} />
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-24">
-                <SymptomFlowBack
-                    to="/symptoms"
-                    label="بازگشت به علائم"
-                    state={symptomFormState}
-                    className="mb-4"
-                />
-
                 {/* چت باکس - علایم بیمار و تشخیص اولیه */}
                 <div className="mb-5">
                     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">

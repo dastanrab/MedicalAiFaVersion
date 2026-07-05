@@ -167,7 +167,7 @@ export function DoctorList() {
 
   return (
       <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto pb-24 text-right font-[YekanBakhFaNum]">
-        <AppBar />
+        <AppBar backTo="/home" />
 
         <div className="px-6 pt-24 py-8">
           <div className="relative mb-6">

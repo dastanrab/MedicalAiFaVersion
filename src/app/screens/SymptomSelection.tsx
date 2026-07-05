@@ -178,7 +178,7 @@ export function SymptomSelection() {
       className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-32 text-right font-[YekanBakhFaNum]"
       dir="rtl"
     >
-      <AppBar />
+      <AppBar backTo="/home" />
 
       <div className="px-6 pt-24 py-8">
         {/* Hero Header — same style as DoctorList */}

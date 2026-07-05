@@ -26,7 +26,7 @@ export function BodyMeasurement() {
 
   return (
     <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto pb-24">
-      <AppBar />
+      <AppBar backTo="/home" />
 
       <div className="px-6 pt-24 py-8 pb-8">
         {/* Icon */}

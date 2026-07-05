@@ -20,7 +20,6 @@ import {
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { AppBar } from '../components/AppBar';
-import { SymptomFlowBack } from '../components/SymptomFlowBack';
 
 const keySymptoms = [
   { label: 'تب', icon: Thermometer, bg: 'bg-red-50', color: 'text-red-500' },
@@ -89,11 +88,9 @@ export function AIResults() {
       className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum]"
       dir="rtl"
     >
-      <AppBar />
+      <AppBar backTo="/questionnairev1" />
 
       <div className="px-6 pt-24 py-8">
-        <SymptomFlowBack to="/questionnairev1" label="بازگشت به سوالات" className="mb-4" />
-
         {/* Hero */}
         <div className="relative mb-6">
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-blue-600 to-indigo-600 px-5 pt-5 pb-12 shadow-[0_8px_32px_rgba(79,70,229,0.3)]">

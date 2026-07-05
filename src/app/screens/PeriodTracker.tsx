@@ -146,7 +146,7 @@ export default function PeriodTracker() {
 
     return (
         <div className="h-full overflow-y-auto bg-gradient-to-b from-pink-50 to-[#FFF9FA] pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
-            <AppBar />
+            <AppBar backTo="/home" />
 
             <div className="px-6 pt-24">
                 <div className="relative mb-6">
