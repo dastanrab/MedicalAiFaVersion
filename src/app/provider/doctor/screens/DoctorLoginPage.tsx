@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate, Navigate } from 'react-router';
-import { Loader2, Mail, Lock, ShieldCheck, Stethoscope } from 'lucide-react';
+import { Loader2, Phone, Lock, ShieldCheck, Stethoscope } from 'lucide-react';
 import { providerLoginThemes } from '../../config/providerTheme';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
 
@@ -10,26 +10,26 @@ export function DoctorLoginPage() {
     const theme = providerLoginThemes.doctor;
     const Icon = theme.icon;
 
-    const [username, setUsername] = useState('');
+    const [mobile, setMobile] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!username.trim() || !password) {
-            setError('ایمیل و رمز عبور را وارد کنید');
+        if (!mobile.trim() || !password) {
+            setError('شماره موبایل و رمز عبور را وارد کنید');
             return;
         }
 
         setLoading(true);
         setError('');
 
-        const success = await login(username, password);
+        const success = await login(mobile, password);
         if (success) {
             navigate('/provider/doctor/dashboard', { replace: true });
         } else {
-            setError('ایمیل یا رمز عبور نادرست است');
+            setError('شماره موبایل یا رمز عبور نادرست است');
         }
         setLoading(false);
     };
@@ -79,14 +79,14 @@ export function DoctorLoginPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label className="mb-2 block text-sm text-slate-700">ایمیل</label>
+                            <label className="mb-2 block text-sm text-slate-700">شماره موبایل</label>
                             <div className="relative">
-                                <Mail className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                <Phone className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                                 <input
-                                    type="email"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="doctor@test.com"
+                                    type="tel"
+                                    value={mobile}
+                                    onChange={(e) => setMobile(e.target.value)}
+                                    placeholder="09xxxxxxxxx"
                                     dir="ltr"
                                     disabled={loading}
                                     className={`h-12 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-4 text-slate-900 placeholder:text-slate-400 outline-none transition focus:ring-2 ${theme.focusBorder} ${theme.focusRing}`}

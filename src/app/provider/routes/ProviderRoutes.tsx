@@ -17,7 +17,6 @@ import { NurseDashboard } from '../screens/nurse/NurseDashboard';
 import { NurseRequestsPage, NurseRequestDetailPage } from '../screens/nurse/NurseRequestsPage';
 import { NurseCalendarPage } from '../screens/nurse/NurseCalendarPage';
 import { NurseSchedulePage } from '../screens/nurse/NurseSchedulePage';
-import { NurseCoveragePage } from '../screens/nurse/NurseCoveragePage';
 import { NursePersonnelPage } from '../screens/nurse/NursePersonnelPage';
 import { NurseServicesPage } from '../screens/nurse/NurseServicesPage';
 import { NurseRoleGate } from '../components/NurseRoleGate';
@@ -47,6 +46,8 @@ import { DoctorPrescriptionsPage } from '../doctor/screens/DoctorPrescriptionsPa
 import { DoctorFinancePage } from '../doctor/screens/DoctorFinancePage';
 import { DoctorReviewsPage } from '../doctor/screens/DoctorReviewsPage';
 import { DoctorSettingsPage } from '../doctor/screens/DoctorSettingsPage';
+import NurseCoveragePage from "../screens/nurse/NurseCoveragePage";
+import {DoctorChatPage} from "../doctor/screens/DoctorChatPage";
 
 function LabRequestDetailRoute() {
     const { id } = useParams();
@@ -132,6 +133,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="patients/:id" element={<DoctorPatientDetailRoute />} />
                 <Route path="schedule" element={<DoctorSchedulePage />} />
                 <Route path="consultations" element={<DoctorConsultationsPage />} />
+                <Route path="/consultations/:id" element={<DoctorChatPage />} />
                 <Route path="prescriptions" element={<DoctorPrescriptionsPage />} />
                 <Route path="finance" element={<DoctorFinancePage />} />
                 <Route path="reviews" element={<DoctorReviewsPage />} />
