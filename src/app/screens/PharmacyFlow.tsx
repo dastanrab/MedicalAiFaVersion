@@ -16,11 +16,21 @@ import {
     X,
     PartyPopper,
     Pill,
+    Building2,
+    Star,
 } from "lucide-react";
+
+const pharmacyCenters = [
+    { id: 1, name: "داروخانه شبانه‌روزی مرکزی", city: "مشهد", address: "بلوار وکیل‌آباد، نبش وکیل‌آباد ۱۰", rating: 4.8, reviews: 268, distanceKm: 1.4 },
+    { id: 2, name: "داروخانه دکتر عبیدی", city: "مشهد", address: "خیابان احمدآباد، پلاک ۸۸", rating: 4.9, reviews: 197, distanceKm: 2.7 },
+    { id: 3, name: "داروخانه بزرگ رضوی", city: "مشهد", address: "بلوار سجاد، نبش سجاد ۱۸", rating: 4.6, reviews: 143, distanceKm: 3.9 },
+    { id: 4, name: "داروخانه هلال احمر", city: "مشهد", address: "میدان راهنمایی، ابتدای کوهسنگی", rating: 4.7, reviews: 121, distanceKm: 5.1 },
+];
 
 const stepsData = [
     { id: 1, title: "نسخه", icon: FileText },
     { id: 2, title: "تحویل", icon: Bike },
+    { id: 3, title: "انتخاب داروخانه", icon: Building2 },
 ];
 
 export function PharmacyFlow() {
@@ -36,10 +46,12 @@ export function PharmacyFlow() {
     const [address, setAddress] = useState("");
     const [hasInsurance, setHasInsurance] = useState(false);
     const [note, setNote] = useState("");
+    const [selectedPharmacy, setSelectedPharmacy] = useState<number | null>(null);
 
     const isStep1Valid =
         prescriptionType === "digital" ? digitalCode.trim().length > 0 : !!prescriptionFile;
     const isStep2Valid = deliveryType === "pickup" || address.trim().length > 0;
+    const pharmacy = pharmacyCenters.find((p) => p.id === selectedPharmacy) ?? null;
 
     if (submitted) {
         return (
@@ -51,7 +63,7 @@ export function PharmacyFlow() {
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">درخواست شما ثبت شد</h1>
                     <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
-                        نسخه شما برای داروخانه ارسال شد. پس از بررسی توسط داروساز، هزینه نهایی و زمان تحویل برای شما پیامک می‌شود.
+                        نسخه شما برای <span className="font-bold text-slate-700">{pharmacy?.name}</span> ارسال شد. پس از بررسی توسط داروساز، هزینه نهایی و زمان تحویل برای شما پیامک می‌شود.
                     </p>
                     <Button
                         className="rounded-2xl h-12 px-8 bg-emerald-600 text-white hover:bg-emerald-700"
@@ -272,6 +284,61 @@ export function PharmacyFlow() {
                                 />
                             </div>
 
+                        </div>
+                    )}
+
+                    {/* STEP 3: Pharmacy selection + summary */}
+                    {step === 3 && (
+                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">داروخانه مورد نظر را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">لیست داروخانه‌های نزدیک به آدرس شما</p>
+
+                            <div className="flex flex-col gap-3 mb-6">
+                                {pharmacyCenters.map((c) => {
+                                    const isSelected = selectedPharmacy === c.id;
+                                    return (
+                                        <div
+                                            key={c.id}
+                                            onClick={() => setSelectedPharmacy(c.id)}
+                                            className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
+                                                isSelected ? "border-emerald-500 bg-emerald-50/80" : "border-slate-100 bg-white hover:border-emerald-200"
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSelected ? "bg-emerald-600" : "bg-emerald-50"}`}>
+                                                    <Building2 className={`h-5 w-5 ${isSelected ? "text-white" : "text-emerald-600"}`} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <h3 className="text-sm font-bold text-slate-800 truncate">{c.name}</h3>
+                                                        <div
+                                                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                                                isSelected ? "border-emerald-600 bg-emerald-600" : "border-slate-200"
+                                                            }`}
+                                                        >
+                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                        </div>
+                                                    </div>
+                                                    <p className="mt-1 truncate text-[11px] text-slate-500">{c.address}</p>
+                                                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                            <span className="font-bold text-slate-700">{c.rating}</span>
+                                                            <span>({c.reviews.toLocaleString("fa-IR")})</span>
+                                                        </span>
+                                                        <span className="text-slate-300">·</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
+                                                            {c.distanceKm.toLocaleString("fa-IR")} کیلومتر
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
                             <div className="bg-white rounded-3xl p-5 shadow-sm border border-emerald-50 space-y-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500">نوع نسخه</span>
@@ -321,6 +388,17 @@ export function PharmacyFlow() {
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/30 hover:shadow-xl hover:shadow-emerald-600/40 transition-all"
                                 disabled={!isStep2Valid}
+                                onClick={() => setStep(3)}
+                            >
+                                مرحله بعد
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                            </Button>
+                        )}
+
+                        {step === 3 && (
+                            <Button
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/30 hover:shadow-xl hover:shadow-emerald-600/40 transition-all"
+                                disabled={selectedPharmacy === null}
                                 onClick={() => setSubmitted(true)}
                             >
                                 ثبت نهایی درخواست
