@@ -37,7 +37,7 @@ import {
 } from '../doctor/screens/DoctorLoginPage';
 import { DoctorDashboardPage } from '../doctor/screens/DoctorDashboardPage';
 import { DoctorAppointmentsPage } from '../doctor/screens/DoctorAppointmentsPage';
-import { DoctorAppointmentDetailPage } from '../doctor/screens/DoctorAppointmentDetailPage';
+import  DoctorAppointmentDetailPage  from '../doctor/screens/DoctorAppointmentDetailPage';
 import { DoctorPatientsPage } from '../doctor/screens/DoctorPatientsPage';
 import { DoctorPatientDetailPage } from '../doctor/screens/DoctorPatientDetailPage';
 import { DoctorSchedulePage } from '../doctor/screens/DoctorSchedulePage';

@@ -28,7 +28,7 @@ import {
     type UserType,
     type UserStatus,
 } from '../config/userOptions';
-import { AddUserModal } from '../components/AddUserModal';
+
 import {
     AdminUsersSkeleton,
     AdminUsersTableSkeleton,
@@ -36,6 +36,8 @@ import {
 import { useAdminAuthStore } from '../store/adminAuthStore';
 import { useAdminDataStore } from '../store/adminDataStore';
 import { createAdminUser } from '../services/adminApi';
+import {AddUserModal} from "../components/AddUserModal";
+
 
 const PAGE_SIZE = 8;
 const API_URL = 'http://185.222.163.113:7000/api/admin/users';
@@ -58,15 +60,24 @@ interface UsersApiResponse {
 }
 
 function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
-    console.log('API user raw:', JSON.stringify(user, null, 2)); // ← حذف بعد از debug
-    const name = (user.name as string) ?? '';
+    const name = (user.name as string) || '';
+    const nameParts = name.split(' ');
+
+    // @ts-ignore
     return {
-        ...(user as AdminUserRow),
-        firstName: name.split(' ')[0] ?? '',
-        lastName: name.split(' ').slice(1).join(' ') ?? '',
-        status: statusMapApiToFront[user.status as number] ?? 'blocked',
-        isVerified: Boolean(user.is_verify),
-        type: user.role as UserType,
+        id: user.id as number,
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        phone: (user.phone as string) || '',
+        province: (user.province as string) || '',
+        city: (user.city as string) || '',
+        status: statusMapApiToFront[user.status as number] || 'blocked',
+        type: (user.role as UserType) || 'patient',
+        isVerified: Boolean(user.is_verify || user.isVerified),
+        avatar: user.avatar as string || null,
+        details: (user.details as Record<string, string>) || {},
+        created_at: user.created_at as string,
+        updated_at: user.updated_at as string,
     };
 }
 
@@ -146,35 +157,89 @@ export function AdminUsers() {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
 
-    const addUser = async (data: Omit<AdminUserRow, 'id'>) => {
-        if (!token) return;
+    const addUser = async (data: {
+        firstName: string;
+        lastName: string;
+        phone: string;
+        type: UserType;
+        province: string;
+        city: string;
+        status: UserStatus;
+        details?: Record<string, string>;
+    }) => {
+        if (!token) {
+            alert('لطفاً مجدداً وارد شوید.');
+            return;
+        }
+
         try {
-            await createAdminUser({
-                name: `${data.firstName} ${data.lastName}`,
+            // تبدیل داده‌ها به فرمت مورد انتظار سرور
+            const payload = {
+                firstName: `${data.firstName}`.trim() ,
+                lastName: `${data.lastName}`.trim(),
                 phone: data.phone,
-                role: data.type,
+                type: data.type,
                 province: data.province,
                 city: data.city,
-                status: data.status === 'active' ? 1 : data.status === 'blocked' ? 0 : 2,
-                details: data.details,
+                status: data.status === 'active' ? 'active' : 'inactive', // تبدیل به عدد
+                details: data.details || {},
+            };
+
+            // اضافه کردن فیلدهای اختصاصی به payload
+            if (data.details) {
+                Object.keys(data.details).forEach(key => {
+                    if (data.details[key]) {
+                        payload[key] = data.details[key];
+                    }
+                });
+            }
+             console.log(data.details)
+            const response = await fetch('http://185.222.163.113:7000/api/admin/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload),
             });
-            addActivity({
-                type: 'user',
-                message: `افزودن کاربر ${data.firstName} ${data.lastName}`,
-            });
-            setIsAddOpen(false);
-            setPage(1);
-            await fetchUsers();
-        } catch {
-            addActivity({
-                type: 'user',
-                message: `افزودن کاربر ${data.firstName} ${data.lastName} (محلی)`,
-            });
-            setIsAddOpen(false);
-            setPage(1);
-            await fetchUsers();
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                addActivity({
+                    type: 'user',
+                    message: `افزودن کاربر ${data.firstName} ${data.lastName}`,
+                });
+                setIsAddOpen(false);
+                setPage(1);
+                await fetchUsers();
+
+                // نمایش پیام موفقیت
+                alert('کاربر با موفقیت اضافه شد.');
+            } else {
+                // نمایش خطاهای سرور
+                let errorMessage = result.message || 'خطا در ثبت اطلاعات.';
+
+                // اگر خطاهای اعتبارسنجی وجود دارد
+                if (result.errors) {
+                    if (typeof result.errors === 'object') {
+                        const errorMessages = Object.values(result.errors).flat();
+                        errorMessage = errorMessages.join('\n');
+                    } else {
+                        errorMessage = result.errors;
+                    }
+                }
+
+                alert(errorMessage);
+                console.error('Server Errors:', result);
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+            alert('خطا در ارتباط با سرور. لطفاً مجدداً تلاش کنید.');
         }
     };
+
 
     const cities = province === 'all' ? [] : iranCitiesByProvince[province] ?? [];
 
@@ -805,7 +870,7 @@ export function AdminUsers() {
             </div>
 
             {isAddOpen && (
-                <AddUserModal onClose={() => setIsAddOpen(false)} onSubmit={addUser} />
+                <AddUserModal  onClose={() => setIsAddOpen(false)} onSubmit={addUser} />
             )}
         </div>
     );

@@ -22,7 +22,6 @@ export function AdminUserDetail() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', province: '', city: '', status: 'active' as UserStatus });
-
     const load = useCallback(async () => {
         if (!id || !token) return;
         setLoading(true);
@@ -55,7 +54,8 @@ export function AdminUserDetail() {
                 phone: form.phone,
                 province: form.province,
                 city: form.city,
-                status: form.status === 'active' ? 1 : form.status === 'blocked' ? 0 : 2,
+                // تغییر در این خط: اگر فعال بود 1، در غیر این صورت (غیرفعال) 2 ارسال می‌شود
+                status: form.status === 'active' ? 1 : 2,
             });
             setUser(updated);
             addActivity({ type: 'user', message: `ویرایش کاربر ${form.firstName} ${form.lastName}`, link: `/admin/users/${user.id}` });
@@ -65,6 +65,7 @@ export function AdminUserDetail() {
             setSaving(false);
         }
     };
+
 
     const handleVerify = async (approved: boolean) => {
         if (!user) return;

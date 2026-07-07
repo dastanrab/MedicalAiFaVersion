@@ -6,6 +6,8 @@ import { AdminDashboardSkeleton } from '../components/AdminDashboardSkeleton';
 import { AdminChatsSkeleton } from '../components/AdminChatsSkeleton';
 import { AdminSettingsSkeleton } from '../components/AdminSettingsSkeleton';
 import { AdminUsersSkeleton } from '../components/AdminUsersSkeleton';
+import {setAdminTokenGetter} from "../services/adminApi";
+import {useAdminAuthStore} from "../store/adminAuthStore";
 
 interface AdminLayoutProps {
     authLoading?: boolean;
@@ -18,7 +20,7 @@ export function AdminLayout({ authLoading = false }: AdminLayoutProps) {
     const isChatsRoute = location.pathname === '/admin/chats';
     const isSettingsRoute = location.pathname.startsWith('/admin/settings');
     const isUsersRoute = location.pathname === '/admin/users';
-
+    setAdminTokenGetter(() => useAdminAuthStore.getState().token);
     return (
         <div className="flex h-screen w-full overflow-hidden bg-slate-100" dir="rtl">
             <AdminSidebar />

@@ -58,8 +58,8 @@ export function AddUserModal({ onClose, onSubmit }: AddUserModalProps) {
 
     const [error, setError] = useState('');
 
-    const cities = province === '' ? [] : iranCitiesByProvince[province] ?? [];
-    const fields = userTypeFields[type];
+    const selectedProvinceObj = iranProvinces.find(p => p.name === province);
+    const cities = selectedProvinceObj ? (iranCitiesByProvince[selectedProvinceObj.id] ?? []) : [];    const fields = userTypeFields[type];
 
     const setDetail = (name: string, value: string) =>
         setDetails((prev) => ({ ...prev, [name]: value }));
@@ -277,11 +277,15 @@ export function AddUserModal({ onClose, onSubmit }: AddUserModalProps) {
                                     className={inputClass}
                                 >
                                     <option value="">انتخاب استان</option>
-                                    {iranProvinces.map((p) => (
-                                        <option key={p} value={p}>
-                                            {p}
-                                        </option>
-                                    ))}
+                                    {iranProvinces.map((p: any) => {
+                                        const provinceName = typeof p === 'string' ? p : p.name;
+                                        const provinceKey = typeof p === 'string' ? p : (p.id || p.name);
+                                        return (
+                                            <option key={provinceKey} value={provinceName}>
+                                                {provinceName}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                             <div>
@@ -296,11 +300,12 @@ export function AddUserModal({ onClose, onSubmit }: AddUserModalProps) {
                                 >
                                     <option value="">انتخاب شهر</option>
                                     {cities.map((c) => (
-                                        <option key={c} value={c}>
-                                            {c}
+                                        <option key={c.id} value={c.name}>
+                                            {c.name}
                                         </option>
                                     ))}
                                 </select>
+
                             </div>
                         </div>
                     </div>

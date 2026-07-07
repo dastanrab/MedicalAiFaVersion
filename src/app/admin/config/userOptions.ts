@@ -1,5 +1,5 @@
 export type UserType = 'patient' | 'doctor' | 'pharmacy' | 'lab' | 'nurse';
-export type UserStatus = 'active' | 'inactive' | 'blocked';
+export type UserStatus = 'active' | 'inactive' ;
 
 export const userTypeLabels: Record<UserType, string> = {
     patient: 'کاربر عادی',
@@ -10,15 +10,13 @@ export const userTypeLabels: Record<UserType, string> = {
 };
 
 export const userStatusLabels: Record<UserStatus, string> = {
-    active: 'فعال',
     inactive: 'غیرفعال',
-    blocked: 'مسدود',
+    active: 'فعال',
 };
 
 export const userStatusStyles: Record<UserStatus, string> = {
     active: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
     inactive: 'bg-slate-100 text-slate-600 ring-slate-500/20',
-    blocked: 'bg-red-50 text-red-700 ring-red-600/20',
 };
 
 export const userTypeStyles: Record<UserType, string> = {
@@ -78,21 +76,23 @@ export const userTypeFields: Record<UserType, UserField[]> = {
     doctor: [
         { name: 'medicalCode', label: 'شماره نظام پزشکی', type: 'text', placeholder: 'مثال: ۱۲۳۴۵۶', ltr: true, required: true },
         {
-            name: 'specialty',
+            name: 'specialty_id',
             label: 'تخصص',
             type: 'select',
             required: true,
             options: [
-                { value: 'general', label: 'پزشک عمومی' },
-                { value: 'cardiology', label: 'قلب و عروق' },
-                { value: 'dermatology', label: 'پوست و مو' },
-                { value: 'pediatrics', label: 'اطفال' },
-                { value: 'gynecology', label: 'زنان و زایمان' },
-                { value: 'orthopedics', label: 'ارتوپدی' },
-                { value: 'neurology', label: 'مغز و اعصاب' },
-                { value: 'psychiatry', label: 'روانپزشکی' },
-                { value: 'dentistry', label: 'دندانپزشکی' },
-                { value: 'other', label: 'سایر' },
+                { value: '1', label: 'قلب و عروق' },
+                { value: '2', label: 'گوارش' },
+                { value: '3', label: 'ریه' },
+                { value: '4', label: 'مغز و اعصاب' },
+                { value: '5', label: 'ارتوپدی' },
+                { value: '6', label: 'پوست و مو' },
+                { value: '7', label: 'کلیه و مجاری ادراری' },
+                { value: '8', label: 'غدد' },
+                { value: '9', label: 'چشم پزشکی' },
+                { value: '10', label: 'گوش و حلق و بینی' },
+                { value: '12', label: 'زنان و زایمان' },
+                { value: '13', label: 'روانپزشکی' }
             ],
         },
         {
@@ -107,7 +107,7 @@ export const userTypeFields: Record<UserType, UserField[]> = {
         },
         { name: 'experience', label: 'سابقه کار (سال)', type: 'number', ltr: true },
         { name: 'visitFee', label: 'تعرفه ویزیت (تومان)', type: 'number', ltr: true },
-        { name: 'clinicAddress', label: 'آدرس مطب', type: 'textarea', fullWidth: true },
+        { name: 'address', label: 'آدرس مطب', type: 'textarea', fullWidth: true },
     ],
     lab: [
         { name: 'labName', label: 'نام آزمایشگاه', type: 'text', required: true },
