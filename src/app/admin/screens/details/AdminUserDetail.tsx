@@ -25,8 +25,12 @@ export function AdminUserDetail() {
     const load = useCallback(async () => {
         if (!id || !token) return;
         setLoading(true);
+
         try {
             const data = await fetchAdminUser(Number(id));
+            console.log(data.status)
+            const mappedStatus = (data.status === 1 ) ? 'active' : 'inactive';
+
             if (data) {
                 setUser(data);
                 setForm({
@@ -35,7 +39,7 @@ export function AdminUserDetail() {
                     phone: data.phone,
                     province: data.province,
                     city: data.city,
-                    status: data.status,
+                    status: mappedStatus,
                 });
             }
         } finally {
@@ -55,7 +59,7 @@ export function AdminUserDetail() {
                 province: form.province,
                 city: form.city,
                 // تغییر در این خط: اگر فعال بود 1، در غیر این صورت (غیرفعال) 2 ارسال می‌شود
-                status: form.status === 'active' ? 1 : 2,
+                status: form.status === 'active' ? 1 : 0,
             });
             setUser(updated);
             addActivity({ type: 'user', message: `ویرایش کاربر ${form.firstName} ${form.lastName}`, link: `/admin/users/${user.id}` });

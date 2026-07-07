@@ -44,12 +44,12 @@ const API_URL = 'http://185.222.163.113:7000/api/admin/users';
 
 const statusMapApiToFront: Record<number, UserStatus> = {
     1: 'active',
-    0: 'blocked',
+    0: 'inactive',
 };
 
 const statusMapFrontToApi: Record<string, number> = {
     active: 1,
-    blocked: 0,
+    inactive: 0,
 };
 
 interface UsersApiResponse {
@@ -71,7 +71,7 @@ function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
         phone: (user.phone as string) || '',
         province: (user.province as string) || '',
         city: (user.city as string) || '',
-        status: statusMapApiToFront[user.status as number] || 'blocked',
+        status: statusMapApiToFront[user.status as number] || 'inactive',
         type: (user.role as UserType) || 'patient',
         isVerified: Boolean(user.is_verify || user.isVerified),
         avatar: user.avatar as string || null,
@@ -622,7 +622,7 @@ export function AdminUsers() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setStatusFor(selectedIds, 'blocked')}
+                            onClick={() => setStatusFor(selectedIds, 'inactive')}
                             className="flex h-9 items-center gap-1.5 rounded-lg bg-white px-3 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 transition hover:bg-amber-50"
                         >
                             <ShieldBan className="h-4 w-4" />
@@ -786,7 +786,7 @@ export function AdminUsers() {
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => {
-                                                                            setStatusFor([u.id], 'blocked');
+                                                                            setStatusFor([u.id], 'inactive');
                                                                             setOpenMenuId(null);
                                                                         }}
                                                                         className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-amber-700 transition hover:bg-amber-50"

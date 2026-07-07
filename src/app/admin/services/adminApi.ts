@@ -25,7 +25,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     return res.json();
 }
 
-const statusMapApiToFront: Record<number, UserStatus> = { 1: 'active', 0: 'blocked', 2: 'inactive' };
+const statusMapApiToFront: Record<number, UserStatus> = { 1: 'active', 0: 'inactive' };
 const statusMapFrontToApi: Record<string, number> = { active: 1, blocked: 0, inactive: 2 };
 
 export function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
