@@ -17,6 +17,8 @@ import {
     Users,
     Zap,
     Home as HomeIcon,
+    Building2,
+    Star,
 } from "lucide-react";
 
 const nurseServices = [
@@ -34,9 +36,17 @@ const genderOptions: { value: "any" | "female" | "male"; label: string }[] = [
     { value: "male", label: "پرستار آقا" },
 ];
 
+const clinics = [
+    { id: 1, name: "درمانگاه شبانه‌روزی سلامت", city: "مشهد", address: "بلوار وکیل‌آباد، نبش وکیل‌آباد ۲۵", rating: 4.9, reviews: 312, distanceKm: 1.8 },
+    { id: 2, name: "درمانگاه تخصصی مهرگان", city: "مشهد", address: "خیابان احمدآباد، نرسیده به میدان بوعلی", rating: 4.8, reviews: 204, distanceKm: 3.2 },
+    { id: 3, name: "کلینیک پرستاری آرامش", city: "مشهد", address: "بلوار سجاد، بین سجاد ۱۴ و ۱۶", rating: 4.7, reviews: 156, distanceKm: 4.5 },
+    { id: 4, name: "درمانگاه پارسیان", city: "مشهد", address: "میدان راهنمایی، ابتدای خیابان کوهسنگی", rating: 4.6, reviews: 98, distanceKm: 5.9 },
+];
+
 const stepsData = [
     { id: 1, title: "نوع خدمت", icon: ListChecks },
     { id: 2, title: "اطلاعات بیمار", icon: MapPin },
+    { id: 3, title: "انتخاب درمانگاه", icon: Building2 },
 ];
 
 export function NurseHomeFlow() {
@@ -50,10 +60,13 @@ export function NurseHomeFlow() {
     const [address, setAddress] = useState("");
     const [condition, setCondition] = useState("");
     const [urgent, setUrgent] = useState(false);
+    const [selectedClinic, setSelectedClinic] = useState<number | null>(null);
 
     const service = nurseServices.find((s) => s.id === selectedService) ?? null;
+    const clinic = clinics.find((c) => c.id === selectedClinic) ?? null;
 
     const isStep2Valid = address.trim().length > 0 && condition.trim().length > 0;
+    const isStep3Valid = selectedClinic !== null;
 
     if (submitted) {
         return (
@@ -65,7 +78,7 @@ export function NurseHomeFlow() {
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">درخواست شما ثبت شد</h1>
                     <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
-                        درخواست پرستار در منزل ثبت شد. به‌محض تخصیص پرستار، مشخصات و زمان دقیق مراجعه برای شما پیامک می‌شود.
+                        درخواست پرستار در منزل شما برای <span className="font-bold text-slate-700">{clinic?.name}</span> ثبت شد. به‌محض تخصیص پرستار، مشخصات و زمان دقیق مراجعه برای شما پیامک می‌شود.
                     </p>
                     <Button
                         className="rounded-2xl h-12 px-8 bg-rose-600 text-white hover:bg-rose-700"
@@ -248,6 +261,60 @@ export function NurseHomeFlow() {
                                     <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${urgent ? "right-0.5" : "right-5"}`} />
                                 </div>
                             </button>
+                        </div>
+                    )}
+
+                    {/* STEP 3: Clinic selection + summary */}
+                    {step === 3 && (
+                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">درمانگاه ارائه‌دهنده خدمت را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">لیست درمانگاه‌های نزدیک به آدرس شما</p>
+
+                            <div className="flex flex-col gap-3 mb-6">
+                                {clinics.map((c) => {
+                                    const isSelected = selectedClinic === c.id;
+                                    return (
+                                        <div
+                                            key={c.id}
+                                            onClick={() => setSelectedClinic(c.id)}
+                                            className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
+                                                isSelected ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white hover:border-rose-200"
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSelected ? "bg-rose-600" : "bg-rose-50"}`}>
+                                                    <Building2 className={`h-5 w-5 ${isSelected ? "text-white" : "text-rose-600"}`} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <h3 className="text-sm font-bold text-slate-800 truncate">{c.name}</h3>
+                                                        <div
+                                                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                                                isSelected ? "border-rose-600 bg-rose-600" : "border-slate-200"
+                                                            }`}
+                                                        >
+                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                        </div>
+                                                    </div>
+                                                    <p className="mt-1 truncate text-[11px] text-slate-500">{c.address}</p>
+                                                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                            <span className="font-bold text-slate-700">{c.rating}</span>
+                                                            <span>({c.reviews.toLocaleString("fa-IR")})</span>
+                                                        </span>
+                                                        <span className="text-slate-300">·</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
+                                                            {c.distanceKm.toLocaleString("fa-IR")} کیلومتر
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
 
                             <div className="bg-white rounded-3xl p-5 shadow-sm border border-rose-50 space-y-3">
                                 <div className="flex justify-between items-center text-sm">
@@ -307,6 +374,17 @@ export function NurseHomeFlow() {
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
                                 disabled={!isStep2Valid}
+                                onClick={() => setStep(3)}
+                            >
+                                مرحله بعد
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                            </Button>
+                        )}
+
+                        {step === 3 && (
+                            <Button
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
+                                disabled={!isStep3Valid}
                                 onClick={() => setSubmitted(true)}
                             >
                                 ثبت نهایی درخواست

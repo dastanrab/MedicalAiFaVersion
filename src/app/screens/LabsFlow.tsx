@@ -13,6 +13,9 @@ import {
     FileText,
     Check,
     PartyPopper,
+    Building2,
+    Star,
+    MapPin,
 } from "lucide-react";
 
 const mockTests = [
@@ -24,9 +27,17 @@ const mockTests = [
     { id: 6, name: "آهن خون", desc: "بررسی کم‌خونی", price: 110000, icon: Syringe },
 ];
 
+const labCenters = [
+    { id: 1, name: "آزمایشگاه پاتوبیولوژی سینا", city: "مشهد", address: "بلوار وکیل‌آباد، نبش وکیل‌آباد ۱۹", rating: 4.9, reviews: 240, distanceKm: 2.1 },
+    { id: 2, name: "آزمایشگاه تخصصی نیکان", city: "مشهد", address: "خیابان احمدآباد، پلاک ۱۲۴", rating: 4.8, reviews: 185, distanceKm: 3.6 },
+    { id: 3, name: "آزمایشگاه رازی", city: "مشهد", address: "بلوار سجاد، نبش سجاد ۲۲", rating: 4.7, reviews: 156, distanceKm: 4.9 },
+    { id: 4, name: "آزمایشگاه پارس", city: "مشهد", address: "میدان راهنمایی، ابتدای کوهسنگی", rating: 4.6, reviews: 112, distanceKm: 6.2 },
+];
+
 const stepsData = [
     { id: 1, title: "نسخه", icon: FileText },
     { id: 2, title: "آزمایش‌ها", icon: TestTube },
+    { id: 3, title: "انتخاب آزمایشگاه", icon: Building2 },
 ];
 
 export function LabsFlow() {
@@ -35,6 +46,7 @@ export function LabsFlow() {
     const [submitted, setSubmitted] = useState(false);
     const [prescriptionType, setPrescriptionType] = useState<"digital" | "paper">("digital");
     const [selectedTests, setSelectedTests] = useState<number[]>([]);
+    const [selectedLab, setSelectedLab] = useState<number | null>(null);
 
     const toggleTest = (id: number) => {
         setSelectedTests((prev) =>
@@ -44,6 +56,7 @@ export function LabsFlow() {
 
     const selectedItems = mockTests.filter((t) => selectedTests.includes(t.id));
     const totalPrice = selectedItems.reduce((sum, t) => sum + t.price, 0);
+    const lab = labCenters.find((l) => l.id === selectedLab) ?? null;
 
     if (submitted) {
         return (
@@ -55,7 +68,7 @@ export function LabsFlow() {
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">درخواست شما ثبت شد</h1>
                     <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
-                        درخواست آزمایش شما ثبت شد. زمان مراجعه نمونه‌گیر به آدرس شما پس از تأیید آزمایشگاه پیامک می‌شود.
+                        درخواست آزمایش شما برای <span className="font-bold text-slate-700">{lab?.name}</span> ثبت شد. زمان مراجعه نمونه‌گیر به آدرس شما پس از تأیید آزمایشگاه پیامک می‌شود.
                     </p>
                     <Button
                         className="rounded-2xl h-12 px-8 bg-blue-600 text-white hover:bg-blue-700"
@@ -227,6 +240,61 @@ export function LabsFlow() {
                                 })}
                             </div>
 
+                        </div>
+                    )}
+
+                    {/* STEP 3: Lab selection + summary */}
+                    {step === 3 && (
+                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">آزمایشگاه مورد نظر را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">لیست آزمایشگاه‌های نزدیک به آدرس شما</p>
+
+                            <div className="flex flex-col gap-3 mb-6">
+                                {labCenters.map((c) => {
+                                    const isSelected = selectedLab === c.id;
+                                    return (
+                                        <div
+                                            key={c.id}
+                                            onClick={() => setSelectedLab(c.id)}
+                                            className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
+                                                isSelected ? "border-blue-500 bg-blue-50/80" : "border-slate-100 bg-white hover:border-blue-200"
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSelected ? "bg-blue-600" : "bg-blue-50"}`}>
+                                                    <Building2 className={`h-5 w-5 ${isSelected ? "text-white" : "text-blue-600"}`} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <h3 className="text-sm font-bold text-slate-800 truncate">{c.name}</h3>
+                                                        <div
+                                                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                                                isSelected ? "border-blue-600 bg-blue-600" : "border-slate-200"
+                                                            }`}
+                                                        >
+                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                        </div>
+                                                    </div>
+                                                    <p className="mt-1 truncate text-[11px] text-slate-500">{c.address}</p>
+                                                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                            <span className="font-bold text-slate-700">{c.rating}</span>
+                                                            <span>({c.reviews.toLocaleString("fa-IR")})</span>
+                                                        </span>
+                                                        <span className="text-slate-300">·</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
+                                                            {c.distanceKm.toLocaleString("fa-IR")} کیلومتر
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
                             {selectedItems.length > 0 && (
                                 <div className="bg-white rounded-3xl p-5 shadow-sm border border-blue-50 space-y-4">
                                     <div className="flex justify-between items-center text-sm">
@@ -282,6 +350,17 @@ export function LabsFlow() {
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
                                 disabled={selectedTests.length === 0}
+                                onClick={() => setStep(3)}
+                            >
+                                مرحله بعد
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                            </Button>
+                        )}
+
+                        {step === 3 && (
+                            <Button
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
+                                disabled={selectedLab === null}
                                 onClick={() => setSubmitted(true)}
                             >
                                 ثبت نهایی درخواست

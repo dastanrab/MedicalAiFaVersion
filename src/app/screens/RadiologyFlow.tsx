@@ -20,6 +20,8 @@ import {
     PartyPopper,
     ClipboardList,
     MapPin,
+    Building2,
+    Star,
 } from "lucide-react";
 
 const mockExams = [
@@ -31,10 +33,18 @@ const mockExams = [
     { id: 6, name: "دانسیتومتری استخوان", desc: "سنجش تراکم استخوان", price: 550000, icon: Bone },
 ];
 
+const imagingCenters = [
+    { id: 1, name: "مرکز تصویربرداری پارسیان", city: "مشهد", address: "بلوار وکیل‌آباد، نبش وکیل‌آباد ۳۰", rating: 4.9, reviews: 289, distanceKm: 2.4 },
+    { id: 2, name: "مرکز تصویربرداری نور", city: "مشهد", address: "خیابان احمدآباد، پلاک ۵۵", rating: 4.7, reviews: 198, distanceKm: 3.8 },
+    { id: 3, name: "مرکز تصویربرداری رازی", city: "مشهد", address: "بلوار سجاد، نبش سجاد ۹", rating: 4.8, reviews: 176, distanceKm: 5.0 },
+    { id: 4, name: "مرکز تصویربرداری کوثر", city: "مشهد", address: "میدان راهنمایی، ابتدای کوهسنگی", rating: 4.6, reviews: 134, distanceKm: 6.5 },
+];
+
 const stepsData = [
     { id: 1, title: "نسخه", icon: FileText },
     { id: 2, title: "خدمات", icon: ScanLine },
     { id: 3, title: "ملاحظات", icon: ClipboardList },
+    { id: 4, title: "انتخاب مرکز", icon: Building2 },
 ];
 
 export function RadiologyFlow() {
@@ -54,6 +64,7 @@ export function RadiologyFlow() {
     const [hasMetalImplant, setHasMetalImplant] = useState<"yes" | "no" | "">("");
     const [contrastAllergy, setContrastAllergy] = useState<"yes" | "no" | "">("");
     const [medicalNote, setMedicalNote] = useState("");
+    const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
 
     const toggleExam = (id: number) => {
         setSelectedExams((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
@@ -62,9 +73,11 @@ export function RadiologyFlow() {
     const selectedItems = mockExams.filter((t) => selectedExams.includes(t.id));
     const totalPrice = selectedItems.reduce((sum, t) => sum + t.price, 0);
     const includesMRI = selectedItems.some((t) => t.name.includes("ام‌آر‌آی"));
+    const center = imagingCenters.find((c) => c.id === selectedCenter) ?? null;
 
     const isStep1Valid = prescriptionType === "digital" ? digitalCode.trim().length > 0 : !!prescriptionFile;
     const isStep3Valid = isPregnant !== "" && contrastAllergy !== "" && (!includesMRI || hasMetalImplant !== "");
+    const isStep4Valid = selectedCenter !== null;
 
     if (submitted) {
         return (
@@ -76,7 +89,7 @@ export function RadiologyFlow() {
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">نوبت شما ثبت شد</h1>
                     <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
-                        درخواست تصویربرداری شما دریافت شد. آدرس مرکز و یادآوری نوبت پیش از موعد برای شما پیامک می‌شود.
+                        درخواست تصویربرداری شما برای <span className="font-bold text-slate-700">{center?.name}</span> ثبت شد. آدرس مرکز و یادآوری نوبت پیش از موعد برای شما پیامک می‌شود.
                     </p>
                     <Button
                         className="rounded-2xl h-12 px-8 bg-violet-600 text-white hover:bg-violet-700"
@@ -313,6 +326,60 @@ export function RadiologyFlow() {
                                 <MapPin className="h-4 w-4 shrink-0 text-violet-500" />
                                 <span>این خدمت نیازمند مراجعه حضوری به مرکز تصویربرداری منتخب است.</span>
                             </div>
+                        </div>
+                    )}
+
+                    {/* STEP 4: Center selection + summary */}
+                    {step === 4 && (
+                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">مرکز تصویربرداری را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">لیست مراکز تصویربرداری نزدیک به شما</p>
+
+                            <div className="flex flex-col gap-3 mb-6">
+                                {imagingCenters.map((c) => {
+                                    const isSelected = selectedCenter === c.id;
+                                    return (
+                                        <div
+                                            key={c.id}
+                                            onClick={() => setSelectedCenter(c.id)}
+                                            className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
+                                                isSelected ? "border-violet-500 bg-violet-50/80" : "border-slate-100 bg-white hover:border-violet-200"
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSelected ? "bg-violet-600" : "bg-violet-50"}`}>
+                                                    <Building2 className={`h-5 w-5 ${isSelected ? "text-white" : "text-violet-600"}`} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <h3 className="text-sm font-bold text-slate-800 truncate">{c.name}</h3>
+                                                        <div
+                                                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                                                isSelected ? "border-violet-600 bg-violet-600" : "border-slate-200"
+                                                            }`}
+                                                        >
+                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                        </div>
+                                                    </div>
+                                                    <p className="mt-1 truncate text-[11px] text-slate-500">{c.address}</p>
+                                                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                            <span className="font-bold text-slate-700">{c.rating}</span>
+                                                            <span>({c.reviews.toLocaleString("fa-IR")})</span>
+                                                        </span>
+                                                        <span className="text-slate-300">·</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
+                                                            {c.distanceKm.toLocaleString("fa-IR")} کیلومتر
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
 
                             <div className="bg-white rounded-3xl p-5 shadow-sm border border-violet-50 space-y-4">
                                 <div className="flex justify-between items-center text-sm">
@@ -375,6 +442,17 @@ export function RadiologyFlow() {
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-600/30 hover:shadow-xl hover:shadow-violet-600/40 transition-all"
                                 disabled={!isStep3Valid}
+                                onClick={() => setStep(4)}
+                            >
+                                مرحله بعد
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                            </Button>
+                        )}
+
+                        {step === 4 && (
+                            <Button
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-600/30 hover:shadow-xl hover:shadow-violet-600/40 transition-all"
+                                disabled={!isStep4Valid}
                                 onClick={() => setSubmitted(true)}
                             >
                                 پرداخت و ثبت نهایی
