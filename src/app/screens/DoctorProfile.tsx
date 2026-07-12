@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useLocation } from 'react-router';
 import {
   Star,
   MapPin,
@@ -88,6 +88,8 @@ export function DoctorProfile() {
   const { accessToken } = useAuthStore();
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
+  const sessionId = location.state?.sessionId || null;
   const [reserveError, setReserveError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -262,7 +264,8 @@ export function DoctorProfile() {
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          slot_id: selectedSlot.id
+          slot_id: selectedSlot.id,
+          session_id: sessionId
         })
       });
 

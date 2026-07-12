@@ -66,11 +66,21 @@ type AgeGenderFormState = 'idle' | 'waiting' | 'submitted';
 export function DiagnosisResultV1() {
     const location = useLocation();
     const navigate = useNavigate();
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const accessToken = useAuthStore((state) => state.accessToken);
 
     const { requestPayload, symptomFormState } = location.state as {
         requestPayload?: any;
         symptomFormState?: SymptomFormState;
+    };
+
+    const handleApiResponse = (json: any): ChatResponse => {
+        if (!json.success) throw new Error(json.message || 'خطا در عملیات');
+        // اگر session_id اومد و هنوز ذخیره نشده، ذخیره کن
+        if (json.session_id && !sessionId) {
+            setSessionId(json.session_id);
+        }
+        return json.data as ChatResponse;
     };
 
     const [messages, setMessages] = useState<Message[]>([]);
@@ -126,7 +136,8 @@ export function DiagnosisResultV1() {
                     'Authorization': `Bearer ${accessToken}`
                 },
                 body: JSON.stringify({
-                    messages: [{ role: 'user', content: userMessage }]
+                    messages: [{ role: 'user', content: userMessage }],
+                    session_id: sessionId,
                 }),
             });
 
@@ -135,7 +146,7 @@ export function DiagnosisResultV1() {
             const json = await response.json();
             if (!json.success) throw new Error(json.message || 'خطا در عملیات');
 
-            const data: ChatResponse = json.data;
+            const data = handleApiResponse(json);
 
             if (data.status === 'need_more_info') {
                 // بررسی آیا پیام مربوط به سن و جنسیت است
@@ -184,7 +195,7 @@ export function DiagnosisResultV1() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`
                 },
-                body: JSON.stringify({ messages: newMessages }),
+                body: JSON.stringify({ messages: newMessages , session_id: sessionId,}),
             });
 
             if (!response.ok) throw new Error('خطا در دریافت پاسخ از سرور');
@@ -192,7 +203,7 @@ export function DiagnosisResultV1() {
             const json = await response.json();
             if (!json.success) throw new Error(json.message || 'خطا در عملیات');
 
-            const data: ChatResponse = json.data;
+            const data = handleApiResponse(json);
 
             if (data.status === 'need_more_info') {
                 // بررسی آیا پیام مربوط به سن و جنسیت است
@@ -266,7 +277,8 @@ export function DiagnosisResultV1() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`
                 },
-                body: JSON.stringify({ messages: newMessages }),
+                body: JSON.stringify({ messages: newMessages ,  session_id: sessionId,}),
+
             });
 
             if (!response.ok) throw new Error('خطا در دریافت پاسخ از سرور');
@@ -274,7 +286,7 @@ export function DiagnosisResultV1() {
             const json = await response.json();
             if (!json.success) throw new Error(json.message || 'خطا در عملیات');
 
-            const data: ChatResponse = json.data;
+            const data = handleApiResponse(json);
 
             if (data.status === 'need_more_info') {
                 setMessages(prev => [...prev, { role: 'assistant', content: data.message || '' }]);
@@ -526,7 +538,18 @@ export function DiagnosisResultV1() {
                                     <div className="overflow-x-auto pb-2 -mx-1 px-1">
                                         <div className="flex flex-nowrap gap-4" style={{ minWidth: 'min-content' }}>
                                             {finalResult.recommended_doctors.map((doctor) => (
-                                                <div key={doctor.id} className="flex-none w-28 bg-white rounded-xl p-3 text-center shadow-sm border border-gray-50 transition-all hover:shadow-md">
+                                                <div
+                                                    key={doctor.id}
+                                                    className="flex-none w-28 bg-white rounded-xl p-3 text-center shadow-sm border border-gray-50 transition-all hover:shadow-md cursor-pointer"
+                                                    onClick={() =>
+                                                        navigate(`/doctor/${doctor.id}`, {
+                                                            state: {
+                                                                sessionId,
+                                                                source: 'diagnosis',
+                                                            },
+                                                        })
+                                                    }
+                                                >
                                                     <div className="relative inline-block mb-2">
                                                         <img src={doctor.image_url} alt={doctor.name} className="w-16 h-16 rounded-full object-cover mx-auto ring-1 ring-gray-100" />
                                                         <div className="absolute -bottom-1 -right-1 bg-white rounded-full px-1.5 py-0.5 shadow-sm flex items-center gap-0.5">
@@ -537,6 +560,7 @@ export function DiagnosisResultV1() {
                                                     <h3 className="font-medium text-gray-800 text-xs leading-tight mb-0.5 line-clamp-2">{doctor.name}</h3>
                                                 </div>
                                             ))}
+
                                         </div>
                                     </div>
                                 </div>
