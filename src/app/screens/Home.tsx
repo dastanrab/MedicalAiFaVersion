@@ -234,8 +234,8 @@ export function Home() {
       desc: 'تحلیل علائم با AI',
       path: '/symptoms',
       icon: Sparkles,
-      gradient: 'from-violet-500 to-indigo-600',
-      iconBg: 'bg-violet-100 text-violet-600',
+      gradient: 'from-blue-400 to-blue-600',
+      iconBg: 'bg-blue-100 text-blue-600',
       featured: true,
     },
     {
@@ -266,8 +266,8 @@ export function Home() {
       title: 'بینش سلامت',
       desc: 'نکات شخصی‌سازی‌شده',
       icon: Brain,
-      gradient: 'from-purple-500 to-fuchsia-600',
-      iconBg: 'bg-purple-100 text-purple-600',
+      gradient: 'from-indigo-500 to-indigo-700',
+      iconBg: 'bg-indigo-100 text-indigo-600',
     },
   ];
 
@@ -382,7 +382,7 @@ export function Home() {
           transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
           type="button"
           onClick={() => navigate('/symptoms')}
-          className="group relative mb-6 w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-l from-violet-600 via-blue-600 to-indigo-600 p-5 text-right shadow-[0_16px_40px_-8px_rgba(79,70,229,0.45)] transition-all duration-300 hover:shadow-[0_20px_48px_-8px_rgba(79,70,229,0.55)] active:scale-[0.99]"
+          className="group relative mb-6 w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-l from-blue-700 via-blue-500 to-blue-400 p-5 text-right shadow-[0_16px_40px_-8px_rgba(33,150,205,0.45)] transition-all duration-300 hover:shadow-[0_20px_48px_-8px_rgba(33,150,205,0.55)] active:scale-[0.99]"
         >
           <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 blur-md transition-transform duration-700 ease-out group-hover:translate-x-[260%]" />
           <div className="relative flex items-center gap-4">
@@ -394,9 +394,9 @@ export function Home() {
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-violet-100">پیشنهاد ویژه</p>
+              <p className="text-xs font-semibold text-blue-100">پیشنهاد ویژه</p>
               <h2 className="mt-0.5 text-lg font-bold text-white">شروع تشخیص هوشمند</h2>
-              <p className="mt-1 text-sm text-blue-100">علائم را وارد کنید و نتیجه فوری بگیرید</p>
+              <p className="mt-1 text-sm text-blue-50">علائم را وارد کنید و نتیجه فوری بگیرید</p>
             </div>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30 transition-transform group-hover:scale-110">
               <ChevronLeft className="h-5 w-5 text-white" />

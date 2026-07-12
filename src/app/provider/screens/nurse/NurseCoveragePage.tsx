@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { PageHeader } from '../../components';
+import { Spinner } from '../../../components/PageLoader';
 import {useProviderSession} from "../../store/providerAuthStore";
 
 
@@ -109,7 +110,11 @@ export default function NurseCoveragePage() {
     };
 
     if (isLoading) {
-        return <div className="p-6 text-center text-slate-500">در حال بارگذاری اطلاعات...</div>;
+        return (
+            <div className="flex items-center justify-center p-12">
+                <Spinner />
+            </div>
+        );
     }
 
     return (

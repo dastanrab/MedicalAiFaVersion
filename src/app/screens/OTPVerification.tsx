@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Shield, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2, Pencil } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../components/ui/input-otp';
-import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../admin/store/settingsStore';
 
@@ -11,6 +10,7 @@ export function OTPVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const { phone } = location.state || {};
+  const appName = useSettingsStore((s) => s.general.appName);
   const otpLength = useSettingsStore((s) => s.auth.otpLength);
   const resendCooldown = useSettingsStore((s) => s.auth.resendCooldownSeconds);
   const [otp, setOtp] = useState('');
@@ -91,81 +91,103 @@ export function OTPVerification() {
   };
 
   return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-6 py-8" dir="rtl">
-        <div>
-          {/* Back Button */}
-          <button
-              onClick={() => navigate(-1)}
-              className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
-          >
-            <ArrowRight className="w-5 h-5 ml-2" />
-            بازگشت
-          </button>
+    <div className="relative h-full overflow-y-auto bg-white" dir="rtl">
+      {/* پس‌زمینه تزئینی بر پایه رنگ برند */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-[rgba(90,200,245,0.16)] to-transparent" />
+      <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[rgba(90,200,245,0.22)] blur-3xl" />
+      <div className="pointer-events-none absolute top-52 -left-28 h-64 w-64 rounded-full bg-[rgba(90,200,245,0.14)] blur-3xl" />
 
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-              <Shield className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-3xl mb-2 text-gray-900">تأیید شماره تلفن</h1>
-            <p className="text-gray-600">کد {otpLength.toLocaleString('fa-IR')} رقمی ارسال شده را وارد کنید</p>
-            <p className="text-gray-900 mt-1">{phone || '09123456789'}</p>
+      <div className="relative flex min-h-full flex-col px-6 py-8">
+        {/* دکمه بازگشت */}
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(90,200,245,0.3)] bg-white/80 text-gray-600 shadow-sm transition-colors hover:text-[rgb(62,185,238)]"
+          aria-label="بازگشت"
+        >
+          <ArrowRight className="h-5 w-5" />
+        </button>
+
+        <div className="flex flex-1 flex-col justify-center">
+          {/* لوگو */}
+          <div className="mb-10 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+            <img
+              src="/logo.svg"
+              alt={appName}
+              className="mx-auto w-40 drop-shadow-sm"
+              draggable={false}
+            />
           </div>
 
-          {/* OTP Card */}
-          <Card className="p-6 shadow-xl border-0">
-            <div className="space-y-6">
-              {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm text-center">
-                    {error}
-                  </div>
-              )}
+          {/* کارت تایید کد */}
+          <div className="rounded-3xl border border-[rgba(90,200,245,0.25)] bg-white/80 p-6 shadow-xl shadow-[rgba(90,200,245,0.15)] backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h1 className="mb-1 text-xl text-gray-900">کد تایید را وارد کنید</h1>
+            <p className="text-sm text-gray-500">
+              کد {otpLength.toLocaleString('fa-IR')} رقمی به شماره زیر پیامک شد
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-[rgb(62,185,238)]"
+              dir="ltr"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              {phone || '09123456789'}
+            </button>
 
-              <div>
-                <label className="block text-sm mb-4 text-center text-gray-700">
-                  کد تأیید
-                </label>
-                <div className="flex justify-center" dir="ltr">
-                  <InputOTP maxLength={otpLength} value={otp} onChange={setOtp} disabled={loading}>
-                    <InputOTPGroup>
-                      {Array.from({ length: otpLength }, (_, i) => (
-                        <InputOTPSlot key={i} index={i} className="w-12 h-14 text-xl" />
-                      ))}
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
+            <div className="mt-6 space-y-5">
+              <div dir="ltr">
+                <InputOTP
+                  maxLength={otpLength}
+                  value={otp}
+                  onChange={setOtp}
+                  disabled={loading}
+                  containerClassName="w-full"
+                >
+                  <InputOTPGroup className="w-full justify-between gap-0">
+                    {Array.from({ length: otpLength }, (_, i) => (
+                      <InputOTPSlot
+                        key={i}
+                        index={i}
+                        className="h-13 w-11 rounded-xl border border-gray-200 bg-gray-50 text-xl first:rounded-l-xl last:rounded-r-xl data-[active=true]:border-[rgb(90,200,245)] data-[active=true]:ring-[rgba(90,200,245,0.25)]"
+                      />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
 
+              {error && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600">
+                  {error}
+                </div>
+              )}
+
               <Button
-                  onClick={handleVerify}
-                  className="w-full h-12 bg-green-500 hover:bg-green-600 text-white text-lg shadow-lg"
-                  disabled={otp.length !== otpLength || loading}
+                onClick={handleVerify}
+                className="h-12 w-full rounded-2xl bg-[rgb(90,200,245)] text-base text-white shadow-lg shadow-[rgba(90,200,245,0.4)] transition-all hover:bg-[rgb(62,185,238)] active:scale-[0.98]"
+                disabled={otp.length !== otpLength || loading}
               >
                 {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
-                      در حال بررسی...
-                    </>
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                    'تأیید و ادامه'
+                  'تأیید و ادامه'
                 )}
               </Button>
             </div>
 
-            <div className="text-center mt-6">
-              <p className="text-sm text-gray-600">کد را دریافت نکردید؟</p>
+            <div className="mt-6 text-center text-sm">
+              <span className="text-gray-400">کد را دریافت نکردید؟ </span>
               <button
-                  onClick={handleResend}
-                  disabled={loading || cooldown > 0}
-                  className="text-blue-500 hover:text-blue-700 text-sm mt-1 disabled:opacity-50"
+                onClick={handleResend}
+                disabled={loading || cooldown > 0}
+                className="text-[rgb(62,185,238)] transition-opacity disabled:opacity-50"
               >
                 {cooldown > 0
-                    ? `ارسال مجدد (${cooldown.toLocaleString('fa-IR')} ثانیه)`
-                    : 'ارسال مجدد کد'}
+                  ? `ارسال مجدد (${cooldown.toLocaleString('fa-IR')} ثانیه)`
+                  : 'ارسال مجدد کد'}
               </button>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
+    </div>
   );
 }

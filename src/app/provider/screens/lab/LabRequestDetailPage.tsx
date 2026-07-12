@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { ArrowRight, User, Calendar, FileText, Activity } from 'lucide-react';
 // فرض بر این است که توکن از استوری مثل useLabAuthStore دریافت می‌شود
 import { formatPrice } from '../../components';
+import { Spinner } from '../../../components/PageLoader';
 import { labStatusLabels, labStatusStyles } from '../../config/statusOptions';
 import {useProviderSession} from "../../store/providerAuthStore";
 
@@ -89,8 +90,8 @@ export function LabRequestDetailPage() {
 
     if (loading) {
         return (
-            <div className="p-8 text-center text-slate-500">
-                در حال بارگذاری اطلاعات...
+            <div className="flex items-center justify-center p-12">
+                <Spinner />
             </div>
         );
     }

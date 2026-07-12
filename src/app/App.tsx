@@ -13,6 +13,7 @@ import { Home } from './screens/Home';
 import { BodyMeasurement } from './screens/BodyMeasurement';
 import { MealPlan } from './screens/MealPlan';
 import { AppContainer } from './components/AppContainer';
+import { Spinner } from './components/PageLoader';
 import { useAuthStore } from './store/authStore';
 import {DiagnosisResult} from "./screens/DiagnosisResult";
 import {QuestionnaireV1} from "./screens/QuestionnaireV1";
@@ -113,8 +114,8 @@ function VerifiedRoute({ children }) {
     // loading
     if (isLoading || isVerified === null) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600"></div>
+            <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+                <Spinner />
             </div>
         );
     }

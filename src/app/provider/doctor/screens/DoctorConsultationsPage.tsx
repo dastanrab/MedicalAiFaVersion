@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, Clock, Loader2 } from 'lucide-react';
 import { PageHeader, StatusBadge, EmptyState } from '../../components';
+import { Spinner } from '../../../components/PageLoader';
 import {
     doctorConsultationStatusLabels,
     doctorConsultationStatusStyles,
@@ -116,9 +117,8 @@ export function DoctorConsultationsPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-20 text-slate-400">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="mr-2 text-sm">در حال بارگذاری...</span>
+            <div className="flex items-center justify-center py-20">
+                <Spinner />
             </div>
         );
     }

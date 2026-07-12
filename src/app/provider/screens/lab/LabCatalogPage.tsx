@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import { PageHeader, formatPrice } from '../../components';
+import { Spinner } from '../../../components/PageLoader';
 import {AddEditLabTestModal, LabTestPayload} from '../../components/AddEditLabTestModal';
 import {useProviderSession} from "../../store/providerAuthStore";
 
@@ -138,8 +139,8 @@ export function LabCatalogPage() {
                     <tbody>
                     {loading ? (
                         <tr>
-                            <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
-                                در حال بارگذاری...
+                            <td colSpan={4} className="px-4 py-8">
+                                <Spinner className="mx-auto" />
                             </td>
                         </tr>
                     ) : tests.length === 0 ? (

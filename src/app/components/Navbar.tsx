@@ -32,7 +32,7 @@ export function Navbar() {
               <div
                 className={`p-2 rounded-xl transition-all ${
                   active
-                    ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-md'
+                    ? 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-md shadow-blue-200'
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -40,7 +40,7 @@ export function Navbar() {
               </div>
               <span
                 className={`text-xs transition-colors ${
-                  active ? 'text-blue-600 font-medium' : 'text-gray-500'
+                  active ? 'text-blue-500 font-medium' : 'text-gray-500'
                 }`}
               >
                 {item.label}
