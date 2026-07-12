@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { AppBar } from "../components/AppBar";
 import { Button } from "../components/ui/button";
@@ -16,6 +16,7 @@ import {
     Building2,
     Star,
     MapPin,
+    X,
 } from "lucide-react";
 
 const mockTests = [
@@ -35,16 +36,17 @@ const labCenters = [
 ];
 
 const stepsData = [
-    { id: 1, title: "نسخه", icon: FileText },
-    { id: 2, title: "آزمایش‌ها", icon: TestTube },
-    { id: 3, title: "انتخاب آزمایشگاه", icon: Building2 },
+    { id: 1, title: "نسخه و آزمایش‌ها", icon: FileText },
+    { id: 2, title: "انتخاب آزمایشگاه", icon: Building2 },
 ];
 
 export function LabsFlow() {
     const navigate = useNavigate();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [step, setStep] = useState(1);
     const [submitted, setSubmitted] = useState(false);
-    const [prescriptionType, setPrescriptionType] = useState<"digital" | "paper">("digital");
+    const [digitalCode, setDigitalCode] = useState("");
+    const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
     const [selectedTests, setSelectedTests] = useState<number[]>([]);
     const [selectedLab, setSelectedLab] = useState<number | null>(null);
 
@@ -149,57 +151,73 @@ export function LabsFlow() {
 
                 {/* Content Area */}
                 <div className="flex-1 flex flex-col pb-4">
-                    {/* STEP 1: Prescription */}
+                    {/* STEP 1: Prescription (digital code + photo upload) & test selection */}
                     {step === 1 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex bg-white shadow-sm p-1.5 rounded-2xl mb-6 border border-blue-50">
-                                <button
-                                    onClick={() => setPrescriptionType("digital")}
-                                    className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                                        prescriptionType === "digital" ? "bg-blue-50 text-blue-700" : "text-slate-500"
-                                    }`}
-                                >
-                                    <FileText className="w-4 h-4" />
-                                    کد دیجیتال
-                                </button>
-                                <button
-                                    onClick={() => setPrescriptionType("paper")}
-                                    className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                                        prescriptionType === "paper" ? "bg-blue-50 text-blue-700" : "text-slate-500"
-                                    }`}
-                                >
-                                    <UploadCloud className="w-4 h-4" />
-                                    عکس نسخه
-                                </button>
+                            {/* Digital code */}
+                            <div className="mb-6">
+                                <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-slate-800">
+                                    <FileText className="h-4 w-4 text-blue-600" />
+                                    کد دیجیتال نسخه
+                                </h2>
+                                <Input
+                                    value={digitalCode}
+                                    onChange={(e) => setDigitalCode(e.target.value)}
+                                    className="h-14 rounded-2xl border border-blue-100 bg-white text-left px-5 text-lg placeholder:text-right placeholder:text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    dir="ltr"
+                                    placeholder="کد ملی یا کد رهگیری بیمه"
+                                />
+                                <p className="mt-2 px-2 text-xs text-slate-500 leading-relaxed">
+                                    در صورت داشتن نسخه الکترونیک تامین اجتماعی یا بیمه سلامت، کد ملی خود را وارد کنید.
+                                </p>
                             </div>
 
-                            {prescriptionType === "digital" ? (
-                                <div className="space-y-4">
-                                    <Input
-                                        className="h-14 rounded-2xl border border-blue-100 bg-white text-left px-5 text-lg placeholder:text-right placeholder:text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                        dir="ltr"
-                                        placeholder="کد ملی یا کد رهگیری بیمه"
-                                    />
-                                    <p className="text-xs text-slate-500 leading-relaxed px-2">
-                                        در صورت داشتن نسخه الکترونیک تامین اجتماعی یا بیمه سلامت، کد ملی خود را وارد کنید.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="h-48 border-2 border-dashed border-blue-200 bg-white/50 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors shadow-sm">
-                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                                        <UploadCloud className="w-6 h-6 text-blue-600" />
+                            {/* Prescription photo upload */}
+                            <div className="mb-6">
+                                <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-slate-800">
+                                    <UploadCloud className="h-4 w-4 text-blue-600" />
+                                    آپلود عکس نسخه
+                                </h2>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg"
+                                    className="hidden"
+                                    onChange={(e) => setPrescriptionFile(e.target.files?.[0] ?? null)}
+                                />
+                                {!prescriptionFile ? (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="h-40 border-2 border-dashed border-blue-200 bg-white/50 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors shadow-sm"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                            <UploadCloud className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-700">آپلود تصویر نسخه</span>
+                                        <span className="text-xs text-slate-400 mt-1">حداکثر ۵ مگابایت (JPG, PNG)</span>
                                     </div>
-                                    <span className="text-sm font-semibold text-slate-700">آپلود تصویر نسخه</span>
-                                    <span className="text-xs text-slate-400 mt-1">حداکثر ۵ مگابایت (JPG, PNG)</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                ) : (
+                                    <div className="h-40 border-2 border-blue-200 bg-white rounded-3xl flex flex-col items-center justify-center shadow-sm relative px-6">
+                                        <button
+                                            onClick={() => setPrescriptionFile(null)}
+                                            className="absolute top-3 left-3 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                            <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-700 truncate max-w-full">{prescriptionFile.name}</span>
+                                        <span className="text-xs text-blue-600 mt-1">فایل با موفقیت انتخاب شد</span>
+                                    </div>
+                                )}
+                            </div>
 
-                    {/* STEP 2: Test selection + summary */}
-                    {step === 2 && (
-                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">آزمایش‌های مورد نیاز</h2>
+                            {/* Required tests */}
+                            <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-slate-800">
+                                <TestTube className="h-4 w-4 text-blue-600" />
+                                آزمایش‌های مورد نیاز
+                            </h2>
 
                             <div className="grid grid-cols-2 gap-3 mb-6">
                                 {mockTests.map((test) => {
@@ -239,12 +257,11 @@ export function LabsFlow() {
                                     );
                                 })}
                             </div>
-
                         </div>
                     )}
 
-                    {/* STEP 3: Lab selection + summary */}
-                    {step === 3 && (
+                    {/* STEP 2: Lab selection + summary */}
+                    {step === 2 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <h2 className="text-lg font-bold text-slate-800 mb-1">آزمایشگاه مورد نظر را انتخاب کنید</h2>
                             <p className="text-xs text-slate-500 mb-4">لیست آزمایشگاه‌های نزدیک به آدرس شما</p>
@@ -339,6 +356,7 @@ export function LabsFlow() {
                         {step === 1 && (
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
+                                disabled={selectedTests.length === 0 && digitalCode.trim().length === 0 && !prescriptionFile}
                                 onClick={() => setStep(2)}
                             >
                                 مرحله بعد
@@ -347,17 +365,6 @@ export function LabsFlow() {
                         )}
 
                         {step === 2 && (
-                            <Button
-                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
-                                disabled={selectedTests.length === 0}
-                                onClick={() => setStep(3)}
-                            >
-                                مرحله بعد
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                            </Button>
-                        )}
-
-                        {step === 3 && (
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
                                 disabled={selectedLab === null}
