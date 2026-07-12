@@ -17,6 +17,7 @@ import {
     Star,
     MapPin,
     X,
+    ChevronDown,
 } from "lucide-react";
 
 const mockTests = [
@@ -49,6 +50,11 @@ export function LabsFlow() {
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
     const [selectedTests, setSelectedTests] = useState<number[]>([]);
     const [selectedLab, setSelectedLab] = useState<number | null>(null);
+    const [openSection, setOpenSection] = useState<"code" | "upload" | null>(null);
+
+    const toggleSection = (section: "code" | "upload") => {
+        setOpenSection((prev) => (prev === section ? null : section));
+    };
 
     const toggleTest = (id: number) => {
         setSelectedTests((prev) =>
@@ -154,30 +160,58 @@ export function LabsFlow() {
                     {/* STEP 1: Prescription (digital code + photo upload) & test selection */}
                     {step === 1 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {/* Digital code */}
-                            <div className="mb-6">
-                                <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-slate-800">
-                                    <FileText className="h-4 w-4 text-blue-600" />
-                                    کد دیجیتال نسخه
-                                </h2>
-                                <Input
-                                    value={digitalCode}
-                                    onChange={(e) => setDigitalCode(e.target.value)}
-                                    className="h-14 rounded-2xl border border-blue-100 bg-white text-left px-5 text-lg placeholder:text-right placeholder:text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    dir="ltr"
-                                    placeholder="کد ملی یا کد رهگیری بیمه"
-                                />
-                                <p className="mt-2 px-2 text-xs text-slate-500 leading-relaxed">
-                                    در صورت داشتن نسخه الکترونیک تامین اجتماعی یا بیمه سلامت، کد ملی خود را وارد کنید.
-                                </p>
+                            {/* Digital code (collapsible) */}
+                            <div className="mb-3 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleSection("code")}
+                                    className="flex w-full items-center gap-2 px-5 py-4"
+                                >
+                                    <FileText className="h-4 w-4 shrink-0 text-blue-600" />
+                                    <span className="flex-1 text-right text-sm font-bold text-slate-800">کد دیجیتال نسخه</span>
+                                    {digitalCode.trim().length > 0 && (
+                                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                                    )}
+                                    <ChevronDown
+                                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${
+                                            openSection === "code" ? "rotate-180" : ""
+                                        }`}
+                                    />
+                                </button>
+                                {openSection === "code" && (
+                                    <div className="px-5 pb-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <Input
+                                            value={digitalCode}
+                                            onChange={(e) => setDigitalCode(e.target.value)}
+                                            className="h-14 rounded-2xl border border-blue-100 bg-white text-left px-5 text-lg placeholder:text-right placeholder:text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            dir="ltr"
+                                            placeholder="کد ملی یا کد رهگیری بیمه"
+                                        />
+                                        <p className="mt-2 px-2 text-xs text-slate-500 leading-relaxed">
+                                            در صورت داشتن نسخه الکترونیک تامین اجتماعی یا بیمه سلامت، کد ملی خود را وارد کنید.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Prescription photo upload */}
-                            <div className="mb-6">
-                                <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-slate-800">
-                                    <UploadCloud className="h-4 w-4 text-blue-600" />
-                                    آپلود عکس نسخه
-                                </h2>
+                            {/* Prescription photo upload (collapsible) */}
+                            <div className="mb-6 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleSection("upload")}
+                                    className="flex w-full items-center gap-2 px-5 py-4"
+                                >
+                                    <UploadCloud className="h-4 w-4 shrink-0 text-blue-600" />
+                                    <span className="flex-1 text-right text-sm font-bold text-slate-800">آپلود عکس نسخه</span>
+                                    {prescriptionFile && (
+                                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                                    )}
+                                    <ChevronDown
+                                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${
+                                            openSection === "upload" ? "rotate-180" : ""
+                                        }`}
+                                    />
+                                </button>
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -185,30 +219,34 @@ export function LabsFlow() {
                                     className="hidden"
                                     onChange={(e) => setPrescriptionFile(e.target.files?.[0] ?? null)}
                                 />
-                                {!prescriptionFile ? (
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="h-40 border-2 border-dashed border-blue-200 bg-white/50 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors shadow-sm"
-                                    >
-                                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                                            <UploadCloud className="w-6 h-6 text-blue-600" />
-                                        </div>
-                                        <span className="text-sm font-semibold text-slate-700">آپلود تصویر نسخه</span>
-                                        <span className="text-xs text-slate-400 mt-1">حداکثر ۵ مگابایت (JPG, PNG)</span>
-                                    </div>
-                                ) : (
-                                    <div className="h-40 border-2 border-blue-200 bg-white rounded-3xl flex flex-col items-center justify-center shadow-sm relative px-6">
-                                        <button
-                                            onClick={() => setPrescriptionFile(null)}
-                                            className="absolute top-3 left-3 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                                            <CheckCircle2 className="w-6 h-6 text-blue-600" />
-                                        </div>
-                                        <span className="text-sm font-semibold text-slate-700 truncate max-w-full">{prescriptionFile.name}</span>
-                                        <span className="text-xs text-blue-600 mt-1">فایل با موفقیت انتخاب شد</span>
+                                {openSection === "upload" && (
+                                    <div className="px-5 pb-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {!prescriptionFile ? (
+                                            <div
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="h-40 border-2 border-dashed border-blue-200 bg-white/50 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors shadow-sm"
+                                            >
+                                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                                    <UploadCloud className="w-6 h-6 text-blue-600" />
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700">آپلود تصویر نسخه</span>
+                                                <span className="text-xs text-slate-400 mt-1">حداکثر ۵ مگابایت (JPG, PNG)</span>
+                                            </div>
+                                        ) : (
+                                            <div className="h-40 border-2 border-blue-200 bg-white rounded-3xl flex flex-col items-center justify-center shadow-sm relative px-6">
+                                                <button
+                                                    onClick={() => setPrescriptionFile(null)}
+                                                    className="absolute top-3 left-3 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                                    <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700 truncate max-w-full">{prescriptionFile.name}</span>
+                                                <span className="text-xs text-blue-600 mt-1">فایل با موفقیت انتخاب شد</span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

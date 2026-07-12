@@ -23,12 +23,12 @@ export const mainNavItems: NavItem[] = [
   { icon: Home, label: 'خانه', path: '/home' },
   { icon: Sparkles, label: 'تشخیص هوشمند', path: '/symptoms' },
   { icon: Stethoscope, label: 'پزشکان', path: '/doctors' },
-  { icon: User, label: 'پروفایل', path: '/profile' },
+  { icon: HeartPulse, label: 'خدمات درمانی', path: '/services' },
 ];
 
 export const sidebarNavItems: NavItem[] = [
   ...mainNavItems,
-  { icon: HeartPulse, label: 'خدمات درمانی', path: '/services' },
+  { icon: User, label: 'پروفایل', path: '/profile' },
   { icon: MessageCircle, label: 'پیام‌ها', path: '/chats' },
   { icon: Calendar, label: 'تقویم قاعدگی', path: '/period-tracker' },
   { icon: Ruler, label: 'اندازه‌گیری بدن', path: '/body-measurement' },

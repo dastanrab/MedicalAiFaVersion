@@ -18,6 +18,8 @@ import {
     Pill,
     Building2,
     Star,
+    ChevronDown,
+    Plus,
 } from "lucide-react";
 
 const pharmacyCenters = [
@@ -39,7 +41,6 @@ export function PharmacyFlow() {
 
     const [step, setStep] = useState(1);
     const [submitted, setSubmitted] = useState(false);
-    const [prescriptionType, setPrescriptionType] = useState<"digital" | "paper">("digital");
     const [digitalCode, setDigitalCode] = useState("");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
     const [deliveryType, setDeliveryType] = useState<"pickup" | "delivery">("delivery");
@@ -47,9 +48,30 @@ export function PharmacyFlow() {
     const [hasInsurance, setHasInsurance] = useState(false);
     const [note, setNote] = useState("");
     const [selectedPharmacy, setSelectedPharmacy] = useState<number | null>(null);
+    const [openSection, setOpenSection] = useState<"code" | "upload" | null>(null);
+    const [drugs, setDrugs] = useState<string[]>([]);
+    const [drugInput, setDrugInput] = useState("");
+
+    const toggleSection = (section: "code" | "upload") => {
+        setOpenSection((prev) => (prev === section ? null : section));
+    };
+
+    const addDrug = () => {
+        const name = drugInput.trim();
+        if (!name || drugs.includes(name)) {
+            setDrugInput("");
+            return;
+        }
+        setDrugs((prev) => [...prev, name]);
+        setDrugInput("");
+    };
+
+    const removeDrug = (name: string) => {
+        setDrugs((prev) => prev.filter((d) => d !== name));
+    };
 
     const isStep1Valid =
-        prescriptionType === "digital" ? digitalCode.trim().length > 0 : !!prescriptionFile;
+        drugs.length > 0 || digitalCode.trim().length > 0 || !!prescriptionFile;
     const isStep2Valid = deliveryType === "pickup" || address.trim().length > 0;
     const pharmacy = pharmacyCenters.find((p) => p.id === selectedPharmacy) ?? null;
 
@@ -138,76 +160,148 @@ export function PharmacyFlow() {
                     {/* STEP 1: Prescription */}
                     {step === 1 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex bg-white shadow-sm p-1.5 rounded-2xl mb-6 border border-emerald-50">
+                            {/* Digital code (collapsible) */}
+                            <div className="mb-3 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
                                 <button
-                                    onClick={() => setPrescriptionType("digital")}
-                                    className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                                        prescriptionType === "digital" ? "bg-emerald-50 text-emerald-700" : "text-slate-500"
-                                    }`}
+                                    type="button"
+                                    onClick={() => toggleSection("code")}
+                                    className="flex w-full items-center gap-2 px-5 py-4"
                                 >
-                                    <FileText className="w-4 h-4" />
-                                    کد دیجیتال
+                                    <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
+                                    <span className="flex-1 text-right text-sm font-bold text-slate-800">کد دیجیتال نسخه</span>
+                                    {digitalCode.trim().length > 0 && (
+                                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                                    )}
+                                    <ChevronDown
+                                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${
+                                            openSection === "code" ? "rotate-180" : ""
+                                        }`}
+                                    />
                                 </button>
-                                <button
-                                    onClick={() => setPrescriptionType("paper")}
-                                    className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                                        prescriptionType === "paper" ? "bg-emerald-50 text-emerald-700" : "text-slate-500"
-                                    }`}
-                                >
-                                    <UploadCloud className="w-4 h-4" />
-                                    عکس نسخه
-                                </button>
+                                {openSection === "code" && (
+                                    <div className="px-5 pb-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <Input
+                                            value={digitalCode}
+                                            onChange={(e) => setDigitalCode(e.target.value)}
+                                            className="h-14 rounded-2xl border border-emerald-100 bg-white text-left px-5 text-lg placeholder:text-right placeholder:text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                            dir="ltr"
+                                            placeholder="کد ملی یا کد رهگیری بیمه"
+                                        />
+                                        <p className="mt-2 px-2 text-xs text-slate-500 leading-relaxed">
+                                            در صورت داشتن نسخه الکترونیک تامین اجتماعی یا بیمه سلامت، کد ملی خود را وارد کنید.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
-                            {prescriptionType === "digital" ? (
-                                <div className="space-y-4">
-                                    <Input
-                                        value={digitalCode}
-                                        onChange={(e) => setDigitalCode(e.target.value)}
-                                        className="h-14 rounded-2xl border border-emerald-100 bg-white text-left px-5 text-lg placeholder:text-right placeholder:text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                                        dir="ltr"
-                                        placeholder="کد ملی یا کد رهگیری بیمه"
+                            {/* Prescription photo upload (collapsible) */}
+                            <div className="mb-6 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleSection("upload")}
+                                    className="flex w-full items-center gap-2 px-5 py-4"
+                                >
+                                    <UploadCloud className="h-4 w-4 shrink-0 text-emerald-600" />
+                                    <span className="flex-1 text-right text-sm font-bold text-slate-800">آپلود عکس نسخه</span>
+                                    {prescriptionFile && (
+                                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                                    )}
+                                    <ChevronDown
+                                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${
+                                            openSection === "upload" ? "rotate-180" : ""
+                                        }`}
                                     />
-                                    <p className="text-xs text-slate-500 leading-relaxed px-2">
-                                        در صورت داشتن نسخه الکترونیک تامین اجتماعی یا بیمه سلامت، کد ملی خود را وارد کنید.
-                                    </p>
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,application/pdf"
+                                    className="hidden"
+                                    onChange={(e) => setPrescriptionFile(e.target.files?.[0] ?? null)}
+                                />
+                                {openSection === "upload" && (
+                                    <div className="px-5 pb-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {!prescriptionFile ? (
+                                            <div
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="h-40 border-2 border-dashed border-emerald-200 bg-white/50 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-emerald-50 transition-colors shadow-sm"
+                                            >
+                                                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-3">
+                                                    <UploadCloud className="w-6 h-6 text-emerald-600" />
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700">آپلود تصویر نسخه</span>
+                                                <span className="text-xs text-slate-400 mt-1">حداکثر ۵ مگابایت (JPG, PNG, PDF)</span>
+                                            </div>
+                                        ) : (
+                                            <div className="h-40 border-2 border-emerald-200 bg-white rounded-3xl flex flex-col items-center justify-center shadow-sm relative px-6">
+                                                <button
+                                                    onClick={() => setPrescriptionFile(null)}
+                                                    className="absolute top-3 left-3 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-3">
+                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700 truncate max-w-full">{prescriptionFile.name}</span>
+                                                <span className="text-xs text-emerald-600 mt-1">فایل با موفقیت انتخاب شد</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Drug names */}
+                            <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-slate-800">
+                                <Pill className="h-4 w-4 text-emerald-600" />
+                                داروهای مورد نیاز
+                            </h2>
+
+                            <div className="mb-3 flex items-center gap-2">
+                                <Input
+                                    value={drugInput}
+                                    onChange={(e) => setDrugInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            addDrug();
+                                        }
+                                    }}
+                                    className="h-12 flex-1 rounded-2xl border border-emerald-100 bg-white px-4 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                    placeholder="نام دارو را وارد کنید (مثلاً استامینوفن ۵۰۰)"
+                                />
+                                <Button
+                                    type="button"
+                                    onClick={addDrug}
+                                    disabled={drugInput.trim().length === 0}
+                                    className="h-12 w-12 shrink-0 rounded-2xl bg-emerald-600 p-0 text-white shadow-md shadow-emerald-200 hover:bg-emerald-700"
+                                >
+                                    <Plus className="h-5 w-5" />
+                                </Button>
+                            </div>
+
+                            {drugs.length > 0 ? (
+                                <div className="mb-6 flex flex-wrap gap-2">
+                                    {drugs.map((drug) => (
+                                        <span
+                                            key={drug}
+                                            className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 py-1.5 pr-3.5 pl-1.5 text-xs font-semibold text-emerald-800"
+                                        >
+                                            {drug}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDrug(drug)}
+                                                className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-emerald-600 hover:bg-emerald-100"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    ))}
                                 </div>
                             ) : (
-                                <div className="space-y-3">
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="image/png,image/jpeg,application/pdf"
-                                        className="hidden"
-                                        onChange={(e) => setPrescriptionFile(e.target.files?.[0] ?? null)}
-                                    />
-                                    {!prescriptionFile ? (
-                                        <div
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="h-48 border-2 border-dashed border-emerald-200 bg-white/50 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-emerald-50 transition-colors shadow-sm"
-                                        >
-                                            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-3">
-                                                <UploadCloud className="w-6 h-6 text-emerald-600" />
-                                            </div>
-                                            <span className="text-sm font-semibold text-slate-700">آپلود تصویر نسخه</span>
-                                            <span className="text-xs text-slate-400 mt-1">حداکثر ۵ مگابایت (JPG, PNG, PDF)</span>
-                                        </div>
-                                    ) : (
-                                        <div className="h-48 border-2 border-emerald-200 bg-white rounded-3xl flex flex-col items-center justify-center shadow-sm relative px-6">
-                                            <button
-                                                onClick={() => setPrescriptionFile(null)}
-                                                className="absolute top-3 left-3 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-3">
-                                                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                                            </div>
-                                            <span className="text-sm font-semibold text-slate-700 truncate max-w-full">{prescriptionFile.name}</span>
-                                            <span className="text-xs text-emerald-600 mt-1">فایل با موفقیت انتخاب شد</span>
-                                        </div>
-                                    )}
-                                </div>
+                                <p className="mb-6 px-2 text-xs text-slate-500 leading-relaxed">
+                                    داروهای بدون نسخه را اینجا اضافه کنید. اگر نسخه دارید، وارد کردن کد یا عکس نسخه کافی است.
+                                </p>
                             )}
                         </div>
                     )}
@@ -342,8 +436,20 @@ export function PharmacyFlow() {
                             <div className="bg-white rounded-3xl p-5 shadow-sm border border-emerald-50 space-y-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500">نوع نسخه</span>
-                                    <span className="font-bold text-slate-800">{prescriptionType === "digital" ? "کد دیجیتال" : "عکس نسخه"}</span>
+                                    <span className="font-bold text-slate-800">
+                                        {digitalCode.trim().length > 0
+                                            ? "کد دیجیتال"
+                                            : prescriptionFile
+                                                ? "عکس نسخه"
+                                                : "بدون نسخه"}
+                                    </span>
                                 </div>
+                                {drugs.length > 0 && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">داروهای درخواستی</span>
+                                        <span className="font-bold text-slate-800">{drugs.length.toLocaleString("fa-IR")} قلم</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
                                     <span className="text-slate-500">بیمه پایه</span>
                                     <span className={`font-bold ${hasInsurance ? "text-emerald-600" : "text-slate-400"}`}>
