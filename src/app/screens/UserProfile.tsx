@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
+import { PageLoader } from '../components/PageLoader';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
@@ -289,20 +290,7 @@ function ProfileScrollShell({ children }: { children: ReactNode }) {
 }
 
 function LoadingSpinner() {
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <SpinnerContent />
-    </div>
-  );
-}
-
-function SpinnerContent() {
-  return (
-    <div className="text-center">
-      <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
-      <p className="text-sm text-gray-600">در حال بارگذاری...</p>
-    </div>
-  );
+  return <PageLoader />;
 }
 
 function ProfileHero() {

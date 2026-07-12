@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Send, FileText, X, Eye, Activity } from 'lucide-react';
 import { PageHeader } from '../../components';
+import { Spinner } from '../../../components/PageLoader';
 import {useProviderSession} from "../../store/providerAuthStore";
 
 interface ResultFile {
@@ -84,8 +85,8 @@ export function LabResultsPage() {
                     <tbody>
                     {loading ? (
                         <tr>
-                            <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                                در حال بارگذاری...
+                            <td colSpan={7} className="px-4 py-8">
+                                <Spinner className="mx-auto" />
                             </td>
                         </tr>
                     ) : results.length === 0 ? (

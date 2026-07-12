@@ -12,6 +12,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
+import { PageLoader } from '../components/PageLoader';
 import { useAuthStore } from '../store/authStore';
 
 const ROOM_ID = 1;
@@ -545,7 +546,7 @@ export function Chats() {
   if (isLoadingProfile)
     return (
         <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+          <PageLoader />
         </div>
     );
 

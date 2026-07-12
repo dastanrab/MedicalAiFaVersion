@@ -31,6 +31,7 @@ import {
 } from '../components/ui/dialog';
 import {useAuthStore} from "../store/authStore";
 import { AppBar } from '../components/AppBar';
+import { PageLoader } from '../components/PageLoader';
 
 interface DoctorData {
   id: number;
@@ -417,10 +418,7 @@ export function DoctorProfile() {
   if (loading) {
     return (
         <div className="h-full flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">در حال بارگذاری...</p>
-          </div>
+          <PageLoader />
         </div>
     );
   }

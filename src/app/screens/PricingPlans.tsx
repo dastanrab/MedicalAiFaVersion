@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Crown, Check, Sparkles } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
+import { PageLoader } from '../components/PageLoader';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
 import { pricingPlans, type PricingPlan } from '../data/pricingPlans';
@@ -50,9 +51,7 @@ export function PricingPlans() {
   if (loading) {
     return (
       <div className={pageClass}>
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <LoadingSpinner />
-        </div>
+        <PageLoader />
       </div>
     );
   }
@@ -75,15 +74,6 @@ export function PricingPlans() {
           پرداخت امن و رمزنگاری شده
         </p>
       </div>
-    </div>
-  );
-}
-
-function LoadingSpinner() {
-  return (
-    <div className="text-center">
-      <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
-      <p className="text-sm text-gray-600">در حال بارگذاری...</p>
     </div>
   );
 }

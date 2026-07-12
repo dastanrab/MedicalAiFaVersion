@@ -17,6 +17,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { PageLoader } from '../components/PageLoader';
 import { useAuthStore } from '../store/authStore';
 
 
@@ -479,10 +480,7 @@ export function Consultationv1() {
   if (isLoadingProfile) {
     return (
         <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">در حال بارگذاری...</p>
-          </div>
+          <PageLoader />
         </div>
     );
   }
@@ -567,9 +565,8 @@ export function Consultationv1() {
                   {/* پیام‌ها */}
                   <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
                     {isLoadingHistory && (
-                        <div className="flex items-center justify-center py-4 text-gray-400 gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span className="text-sm">در حال بارگذاری تاریخچه...</span>
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                         </div>
                     )}
 
