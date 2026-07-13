@@ -6,12 +6,18 @@ import {
   Ruler,
   Calendar,
   MapPin,
+  MapPinned,
   Check,
   Sparkles,
   UserRound,
   Mars,
   Venus,
   HeartPulse,
+  IdCard,
+  ShieldCheck,
+  Plus,
+  Trash2,
+  Star,
   type LucideIcon,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
@@ -21,6 +27,15 @@ import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
 import { iranProvinces, iranCitiesByProvince } from '../data/iranLocations';
 import {useUserStore} from "../store/useUserStore";
+import { isValidNationalCode, toEnglishDigits } from '../provider/utils/validation';
+import {
+  INSURANCE_TYPES,
+  createAddressId,
+  loadProfileExtras,
+  saveProfileExtras,
+  type ProfileExtras,
+  type UserAddress,
+} from '../services/profileExtras';
 
 const pageClass =
   'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
@@ -40,6 +55,9 @@ type ProfileFormData = {
   height: string;
   province: number | '';   // شناسه عددی
   city: number | '';       // شناسه عددی
+  nationalCode: string;
+  insuranceType: string;
+  insuranceNumber: string;
 };
 
 function sanitizeNonNegative(value: string): string {
@@ -116,6 +134,8 @@ export function UserProfile() {
   const { accessToken, logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [formData, setFormData] = useState<ProfileFormData>({
     firstName: '',
     lastName: '',
@@ -125,6 +145,9 @@ export function UserProfile() {
     height: '',
     province: '',
     city: '',
+    nationalCode: '',
+    insuranceType: '',
+    insuranceNumber: '',
   });
 
   useEffect(() => {
@@ -152,6 +175,8 @@ export function UserProfile() {
 
       if (data.success) {
         const user = data.data.user;
+        setUserId(user.id ?? null);
+        const extras = user.id != null ? loadProfileExtras(user.id) : null;
         setFormData({
           firstName: user.name?.split(' ')[0]?.substring(0, 10) || '',
           lastName: user.name?.split(' ')[1]?.substring(0, 10) || '',
@@ -161,7 +186,12 @@ export function UserProfile() {
           height: user.height != null ? String(Math.max(0, user.height)) : '',
           province: user.province ?? '',
           city: user.city ?? '',
+          // اگر بک‌اند این فیلدها را برگرداند اولویت با سرور است، وگرنه از ذخیره محلی
+          nationalCode: user.national_code ?? extras?.nationalCode ?? '',
+          insuranceType: user.insurance_type ?? extras?.insuranceType ?? '',
+          insuranceNumber: user.insurance_number ?? extras?.insuranceNumber ?? '',
         });
+        setAddresses(extras?.addresses ?? []);
       }
     } catch (error) {
       console.error('خطا در دریافت پروفایل:', error);
@@ -172,6 +202,12 @@ export function UserProfile() {
   };
 
   const handleSubmit = async () => {
+    const nationalCode = toEnglishDigits(formData.nationalCode).replace(/\D/g, '');
+    if (nationalCode && !isValidNationalCode(nationalCode)) {
+      setErrorMessage('کد ملی وارد شده معتبر نیست');
+      return;
+    }
+
     try {
       setSaving(true);
       setErrorMessage('');
@@ -191,12 +227,24 @@ export function UserProfile() {
           height: parseFloat(formData.height),
           province: formData.province,
           city: formData.city,
+          national_code: nationalCode,
+          insurance_type: formData.insuranceType,
+          insurance_number: toEnglishDigits(formData.insuranceNumber),
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
+        if (userId != null) {
+          const extras: ProfileExtras = {
+            nationalCode,
+            insuranceType: formData.insuranceType,
+            insuranceNumber: toEnglishDigits(formData.insuranceNumber),
+            addresses,
+          };
+          saveProfileExtras(userId, extras);
+        }
         await fetchUserProfile(true);
         navigate('/home');
       } else {
@@ -223,7 +271,46 @@ export function UserProfile() {
       setFormData({ ...formData, province: value, city: '' });
       return;
     }
+    if (field === 'nationalCode') {
+      setFormData({ ...formData, nationalCode: toEnglishDigits(value).replace(/\D/g, '').slice(0, 10) });
+      return;
+    }
     setFormData({ ...formData, [field]: value });
+  };
+
+  // آدرس‌ها بلافاصله ذخیره می‌شوند تا با خروج از صفحه از بین نروند
+  const persistAddresses = (next: UserAddress[]) => {
+    setAddresses(next);
+    if (userId != null) {
+      saveProfileExtras(userId, {
+        nationalCode: toEnglishDigits(formData.nationalCode).replace(/\D/g, ''),
+        insuranceType: formData.insuranceType,
+        insuranceNumber: toEnglishDigits(formData.insuranceNumber),
+        addresses: next,
+      });
+    }
+  };
+
+  const addAddress = (title: string, details: string) => {
+    const next: UserAddress = {
+      id: createAddressId(),
+      title: title.trim() || 'آدرس جدید',
+      details: details.trim(),
+      isDefault: addresses.length === 0,
+    };
+    persistAddresses([...addresses, next]);
+  };
+
+  const removeAddress = (id: string) => {
+    const remaining = addresses.filter((a) => a.id !== id);
+    if (remaining.length > 0 && !remaining.some((a) => a.isDefault)) {
+      remaining[0] = { ...remaining[0], isDefault: true };
+    }
+    persistAddresses(remaining);
+  };
+
+  const setDefaultAddress = (id: string) => {
+    persistAddresses(addresses.map((a) => ({ ...a, isDefault: a.id === id })));
   };
 
   const availableCities = formData.province !== ''
@@ -265,12 +352,21 @@ export function UserProfile() {
             <MetricsRow formData={formData} updateField={updateField} />
 
             <LocationRow formData={formData} updateField={updateField} availableCities={availableCities} />
+
+            <IdentityInsuranceSection formData={formData} updateField={updateField} />
           </div>
 
           <div className="mt-3 flex justify-center">
             <SaveProfileButton saving={saving} onClick={handleSubmit} />
           </div>
         </Card>
+
+        <AddressesSection
+          addresses={addresses}
+          onAdd={addAddress}
+          onRemove={removeAddress}
+          onSetDefault={setDefaultAddress}
+        />
 
         <button
           type="button"
@@ -547,6 +643,217 @@ function MetricsRow({
         />
       </Field>
     </div>
+  );
+}
+
+function IdentityInsuranceSection({
+  formData,
+  updateField,
+}: {
+  formData: Pick<ProfileFormData, 'nationalCode' | 'insuranceType' | 'insuranceNumber'>;
+  updateField: (field: string, value: string) => void;
+}) {
+  const nationalCodeInvalid =
+    formData.nationalCode.length === 10 && !isValidNationalCode(formData.nationalCode);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+          <IdCard className="h-4 w-4" />
+        </span>
+        <span className="text-sm font-bold text-gray-800">اطلاعات هویتی و بیمه</span>
+      </div>
+
+      <Field label="کد ملی" icon={<IdCard className="h-3.5 w-3.5 text-blue-500" />}>
+        <Input
+          dir="ltr"
+          inputMode="numeric"
+          maxLength={10}
+          placeholder="۰۰۱۲۳۴۵۶۷۸"
+          value={formData.nationalCode}
+          onChange={(e) => updateField('nationalCode', e.target.value)}
+          className={`${inputClass} ${nationalCodeInvalid ? 'ring-2 ring-red-300' : ''}`}
+        />
+        {nationalCodeInvalid && (
+          <p className="mt-1 text-[11px] text-red-500">کد ملی وارد شده معتبر نیست</p>
+        )}
+      </Field>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="نوع بیمه" icon={<ShieldCheck className="h-3.5 w-3.5 text-blue-500" />}>
+          <select
+            value={formData.insuranceType}
+            onChange={(e) => updateField('insuranceType', e.target.value)}
+            className={selectClass}
+          >
+            <option value="">انتخاب نوع بیمه</option>
+            {INSURANCE_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="شماره بیمه" icon={<ShieldCheck className="h-3.5 w-3.5 text-blue-500" />}>
+          <Input
+            dir="ltr"
+            inputMode="numeric"
+            placeholder="شماره دفترچه / بیمه"
+            value={formData.insuranceNumber}
+            onChange={(e) => updateField('insuranceNumber', e.target.value)}
+            disabled={formData.insuranceType === 'none'}
+            className={`${inputClass} ${formData.insuranceType === 'none' ? 'cursor-not-allowed opacity-50' : ''}`}
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+function AddressesSection({
+  addresses,
+  onAdd,
+  onRemove,
+  onSetDefault,
+}: {
+  addresses: UserAddress[];
+  onAdd: (title: string, details: string) => void;
+  onRemove: (id: string) => void;
+  onSetDefault: (id: string) => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState('');
+  const [details, setDetails] = useState('');
+
+  const handleAdd = () => {
+    if (!details.trim()) return;
+    onAdd(title, details);
+    setTitle('');
+    setDetails('');
+    setShowForm(false);
+  };
+
+  return (
+    <Card
+      dir="rtl"
+      className="mt-3 gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)] text-right sm:p-5"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <MapPinned className="h-4 w-4" />
+          </span>
+          <span className="text-sm font-bold text-gray-800">آدرس‌های منتخب</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowForm((s) => !s)}
+          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          افزودن آدرس
+        </button>
+      </div>
+
+      {addresses.length === 0 && !showForm && (
+        <p className="mt-3 rounded-xl bg-gray-50/80 px-3 py-4 text-center text-xs text-gray-400">
+          هنوز آدرسی ثبت نکرده‌اید. آدرس‌های پرکاربرد خود را ذخیره کنید.
+        </p>
+      )}
+
+      {addresses.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {addresses.map((addr) => (
+            <li
+              key={addr.id}
+              className={`rounded-xl border px-3 py-2.5 transition-colors ${
+                addr.isDefault ? 'border-blue-200 bg-blue-50/50' : 'border-gray-100 bg-gray-50/60'
+              }`}
+            >
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-gray-800">{addr.title}</span>
+                    {addr.isDefault && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600">
+                        <Star className="h-2.5 w-2.5 fill-current" />
+                        پیش‌فرض
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 break-words text-[11px] leading-relaxed text-gray-500">
+                    {addr.details}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {!addr.isDefault && (
+                    <button
+                      type="button"
+                      onClick={() => onSetDefault(addr.id)}
+                      title="انتخاب به‌عنوان پیش‌فرض"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    >
+                      <Star className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onRemove(addr.id)}
+                    title="حذف آدرس"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {showForm && (
+        <div className="mt-3 space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/30 p-3">
+          <Field label="عنوان آدرس">
+            <Input
+              placeholder="مثلاً منزل، محل کار"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="نشانی کامل">
+            <textarea
+              rows={3}
+              placeholder="استان، شهر، خیابان، کوچه، پلاک..."
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              className="w-full resize-none rounded-xl border-0 bg-gray-50/80 px-3 py-2.5 text-right text-sm text-gray-800 ring-1 ring-gray-100 placeholder:text-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            />
+          </Field>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setTitle('');
+                setDetails('');
+              }}
+              className="rounded-full px-4 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100"
+            >
+              انصراف
+            </button>
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!details.trim()}
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-500/30 transition-all hover:from-blue-600 hover:to-blue-700 disabled:pointer-events-none disabled:opacity-50"
+            >
+              <Check className="h-3.5 w-3.5" />
+              ثبت آدرس
+            </button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 
