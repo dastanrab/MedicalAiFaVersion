@@ -64,20 +64,24 @@ export function RadiologyFlow() {
     const [hasMetalImplant, setHasMetalImplant] = useState<"yes" | "no" | "">("");
     const [contrastAllergy, setContrastAllergy] = useState<"yes" | "no" | "">("");
     const [medicalNote, setMedicalNote] = useState("");
-    const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
+    const [selectedCenters, setSelectedCenters] = useState<number[]>([]);
 
     const toggleExam = (id: number) => {
         setSelectedExams((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
     };
 
+    const toggleCenter = (id: number) => {
+        setSelectedCenters((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+    };
+
     const selectedItems = mockExams.filter((t) => selectedExams.includes(t.id));
     const totalPrice = selectedItems.reduce((sum, t) => sum + t.price, 0);
     const includesMRI = selectedItems.some((t) => t.name.includes("ام‌آر‌آی"));
-    const center = imagingCenters.find((c) => c.id === selectedCenter) ?? null;
+    const selectedCenterItems = imagingCenters.filter((c) => selectedCenters.includes(c.id));
 
     const isStep1Valid = prescriptionType === "digital" ? digitalCode.trim().length > 0 : !!prescriptionFile;
     const isStep3Valid = isPregnant !== "" && contrastAllergy !== "" && (!includesMRI || hasMetalImplant !== "");
-    const isStep4Valid = selectedCenter !== null;
+    const isStep4Valid = selectedCenters.length > 0;
 
     if (submitted) {
         return (
@@ -89,7 +93,11 @@ export function RadiologyFlow() {
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">نوبت شما ثبت شد</h1>
                     <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
-                        درخواست تصویربرداری شما برای <span className="font-bold text-slate-700">{center?.name}</span> ثبت شد. آدرس مرکز و یادآوری نوبت پیش از موعد برای شما پیامک می‌شود.
+                        درخواست تصویربرداری شما برای{" "}
+                        <span className="font-bold text-slate-700">
+                            {selectedCenterItems.map((c) => c.name).join("، ")}
+                        </span>{" "}
+                        ثبت شد. آدرس مرکز و یادآوری نوبت پیش از موعد برای شما پیامک می‌شود.
                     </p>
                     <Button
                         className="rounded-2xl h-12 px-8 bg-violet-600 text-white hover:bg-violet-700"
@@ -332,16 +340,16 @@ export function RadiologyFlow() {
                     {/* STEP 4: Center selection + summary */}
                     {step === 4 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-1">مرکز تصویربرداری را انتخاب کنید</h2>
-                            <p className="text-xs text-slate-500 mb-4">لیست مراکز تصویربرداری نزدیک به شما</p>
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">مراکز تصویربرداری را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">می‌توانید چند مرکز تصویربرداری نزدیک به خود را انتخاب کنید</p>
 
                             <div className="flex flex-col gap-3 mb-6">
                                 {imagingCenters.map((c) => {
-                                    const isSelected = selectedCenter === c.id;
+                                    const isSelected = selectedCenters.includes(c.id);
                                     return (
                                         <div
                                             key={c.id}
-                                            onClick={() => setSelectedCenter(c.id)}
+                                            onClick={() => toggleCenter(c.id)}
                                             className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
                                                 isSelected ? "border-violet-500 bg-violet-50/80" : "border-slate-100 bg-white hover:border-violet-200"
                                             }`}
@@ -385,6 +393,10 @@ export function RadiologyFlow() {
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500">تعداد خدمات</span>
                                     <span className="font-bold text-slate-800">{selectedItems.length} مورد</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-500">مراکز منتخب</span>
+                                    <span className="font-bold text-slate-800">{selectedCenterItems.length} مورد</span>
                                 </div>
                                 <div className="flex justify-between items-end pt-2">
                                     <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
@@ -456,6 +468,7 @@ export function RadiologyFlow() {
                                 onClick={() => setSubmitted(true)}
                             >
                                 پرداخت و ثبت نهایی
+                                {selectedCenters.length > 0 && ` (${selectedCenters.length.toLocaleString("fa-IR")} مرکز)`}
                             </Button>
                         )}
                     </div>
