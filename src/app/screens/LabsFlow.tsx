@@ -49,7 +49,7 @@ export function LabsFlow() {
     const [digitalCode, setDigitalCode] = useState("");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
     const [selectedTests, setSelectedTests] = useState<number[]>([]);
-    const [selectedLabs, setSelectedLabs] = useState<number[]>([]);
+    const [selectedLab, setSelectedLab] = useState<number | null>(null);
     const [openSection, setOpenSection] = useState<"code" | "upload" | null>(null);
 
     const toggleSection = (section: "code" | "upload") => {
@@ -62,15 +62,9 @@ export function LabsFlow() {
         );
     };
 
-    const toggleLab = (id: number) => {
-        setSelectedLabs((prev) =>
-            prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]
-        );
-    };
-
     const selectedItems = mockTests.filter((t) => selectedTests.includes(t.id));
     const totalPrice = selectedItems.reduce((sum, t) => sum + t.price, 0);
-    const selectedLabItems = labCenters.filter((l) => selectedLabs.includes(l.id));
+    const lab = labCenters.find((l) => l.id === selectedLab) ?? null;
 
     if (submitted) {
         return (
@@ -82,11 +76,7 @@ export function LabsFlow() {
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">درخواست شما ثبت شد</h1>
                     <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
-                        درخواست آزمایش شما برای{" "}
-                        <span className="font-bold text-slate-700">
-                            {selectedLabItems.map((l) => l.name).join("، ")}
-                        </span>{" "}
-                        ثبت شد. زمان مراجعه نمونه‌گیر به آدرس شما پس از تأیید آزمایشگاه پیامک می‌شود.
+                        درخواست آزمایش شما برای <span className="font-bold text-slate-700">{lab?.name}</span> ثبت شد. زمان مراجعه نمونه‌گیر به آدرس شما پس از تأیید آزمایشگاه پیامک می‌شود.
                     </p>
                     <Button
                         className="rounded-2xl h-12 px-8 bg-blue-600 text-white hover:bg-blue-700"
@@ -311,16 +301,16 @@ export function LabsFlow() {
                     {/* STEP 2: Lab selection + summary */}
                     {step === 2 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-1">آزمایشگاه‌های مورد نظر را انتخاب کنید</h2>
-                            <p className="text-xs text-slate-500 mb-4">می‌توانید چند آزمایشگاه نزدیک به آدرس خود را انتخاب کنید</p>
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">آزمایشگاه مورد نظر را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">لیست آزمایشگاه‌های نزدیک به آدرس شما</p>
 
                             <div className="flex flex-col gap-3 mb-6">
                                 {labCenters.map((c) => {
-                                    const isSelected = selectedLabs.includes(c.id);
+                                    const isSelected = selectedLab === c.id;
                                     return (
                                         <div
                                             key={c.id}
-                                            onClick={() => toggleLab(c.id)}
+                                            onClick={() => setSelectedLab(c.id)}
                                             className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
                                                 isSelected ? "border-blue-500 bg-blue-50/80" : "border-slate-100 bg-white hover:border-blue-200"
                                             }`}
@@ -365,10 +355,6 @@ export function LabsFlow() {
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-slate-500">تعداد آزمایش‌ها</span>
                                         <span className="font-bold text-slate-800">{selectedItems.length} مورد</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-500">آزمایشگاه‌های منتخب</span>
-                                        <span className="font-bold text-slate-800">{selectedLabItems.length} مورد</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-4">
                                         <span className="text-slate-500">هزینه نمونه‌گیری در محل</span>
@@ -419,11 +405,10 @@ export function LabsFlow() {
                         {step === 2 && (
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 transition-all"
-                                disabled={selectedLabs.length === 0}
+                                disabled={selectedLab === null}
                                 onClick={() => setSubmitted(true)}
                             >
                                 ثبت نهایی درخواست
-                                {selectedLabs.length > 0 && ` (${selectedLabs.length.toLocaleString("fa-IR")} آزمایشگاه)`}
                             </Button>
                         )}
                     </div>

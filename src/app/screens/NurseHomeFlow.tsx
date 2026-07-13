@@ -55,22 +55,23 @@ export function NurseHomeFlow() {
     const [step, setStep] = useState(1);
     const [submitted, setSubmitted] = useState(false);
 
-    const [selectedService, setSelectedService] = useState<number | null>(null);
+    const [selectedServices, setSelectedServices] = useState<number[]>([]);
     const [genderPref, setGenderPref] = useState<"any" | "female" | "male">("any");
     const [address, setAddress] = useState("");
     const [condition, setCondition] = useState("");
     const [urgent, setUrgent] = useState(false);
-    const [selectedClinics, setSelectedClinics] = useState<number[]>([]);
+    const [selectedClinic, setSelectedClinic] = useState<number | null>(null);
 
-    const toggleClinic = (id: number) => {
-        setSelectedClinics((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+    const toggleService = (id: number) => {
+        setSelectedServices((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
     };
 
-    const service = nurseServices.find((s) => s.id === selectedService) ?? null;
-    const selectedClinicItems = clinics.filter((c) => selectedClinics.includes(c.id));
+    const selectedServiceItems = nurseServices.filter((s) => selectedServices.includes(s.id));
+    const totalPrice = selectedServiceItems.reduce((sum, s) => sum + s.price, 0);
+    const clinic = clinics.find((c) => c.id === selectedClinic) ?? null;
 
     const isStep2Valid = address.trim().length > 0 && condition.trim().length > 0;
-    const isStep3Valid = selectedClinics.length > 0;
+    const isStep3Valid = selectedClinic !== null;
 
     if (submitted) {
         return (
@@ -82,11 +83,7 @@ export function NurseHomeFlow() {
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">درخواست شما ثبت شد</h1>
                     <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
-                        درخواست پرستار در منزل شما برای{" "}
-                        <span className="font-bold text-slate-700">
-                            {selectedClinicItems.map((c) => c.name).join("، ")}
-                        </span>{" "}
-                        ثبت شد. به‌محض تخصیص پرستار، مشخصات و زمان دقیق مراجعه برای شما پیامک می‌شود.
+                        درخواست پرستار در منزل شما برای <span className="font-bold text-slate-700">{clinic?.name}</span> ثبت شد. به‌محض تخصیص پرستار، مشخصات و زمان دقیق مراجعه برای شما پیامک می‌شود.
                     </p>
                     <Button
                         className="rounded-2xl h-12 px-8 bg-rose-600 text-white hover:bg-rose-700"
@@ -161,16 +158,17 @@ export function NurseHomeFlow() {
                     {/* STEP 1: Service type */}
                     {step === 1 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">نوع خدمت مورد نیاز را انتخاب کنید</h2>
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">نوع خدمات مورد نیاز را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">می‌توانید بیش از یک خدمت انتخاب کنید</p>
 
                             <div className="grid grid-cols-2 gap-3 mb-6">
                                 {nurseServices.map((svc) => {
-                                    const isSelected = selectedService === svc.id;
+                                    const isSelected = selectedServices.includes(svc.id);
                                     const Icon = svc.icon;
                                     return (
                                         <div
                                             key={svc.id}
-                                            onClick={() => setSelectedService(svc.id)}
+                                            onClick={() => toggleService(svc.id)}
                                             className={`p-4 rounded-3xl cursor-pointer transition-all border-2 flex flex-col h-full ${
                                                 isSelected ? "border-rose-500 bg-rose-50/80 shadow-sm" : "border-slate-100 bg-white hover:border-rose-200 shadow-sm"
                                             }`}
@@ -275,16 +273,16 @@ export function NurseHomeFlow() {
                     {/* STEP 3: Clinic selection + summary */}
                     {step === 3 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-1">درمانگاه‌های ارائه‌دهنده خدمت را انتخاب کنید</h2>
-                            <p className="text-xs text-slate-500 mb-4">می‌توانید چند درمانگاه نزدیک به آدرس خود را انتخاب کنید</p>
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">درمانگاه ارائه‌دهنده خدمت را انتخاب کنید</h2>
+                            <p className="text-xs text-slate-500 mb-4">لیست درمانگاه‌های نزدیک به آدرس شما</p>
 
                             <div className="flex flex-col gap-3 mb-6">
                                 {clinics.map((c) => {
-                                    const isSelected = selectedClinics.includes(c.id);
+                                    const isSelected = selectedClinic === c.id;
                                     return (
                                         <div
                                             key={c.id}
-                                            onClick={() => toggleClinic(c.id)}
+                                            onClick={() => setSelectedClinic(c.id)}
                                             className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
                                                 isSelected ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white hover:border-rose-200"
                                             }`}
@@ -325,25 +323,23 @@ export function NurseHomeFlow() {
                             </div>
 
                             <div className="bg-white rounded-3xl p-5 shadow-sm border border-rose-50 space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-500">نوع خدمت</span>
-                                    <span className="font-bold text-slate-800">{service?.name}</span>
+                                <div className="flex items-start justify-between gap-3 text-sm">
+                                    <span className="shrink-0 text-slate-500">خدمات انتخابی</span>
+                                    <span className="text-left font-bold text-slate-800 leading-relaxed">
+                                        {selectedServiceItems.map((s) => s.name).join("، ")}
+                                    </span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
+                                <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
                                     <span className="text-slate-500">ترجیح جنسیت</span>
                                     <span className="font-bold text-slate-800">
                                         {genderOptions.find((g) => g.value === genderPref)?.label}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
-                                    <span className="text-slate-500">درمانگاه‌های منتخب</span>
-                                    <span className="font-bold text-slate-800">{selectedClinicItems.length} مورد</span>
-                                </div>
                                 <div className="flex justify-between items-end pt-2">
                                     <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
                                     <div className="text-left">
                                         <span className="text-2xl font-black text-rose-600 tracking-tight">
-                                            {(service?.price ?? 0).toLocaleString("fa-IR")}
+                                            {totalPrice.toLocaleString("fa-IR")}
                                         </span>
                                         <span className="text-xs text-slate-500 mr-1">تومان</span>
                                     </div>
@@ -374,10 +370,11 @@ export function NurseHomeFlow() {
                         {step === 1 && (
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
-                                disabled={selectedService === null}
+                                disabled={selectedServices.length === 0}
                                 onClick={() => setStep(2)}
                             >
                                 مرحله بعد
+                                {selectedServices.length > 0 && ` (${selectedServices.length.toLocaleString("fa-IR")} مورد)`}
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                             </Button>
                         )}
@@ -400,7 +397,6 @@ export function NurseHomeFlow() {
                                 onClick={() => setSubmitted(true)}
                             >
                                 ثبت نهایی درخواست
-                                {selectedClinics.length > 0 && ` (${selectedClinics.length.toLocaleString("fa-IR")} درمانگاه)`}
                             </Button>
                         )}
                     </div>
