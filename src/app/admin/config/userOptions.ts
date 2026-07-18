@@ -34,7 +34,7 @@ export interface AdminUserRow {
     avatar?: string | null;
     type: UserType;
     phone: string;
-    status: UserStatus;
+    status: number | string;
     province: string;
     city: string;
     isVerified: boolean;

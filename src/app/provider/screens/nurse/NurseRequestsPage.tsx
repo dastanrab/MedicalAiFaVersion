@@ -324,6 +324,28 @@ export function NurseRequestDetailPage() {
                         <Row label="ساعت" value={request.scheduledTime} />
                         <Row label="مبلغ" value={`${formatPrice(request.amount)} تومان`} />
                         {request.note && <Row label="توضیحات" value={request.note} />}
+                        {request.extra_info && (
+                            <>
+                                {request.extra_info.gender_pref && (
+                                    <Row
+                                        label="جنسیت پرستار"
+                                        value={
+                                            request.extra_info.gender_pref === 'male' ? 'آقا' :
+                                                request.extra_info.gender_pref === 'female' ? 'خانم' : 'بدون ترجیح'
+                                        }
+                                    />
+                                )}
+                                {request.extra_info.is_urgent !== undefined && (
+                                    <Row
+                                        label="وضعیت اورژانسی"
+                                        value={request.extra_info.is_urgent ? 'بله' : 'خیر'}
+                                    />
+                                )}
+                                {request.extra_info.condition && (
+                                    <Row label="شرح وضعیت بیمار" value={request.extra_info.condition} />
+                                )}
+                            </>
+                        )}
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">

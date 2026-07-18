@@ -118,6 +118,7 @@ export interface NurseService {
 }
 
 export interface NurseRequest {
+    extra_info: any;
     id: number;
     code: string;
     patientName: string;

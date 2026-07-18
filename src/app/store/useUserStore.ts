@@ -5,10 +5,13 @@ import { useAuthStore } from "./authStore";
 interface User {
     id: number;
     name: string;
-    email: string;
+    email?: string;
+    phone?: string;
+    mobile?: string;
     is_verify: boolean;
     [key: string]: any;
 }
+
 
 interface UserState {
     user: User | null;

@@ -17,6 +17,7 @@ import {
     X,
     ChevronDown,
     Loader2,
+    Home,
 } from "lucide-react";
 
 const API_BASE_URL = "http://185.222.163.113:7000";
@@ -41,6 +42,16 @@ type LabCenter = {
     total_price: number;
 };
 
+type UserAddress = {
+    id: number;
+    title: string;
+    address: string;
+    lat: number | null;
+    lng: number | null;
+    created_at: string;
+};
+
+
 type RequestType = 1 | 2 | 3;
 
 const stepsData = [
@@ -64,6 +75,12 @@ export function LabsFlow() {
     const [labs, setLabs] = useState<LabCenter[]>([]);
     const [selectedLab, setSelectedLab] = useState<number | null>(null);
 
+    const [addresses, setAddresses] = useState<UserAddress[]>([]);
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+    const [addressesOpen, setAddressesOpen] = useState(false);
+    const [loadingAddresses, setLoadingAddresses] = useState(true);
+
+
     const [loadingTests, setLoadingTests] = useState(true);
     const [loadingLabs, setLoadingLabs] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -81,6 +98,35 @@ export function LabsFlow() {
 
         return `${minPrice.toLocaleString("fa-IR")} تا ${maxPrice.toLocaleString("fa-IR")} تومان`;
     };
+
+    const selectedAddress =
+        addresses.find((item) => item.id === selectedAddressId) ?? null;
+
+    const getAddressLabel = (item: UserAddress) => {
+        return item.title || "آدرس";
+    };
+
+    const getAddressText = (item: UserAddress) => {
+        return item.address || "-";
+    };
+    const addressDropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                addressDropdownRef.current &&
+                !addressDropdownRef.current.contains(event.target as Node)
+            ) {
+                setAddressesOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
 
     const getSelectedMode = (): RequestType | null => {
         const hasTests = selectedTests.length > 0;
@@ -119,6 +165,46 @@ export function LabsFlow() {
 
         return [hasTests, hasCode, hasFile].filter(Boolean).length > 1;
     }, [selectedTests, digitalCode, prescriptionFile]);
+
+    useEffect(() => {
+        const fetchAddresses = async () => {
+            try {
+                setLoadingAddresses(true);
+
+                const res = await fetch(`${API_BASE_URL}/api/user/addresses`, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                const json = await res.json();
+
+                if (!res.ok || !json.success) {
+                    setAddresses([]);
+                    setSelectedAddressId(null);
+                    return;
+                }
+
+                const list: UserAddress[] = Array.isArray(json?.data?.addresses)
+                    ? json.data.addresses
+                    : [];
+
+                setAddresses(list);
+                setSelectedAddressId(list[0]?.id ?? null);
+            } catch {
+                setAddresses([]);
+                setSelectedAddressId(null);
+            } finally {
+                setLoadingAddresses(false);
+            }
+        };
+
+        if (accessToken) {
+            fetchAddresses();
+        }
+    }, [accessToken]);
+
 
     useEffect(() => {
         const fetchTestPacks = async () => {
@@ -190,6 +276,11 @@ export function LabsFlow() {
     const submitLabRequest = async () => {
         const requestType = getSelectedMode();
 
+        if (!selectedAddressId) {
+            setApiError("لطفاً آدرس نمونه‌گیری را انتخاب کنید.");
+            return false;
+        }
+
         if (!requestType) {
             if (isMixedSelection) {
                 setApiError("فقط یکی از حالت‌های انتخاب آزمایش، کد دیجیتال یا آپلود نسخه را استفاده کنید.");
@@ -222,6 +313,7 @@ export function LabsFlow() {
                         visit_type: 0,
                         lab_id: selectedLab,
                         test_pack_ids: selectedTests,
+                        user_address_id: selectedAddressId,
                     }),
                 });
 
@@ -239,6 +331,7 @@ export function LabsFlow() {
                         request_type_id: 2,
                         visit_type: 0,
                         digital_code: digitalCode.trim(),
+                        user_address_id: selectedAddressId,
                     }),
                 });
 
@@ -247,6 +340,7 @@ export function LabsFlow() {
                 const formData = new FormData();
                 formData.append("request_type_id", "3");
                 formData.append("visit_type", "0");
+                formData.append("user_address_id", String(selectedAddressId));
 
                 if (prescriptionFile) {
                     formData.append("files[]", prescriptionFile);
@@ -295,6 +389,11 @@ export function LabsFlow() {
     };
 
     const handleNextStep = async () => {
+        if (!selectedAddressId) {
+            setApiError("لطفاً آدرس نمونه‌گیری را انتخاب کنید.");
+            return;
+        }
+
         if (isMixedSelection) {
             setApiError("فقط یکی از حالت‌های انتخاب آزمایش، کد دیجیتال یا آپلود نسخه را استفاده کنید.");
             return;
@@ -348,6 +447,94 @@ export function LabsFlow() {
             <AppBar backTo="/services" />
 
             <div className="relative z-10 px-5 pb-4 pt-24 text-right sm:px-6">
+                <div className="mb-2 flex justify-center">
+                    <div ref={addressDropdownRef}  className="relative w-full max-w-md">
+                        {loadingAddresses ? (
+                            <div className="text-center text-sm text-slate-500">
+                                در حال دریافت آدرس‌ها...
+                            </div>
+                        ) : addresses.length === 0 ? (
+                            <div className="text-center">
+                                <p className="text-sm font-bold text-amber-700">آدرسی ثبت نشده است</p>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/profile")}
+                                    className="mt-2 text-sm font-bold text-blue-600"
+                                >
+                                    رفتن به پروفایل
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setAddressesOpen((prev) => !prev)}
+                                    className="mx-auto flex min-h-10 items-center justify-center gap-1.5 text-center"
+                                >
+                                    <MapPin className="h-4 w-4 shrink-0 text-blue-600" />
+                                    <span className="max-w-[220px] truncate text-sm font-bold text-slate-800">
+                        {selectedAddress ? getAddressLabel(selectedAddress) : "انتخاب آدرس"}
+                    </span>
+                                    <ChevronDown
+                                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${
+                                            addressesOpen ? "rotate-180" : ""
+                                        }`}
+                                    />
+                                </button>
+
+                                <p className="mt-1 text-center text-xs text-slate-500">
+                                    {selectedAddress ? getAddressText(selectedAddress) : "آدرسی انتخاب نشده است"}
+                                </p>
+
+                                {addressesOpen && (
+                                    <div className="absolute left-0 right-0 top-full z-30 mt-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-200/60">
+                                        <div className="flex flex-col gap-2">
+                                            {addresses.map((item) => {
+                                                const isSelected = item.id === selectedAddressId;
+
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedAddressId(item.id);
+                                                            setAddressesOpen(false);
+                                                        }}
+                                                        className={`rounded-2xl px-3 py-3 text-center transition-all ${
+                                                            isSelected
+                                                                ? "bg-blue-50 text-blue-700"
+                                                                : "bg-white text-slate-700 hover:bg-slate-50"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            {isSelected && <Check className="h-4 w-4 text-blue-600" />}
+                                                            <span className="text-sm font-bold">
+                                                {getAddressLabel(item)}
+                                            </span>
+                                                        </div>
+                                                        <p className="mt-1 text-xs leading-6 text-slate-500">
+                                                            {getAddressText(item)}
+                                                        </p>
+                                                    </button>
+                                                );
+                                            })}
+
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate("/profile")}
+                                                className="mt-1 text-sm font-bold text-blue-600"
+                                            >
+                                                مدیریت آدرس‌ها
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+
+
                 <div className="mb-8 shrink-0">
                     <div className="mb-6 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-sky-500 to-blue-600 p-4 shadow-lg shadow-blue-200">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
@@ -665,7 +852,9 @@ export function LabsFlow() {
                                 className="h-12 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-10 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:shadow-xl hover:shadow-blue-600/40"
                                 disabled={
                                     loadingTests ||
+                                    loadingAddresses ||
                                     submitting ||
+                                    !selectedAddressId ||
                                     (!selectedTests.length && digitalCode.trim().length === 0 && !prescriptionFile)
                                 }
                                 onClick={handleNextStep}
@@ -689,7 +878,7 @@ export function LabsFlow() {
                         {step === 2 && (
                             <Button
                                 className="h-12 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-10 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:shadow-xl hover:shadow-blue-600/40"
-                                disabled={selectedLab === null || loadingLabs || submitting}
+                                disabled={selectedLab === null || loadingLabs || submitting || !selectedAddressId}
                                 onClick={submitLabRequest}
                             >
                                 {submitting ? (

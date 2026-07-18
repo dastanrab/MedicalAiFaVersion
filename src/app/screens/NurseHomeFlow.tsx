@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AppBar } from "../components/AppBar";
 import { Button } from "../components/ui/button";
@@ -19,28 +19,30 @@ import {
     Home as HomeIcon,
     Building2,
     Star,
+    Loader2
 } from "lucide-react";
+import {useAuthStore} from "../store/authStore";
+// فرض می‌کنیم هوک استور شما اینجا قرار دارد
 
-const nurseServices = [
-    { id: 1, key: "injection", name: "تزریقات و سرم‌تراپی", desc: "تزریق دارو و سرم در منزل", price: 450000, icon: Syringe },
-    { id: 2, key: "wound", name: "پانسمان و مراقبت از زخم", desc: "تعویض و مراقبت پانسمان", price: 380000, icon: Bandage },
-    { id: 3, key: "elderly", name: "مراقبت از سالمند", desc: "ویزیت و مراقبت روزانه", price: 600000, icon: UserRound },
-    { id: 4, key: "baby", name: "مراقبت از نوزاد", desc: "مراقبت و مانیتورینگ نوزاد", price: 550000, icon: Baby },
-    { id: 5, key: "physio", name: "فیزیوتراپی در منزل", desc: "جلسات توانبخشی حرکتی", price: 520000, icon: Dumbbell },
-    { id: 6, key: "general", name: "مراقبت عمومی", desc: "کمک در امور روزمره", price: 400000, icon: HeartHandshake },
-];
+
+const API_BASE_URL = "http://185.222.163.113:7000/api/user"; // فرض بر این است که روت‌ها در api.php هستند
+
+// نگاشت آیکون‌ها بر اساس slug خدمات دریافتی از دیتابیس
+const getServiceIcon = (slug: string) => {
+    const icons: Record<string, any> = {
+        'injection': Syringe,
+        'wound': Bandage,
+        'elderly': UserRound,
+        'baby': Baby,
+        'physio': Dumbbell
+    };
+    return icons[slug] || HeartHandshake;
+};
 
 const genderOptions: { value: "any" | "female" | "male"; label: string }[] = [
     { value: "any", label: "فرقی ندارد" },
     { value: "female", label: "پرستار خانم" },
     { value: "male", label: "پرستار آقا" },
-];
-
-const clinics = [
-    { id: 1, name: "درمانگاه شبانه‌روزی سلامت", city: "مشهد", address: "بلوار وکیل‌آباد، نبش وکیل‌آباد ۲۵", rating: 4.9, reviews: 312, distanceKm: 1.8 },
-    { id: 2, name: "درمانگاه تخصصی مهرگان", city: "مشهد", address: "خیابان احمدآباد، نرسیده به میدان بوعلی", rating: 4.8, reviews: 204, distanceKm: 3.2 },
-    { id: 3, name: "کلینیک پرستاری آرامش", city: "مشهد", address: "بلوار سجاد، بین سجاد ۱۴ و ۱۶", rating: 4.7, reviews: 156, distanceKm: 4.5 },
-    { id: 4, name: "درمانگاه پارسیان", city: "مشهد", address: "میدان راهنمایی، ابتدای خیابان کوهسنگی", rating: 4.6, reviews: 98, distanceKm: 5.9 },
 ];
 
 const stepsData = [
@@ -51,10 +53,21 @@ const stepsData = [
 
 export function NurseHomeFlow() {
     const navigate = useNavigate();
+    const { accessToken } = useAuthStore();
 
     const [step, setStep] = useState(1);
     const [submitted, setSubmitted] = useState(false);
 
+    // Data states
+    const [servicesList, setServicesList] = useState<any[]>([]);
+    const [clinicsList, setClinicsList] = useState<any[]>([]);
+
+    // Loading states
+    const [isLoadingServices, setIsLoadingServices] = useState(true);
+    const [isLoadingClinics, setIsLoadingClinics] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Form states
     const [selectedServices, setSelectedServices] = useState<number[]>([]);
     const [genderPref, setGenderPref] = useState<"any" | "female" | "male">("any");
     const [address, setAddress] = useState("");
@@ -62,13 +75,99 @@ export function NurseHomeFlow() {
     const [urgent, setUrgent] = useState(false);
     const [selectedClinic, setSelectedClinic] = useState<number | null>(null);
 
+    // مرحله ۱: دریافت خدمات از API
+    useEffect(() => {
+        const fetchServices = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/medical/services`, {
+                    headers: {
+                        "Accept": "application/json",
+                        "Authorization": `Bearer ${accessToken}`
+                    }
+                });
+                const json = await response.json();
+                if (json.success) {
+                    setServicesList(json.data);
+                }
+            } catch (error) {
+                console.error("Error fetching services:", error);
+            } finally {
+                setIsLoadingServices(false);
+            }
+        };
+
+        fetchServices();
+    }, [accessToken]);
+
+    // مرحله ۳: واکشی درمانگاه‌ها هنگام رفتن به استپ ۳
+    const fetchClinicsAndProceed = async () => {
+        setIsLoadingClinics(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/medical/centers`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({ service_ids: selectedServices })
+            });
+            const json = await response.json();
+            if (json.success) {
+                setClinicsList(json.data);
+                setStep(3);
+                // ریست کردن کلینیک انتخابی قبلی اگر کاربر به مراحل قبل برگشته باشد
+                setSelectedClinic(null);
+            }
+        } catch (error) {
+            console.error("Error fetching clinics:", error);
+        } finally {
+            setIsLoadingClinics(false);
+        }
+    };
+
+    // ثبت نهایی درخواست
+    const submitFinalRequest = async () => {
+        setIsSubmitting(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/medical/requests`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    medical_center_id: selectedClinic,
+                    service_ids: selectedServices,
+                    gender_pref: genderPref,
+                    condition: condition,
+                    is_urgent: urgent ? 1 : 0,
+                    address: address,
+                    time_type_id: 1 // فرض بر بازه زمانی پیش‌فرض
+                })
+            });
+            const json = await response.json();
+            if (json.success) {
+                setSubmitted(true);
+            } else {
+                alert("خطا در ثبت درخواست: " + (json.message || "لطفاً مجدداً تلاش کنید"));
+            }
+        } catch (error) {
+            console.error("Error submitting request:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const toggleService = (id: number) => {
         setSelectedServices((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
     };
 
-    const selectedServiceItems = nurseServices.filter((s) => selectedServices.includes(s.id));
-    const totalPrice = selectedServiceItems.reduce((sum, s) => sum + s.price, 0);
-    const clinic = clinics.find((c) => c.id === selectedClinic) ?? null;
+    const selectedServiceItems = servicesList.filter((s) => selectedServices.includes(s.id));
+    const clinic = clinicsList.find((c) => c.id === selectedClinic) ?? null;
+    // استخراج قیمت نهایی کلینیک انتخاب شده از API
+    const finalPrice = clinic ? parseFloat(clinic.total_estimated_price) : 0;
 
     const isStep2Valid = address.trim().length > 0 && condition.trim().length > 0;
     const isStep3Valid = selectedClinic !== null;
@@ -161,46 +260,46 @@ export function NurseHomeFlow() {
                             <h2 className="text-lg font-bold text-slate-800 mb-1">نوع خدمات مورد نیاز را انتخاب کنید</h2>
                             <p className="text-xs text-slate-500 mb-4">می‌توانید بیش از یک خدمت انتخاب کنید</p>
 
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                                {nurseServices.map((svc) => {
-                                    const isSelected = selectedServices.includes(svc.id);
-                                    const Icon = svc.icon;
-                                    return (
-                                        <div
-                                            key={svc.id}
-                                            onClick={() => toggleService(svc.id)}
-                                            className={`p-4 rounded-3xl cursor-pointer transition-all border-2 flex flex-col h-full ${
-                                                isSelected ? "border-rose-500 bg-rose-50/80 shadow-sm" : "border-slate-100 bg-white hover:border-rose-200 shadow-sm"
-                                            }`}
-                                        >
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className={`p-2.5 rounded-2xl ${isSelected ? "bg-rose-600" : "bg-rose-50"}`}>
-                                                    <Icon className={`w-5 h-5 ${isSelected ? "text-white" : "text-rose-600"}`} />
+                            {isLoadingServices ? (
+                                <div className="flex items-center justify-center py-10">
+                                    <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3 mb-6">
+                                    {servicesList.map((svc) => {
+                                        const isSelected = selectedServices.includes(svc.id);
+                                        const Icon = getServiceIcon(svc.slug);
+                                        return (
+                                            <div
+                                                key={svc.id}
+                                                onClick={() => toggleService(svc.id)}
+                                                className={`p-4 rounded-3xl cursor-pointer transition-all border-2 flex flex-col h-full ${
+                                                    isSelected ? "border-rose-500 bg-rose-50/80 shadow-sm" : "border-slate-100 bg-white hover:border-rose-200 shadow-sm"
+                                                }`}
+                                            >
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className={`p-2.5 rounded-2xl ${isSelected ? "bg-rose-600" : "bg-rose-50"}`}>
+                                                        <Icon className={`w-5 h-5 ${isSelected ? "text-white" : "text-rose-600"}`} />
+                                                    </div>
+                                                    <div
+                                                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                                            isSelected ? "border-rose-600 bg-rose-600" : "border-slate-200"
+                                                        }`}
+                                                    >
+                                                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                                                    </div>
                                                 </div>
-                                                <div
-                                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                                        isSelected ? "border-rose-600 bg-rose-600" : "border-slate-200"
-                                                    }`}
-                                                >
-                                                    {isSelected && <Check className="w-3 h-3 text-white" />}
-                                                </div>
-                                            </div>
 
-                                            <h3 className="text-sm font-bold text-slate-800 mb-1">{svc.name}</h3>
-                                            <p className="text-[10px] text-slate-500 mb-4 flex-1">{svc.desc}</p>
-
-                                            <div className="text-left mt-auto">
-                                                <span className="text-base font-black text-slate-800">{svc.price.toLocaleString("fa-IR")}</span>
-                                                <span className="text-[9px] text-slate-400 mr-1">تومان</span>
+                                                <h3 className="text-sm font-bold text-slate-800 mt-2">{svc.name}</h3>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* STEP 2: Patient info + address (needs assessment) */}
+                    {/* STEP 2: Patient info + address */}
                     {step === 2 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <h2 className="text-lg font-bold text-slate-800 mb-4">اطلاعات بیمار و آدرس</h2>
@@ -274,82 +373,82 @@ export function NurseHomeFlow() {
                     {step === 3 && (
                         <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <h2 className="text-lg font-bold text-slate-800 mb-1">درمانگاه ارائه‌دهنده خدمت را انتخاب کنید</h2>
-                            <p className="text-xs text-slate-500 mb-4">لیست درمانگاه‌های نزدیک به آدرس شما</p>
+                            <p className="text-xs text-slate-500 mb-4">لیست درمانگاه‌هایی که خدمات انتخابی را ارائه می‌دهند</p>
 
-                            <div className="flex flex-col gap-3 mb-6">
-                                {clinics.map((c) => {
-                                    const isSelected = selectedClinic === c.id;
-                                    return (
-                                        <div
-                                            key={c.id}
-                                            onClick={() => setSelectedClinic(c.id)}
-                                            className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
-                                                isSelected ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white hover:border-rose-200"
-                                            }`}
-                                        >
-                                            <div className="flex items-start gap-3">
-                                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSelected ? "bg-rose-600" : "bg-rose-50"}`}>
-                                                    <Building2 className={`h-5 w-5 ${isSelected ? "text-white" : "text-rose-600"}`} />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <h3 className="text-sm font-bold text-slate-800 truncate">{c.name}</h3>
-                                                        <div
-                                                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                                                                isSelected ? "border-rose-600 bg-rose-600" : "border-slate-200"
-                                                            }`}
-                                                        >
-                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
-                                                        </div>
+                            {clinicsList.length === 0 ? (
+                                <div className="p-4 text-center text-slate-500 text-sm bg-slate-50 rounded-2xl">
+                                    درمانگاهی برای خدمات انتخابی یافت نشد.
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-3 mb-6">
+                                    {clinicsList.map((c) => {
+                                        const isSelected = selectedClinic === c.id;
+                                        return (
+                                            <div
+                                                key={c.id}
+                                                onClick={() => setSelectedClinic(c.id)}
+                                                className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
+                                                    isSelected ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white hover:border-rose-200"
+                                                }`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${isSelected ? "bg-rose-600" : "bg-rose-50"}`}>
+                                                        <Building2 className={`h-5 w-5 ${isSelected ? "text-white" : "text-rose-600"}`} />
                                                     </div>
-                                                    <p className="mt-1 truncate text-[11px] text-slate-500">{c.address}</p>
-                                                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
-                                                        <span className="flex items-center gap-1">
-                                                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                                                            <span className="font-bold text-slate-700">{c.rating}</span>
-                                                            <span>({c.reviews.toLocaleString("fa-IR")})</span>
-                                                        </span>
-                                                        <span className="text-slate-300">·</span>
-                                                        <span className="flex items-center gap-1">
-                                                            <MapPin className="h-3 w-3" />
-                                                            {c.distanceKm.toLocaleString("fa-IR")} کیلومتر
-                                                        </span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <h3 className="text-sm font-bold text-slate-800 truncate">{c.name}</h3>
+                                                            <div
+                                                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                                                    isSelected ? "border-rose-600 bg-rose-600" : "border-slate-200"
+                                                                }`}
+                                                            >
+                                                                {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                            </div>
+                                                        </div>
+                                                        <p className="mt-1 truncate text-[11px] text-slate-500">{c.address}</p>
+                                                        <div className="mt-2 flex items-center justify-between">
+                                                            <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                                                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                                <span className="font-bold text-slate-700">۵.۰</span>
+                                                            </div>
+                                                            <div className="text-[12px] font-bold text-rose-600">
+                                                                {parseFloat(c.total_estimated_price).toLocaleString("fa-IR")} تومان
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
 
-                            <div className="bg-white rounded-3xl p-5 shadow-sm border border-rose-50 space-y-3">
-                                <div className="flex items-start justify-between gap-3 text-sm">
-                                    <span className="shrink-0 text-slate-500">خدمات انتخابی</span>
-                                    <span className="text-left font-bold text-slate-800 leading-relaxed">
-                                        {selectedServiceItems.map((s) => s.name).join("، ")}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
-                                    <span className="text-slate-500">ترجیح جنسیت</span>
-                                    <span className="font-bold text-slate-800">
-                                        {genderOptions.find((g) => g.value === genderPref)?.label}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-end pt-2">
-                                    <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
-                                    <div className="text-left">
-                                        <span className="text-2xl font-black text-rose-600 tracking-tight">
-                                            {totalPrice.toLocaleString("fa-IR")}
+                            {selectedClinic && (
+                                <div className="bg-white rounded-3xl p-5 shadow-sm border border-rose-50 space-y-3 animate-in fade-in zoom-in duration-300">
+                                    <div className="flex items-start justify-between gap-3 text-sm">
+                                        <span className="shrink-0 text-slate-500">خدمات انتخابی</span>
+                                        <span className="text-left font-bold text-slate-800 leading-relaxed">
+                                            {selectedServiceItems.map((s) => s.name).join("، ")}
                                         </span>
-                                        <span className="text-xs text-slate-500 mr-1">تومان</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
+                                        <span className="text-slate-500">ترجیح جنسیت</span>
+                                        <span className="font-bold text-slate-800">
+                                            {genderOptions.find((g) => g.value === genderPref)?.label}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-end pt-2">
+                                        <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
+                                        <div className="text-left">
+                                            <span className="text-2xl font-black text-rose-600 tracking-tight">
+                                                {finalPrice.toLocaleString("fa-IR")}
+                                            </span>
+                                            <span className="text-xs text-slate-500 mr-1">تومان</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-500 leading-relaxed pt-1 border-t border-slate-100">
-                                    {urgent
-                                        ? "پرستار در کمتر از ۲ ساعت به آدرس شما اعزام می‌شود."
-                                        : "زمان دقیق مراجعه پرستار پس از تأیید درخواست با شما هماهنگ می‌شود."}
-                                </p>
-                            </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -362,6 +461,7 @@ export function NurseHomeFlow() {
                                 variant="outline"
                                 className="h-12 w-12 shrink-0 rounded-full border-rose-100 bg-white p-0 text-rose-600 shadow-md shadow-rose-100/80 hover:bg-rose-50 hover:text-rose-700"
                                 onClick={() => setStep(step - 1)}
+                                disabled={isLoadingClinics || isSubmitting}
                             >
                                 <ArrowLeft className="w-5 h-5 rotate-180" />
                             </Button>
@@ -370,7 +470,7 @@ export function NurseHomeFlow() {
                         {step === 1 && (
                             <Button
                                 className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
-                                disabled={selectedServices.length === 0}
+                                disabled={selectedServices.length === 0 || isLoadingServices}
                                 onClick={() => setStep(2)}
                             >
                                 مرحله بعد
@@ -381,21 +481,23 @@ export function NurseHomeFlow() {
 
                         {step === 2 && (
                             <Button
-                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
-                                disabled={!isStep2Valid}
-                                onClick={() => setStep(3)}
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all flex items-center gap-2"
+                                disabled={!isStep2Valid || isLoadingClinics}
+                                onClick={fetchClinicsAndProceed}
                             >
+                                {isLoadingClinics && <Loader2 className="w-4 h-4 animate-spin" />}
                                 مرحله بعد
-                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                <ArrowLeft className="w-4 h-4" />
                             </Button>
                         )}
 
                         {step === 3 && (
                             <Button
-                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
-                                disabled={!isStep3Valid}
-                                onClick={() => setSubmitted(true)}
+                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all flex items-center gap-2"
+                                disabled={!isStep3Valid || isSubmitting}
+                                onClick={submitFinalRequest}
                             >
+                                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                                 ثبت نهایی درخواست
                             </Button>
                         )}
