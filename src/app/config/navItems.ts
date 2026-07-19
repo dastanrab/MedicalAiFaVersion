@@ -10,6 +10,7 @@ import {
   HeartPulse,
   Crown,
   Wallet,
+  ClipboardList,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export const mainNavItems: NavItem[] = [
 export const sidebarNavItems: NavItem[] = [
   ...mainNavItems,
   { icon: User, label: 'پروفایل', path: '/profile' },
+  { icon: ClipboardList, label: 'سفارش‌ها', path: '/orders' },
   { icon: MessageCircle, label: 'پیام‌ها', path: '/chats' },
   { icon: Calendar, label: 'تقویم قاعدگی', path: '/period-tracker' },
   { icon: Ruler, label: 'اندازه‌گیری بدن', path: '/body-measurement' },

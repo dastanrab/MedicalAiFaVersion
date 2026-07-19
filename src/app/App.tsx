@@ -31,6 +31,7 @@ import { RadiologyFlow } from "./screens/RadiologyFlow";
 import { NurseHomeFlow } from "./screens/NurseHomeFlow";
 import { PricingPlans } from './screens/PricingPlans';
 import { UserFinance } from './screens/UserFinance';
+import { OrdersPage } from './screens/OrdersPage';
 import ExerciseExtractor from "./screens/ExerciseExtractor";
 import { AdminLogin } from './admin/screens/AdminLogin';
 import { AdminLayout } from './admin/layout/AdminLayout';
@@ -354,6 +355,16 @@ function App() {
                         <ProtectedRoute>
                             <AppContainer showNavbar>
                                 <UserFinance />
+                            </AppContainer>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/orders"
+                    element={
+                        <ProtectedRoute>
+                            <AppContainer showNavbar>
+                                <OrdersPage />
                             </AppContainer>
                         </ProtectedRoute>
                     }
