@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   ChevronLeft,
@@ -5,30 +6,228 @@ import {
   Star,
   HeartPulse,
   ArrowLeft,
+  Pill,
+  TestTube,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
 import { Card } from '../components/ui/card';
+import {
+  ProviderDetailsDialog,
+  type ProviderDetails,
+} from '../components/ProviderDetailsDialog';
 import { servicesCatalog } from '../config/servicesCatalog';
 import { useSettingsStore } from '../admin/store/settingsStore';
 import type { ServiceModuleId } from '../admin/config/settingsOptions';
 
-const topLabs = [
-  { name: 'آزمایشگاه پاتوبیولوژی سینا', city: 'مشهد', rating: 4.9, reviews: '۲۴۰ نظر' },
-  { name: 'آزمایشگاه تخصصی نیکان', city: 'تهران', rating: 4.8, reviews: '۱۸۵ نظر' },
-  { name: 'آزمایشگاه رازی', city: 'اصفهان', rating: 4.7, reviews: '۱۵۶ نظر' },
+const topLabs: (ProviderDetails & { city: string; meta: string })[] = [
+  {
+    name: 'آزمایشگاه پاتوبیولوژی سینا',
+    city: 'مشهد',
+    meta: '۲۴۰ نظر',
+    address: 'بلوار وکیل‌آباد، نبش وکیل‌آباد ۲۲',
+    rating: 4.9,
+    reviews: 240,
+    hours: '۶:۳۰ صبح تا ۱۰ شب',
+    phone: '۰۵۱-۳۷۶۶ ۱۱۲۲',
+    description:
+      'آزمایشگاه مجهز با امکان نمونه‌گیری در محل، ارائه پکیج‌های چکاپ کامل و ارسال آنلاین نتایج آزمایش.',
+    services: [
+      { name: 'چکاپ کامل', price: 1850000 },
+      { name: 'آزمایش تیروئید', price: 420000 },
+      { name: 'قند و چربی خون', price: 280000 },
+    ],
+    recentReviews: [
+      {
+        name: 'مریم احمدی',
+        date: '۱۲ تیر ۱۴۰۵',
+        rating: 5,
+        comment: 'نمونه‌گیری در محل خیلی مرتب و سریع انجام شد.',
+      },
+      {
+        name: 'علی رضایی',
+        date: '۲۸ خرداد ۱۴۰۵',
+        rating: 4,
+        comment: 'نتایج به‌موقع آماده شد و پشتیبانی خوبی داشتند.',
+      },
+    ],
+  },
+  {
+    name: 'آزمایشگاه تخصصی نیکان',
+    city: 'تهران',
+    meta: '۱۸۵ نظر',
+    address: 'خیابان ولیعصر، نبش پارک وی',
+    rating: 4.8,
+    reviews: 185,
+    hours: '۷ صبح تا ۹ شب',
+    phone: '۰۲۱-۸۸۷۷ ۲۲۳۳',
+    description:
+      'مرکز تشخیصی با تجهیزات به‌روز، پرسنل مجرب و پوشش گسترده آزمایش‌های تخصصی و عمومی.',
+    services: [
+      { name: 'آزمایش خون تخصصی', price: 650000 },
+      { name: 'هورمون‌شناسی', price: 780000 },
+      { name: 'ویتامین D', price: 310000 },
+    ],
+    recentReviews: [
+      {
+        name: 'زهرا کریمی',
+        date: '۹ تیر ۱۴۰۵',
+        rating: 5,
+        comment: 'پرسنل حرفه‌ای بودند و هماهنگی نمونه‌گیری عالی بود.',
+      },
+      {
+        name: 'رضا محمدی',
+        date: '۲۰ خرداد ۱۴۰۵',
+        rating: 5,
+        comment: 'از کیفیت خدمات و سرعت پاسخ‌دهی راضی بودم.',
+      },
+    ],
+  },
+  {
+    name: 'آزمایشگاه رازی',
+    city: 'اصفهان',
+    meta: '۱۵۶ نظر',
+    address: 'خیابان چهارباغ بالا، پلاک ۱۲۰',
+    rating: 4.7,
+    reviews: 156,
+    hours: '۷ صبح تا ۸ شب',
+    phone: '۰۳۱-۳۶۲۲ ۴۴۵۵',
+    description:
+      'آزمایشگاه همکار بیمه با پذیرش نسخه الکترونیک، پاسخ‌گویی سریع و امکان پیگیری آنلاین نتایج.',
+    services: [
+      { name: 'آزمایش ادرار', price: 180000 },
+      { name: 'کبد چربی', price: 350000 },
+      { name: 'آهن و فریتین', price: 290000 },
+    ],
+    recentReviews: [
+      {
+        name: 'سارا حسینی',
+        date: '۵ تیر ۱۴۰۵',
+        rating: 4,
+        comment: 'همه آزمایش‌ها پوشش داده شد و هزینه شفاف بود.',
+      },
+      {
+        name: 'امیر جعفری',
+        date: '۱۶ خرداد ۱۴۰۵',
+        rating: 4,
+        comment: 'خدمات خوب بود، فقط کمی در هماهنگی تأخیر داشت.',
+      },
+    ],
+  },
 ];
 
-const pharmacies = [
-  { name: 'داروخانه شبانه‌روزی مرکزی', city: 'مشهد', rating: 4.8, open: '۲۴ ساعته' },
-  { name: 'داروخانه دکتر عبیدی', city: 'تهران', rating: 4.9, open: '۸ تا ۲۲' },
-  { name: 'داروخانه بزرگ اصفهان', city: 'اصفهان', rating: 4.6, open: '۸ تا ۲۱' },
+const pharmacies: (ProviderDetails & { city: string; meta: string })[] = [
+  {
+    name: 'داروخانه شبانه‌روزی مرکزی',
+    city: 'مشهد',
+    meta: '۲۴ ساعته',
+    address: 'بلوار وکیل‌آباد، نبش وکیل‌آباد ۱۰',
+    rating: 4.8,
+    reviews: 268,
+    hours: 'شبانه‌روزی',
+    phone: '۰۵۱-۳۸۸۸ ۲۴۲۴',
+    description:
+      'داروخانه شبانه‌روزی با امکان تهیه داروهای نسخه‌ای، مکمل‌های غذایی و محصولات بهداشتی. سفارش‌ها پیش از ارسال توسط داروساز بررسی می‌شوند.',
+    services: [
+      { name: 'استامینوفن ۵۰۰', price: 48000 },
+      { name: 'قرص سرماخوردگی بزرگسالان', price: 72000 },
+      { name: 'ویتامین D3', price: 115000 },
+    ],
+    recentReviews: [
+      {
+        name: 'مریم احمدی',
+        date: '۱۲ تیر ۱۴۰۵',
+        rating: 5,
+        comment: 'سفارش سریع آماده شد و برخورد داروساز بسیار خوب بود.',
+      },
+      {
+        name: 'علی رضایی',
+        date: '۲۸ خرداد ۱۴۰۵',
+        rating: 4,
+        comment: 'تنوع دارو مناسب بود و بسته‌بندی تمیزی داشت.',
+      },
+    ],
+  },
+  {
+    name: 'داروخانه دکتر عبیدی',
+    city: 'تهران',
+    meta: '۸ تا ۲۲',
+    address: 'خیابان احمدآباد، پلاک ۸۸',
+    rating: 4.9,
+    reviews: 197,
+    hours: '۸ صبح تا ۱۲ شب',
+    phone: '۰۵۱-۳۸۴۲ ۱۰۱۰',
+    description:
+      'مرکز عرضه داروهای تخصصی، مکمل و تجهیزات پزشکی با حضور داروساز و امکان مشاوره درباره نحوه مصرف دارو.',
+    services: [
+      { name: 'ایبوپروفن ۴۰۰', price: 64000 },
+      { name: 'شربت دیفن‌هیدرامین', price: 86000 },
+      { name: 'زینک پلاس', price: 198000 },
+    ],
+    recentReviews: [
+      {
+        name: 'زهرا کریمی',
+        date: '۹ تیر ۱۴۰۵',
+        rating: 5,
+        comment: 'پاسخ‌گویی دقیق و توضیحات کامل درباره نحوه مصرف دارو.',
+      },
+      {
+        name: 'رضا محمدی',
+        date: '۲۰ خرداد ۱۴۰۵',
+        rating: 5,
+        comment: 'داروها کامل موجود بود و زمان انتظار کوتاه بود.',
+      },
+    ],
+  },
+  {
+    name: 'داروخانه بزرگ اصفهان',
+    city: 'اصفهان',
+    meta: '۸ تا ۲۱',
+    address: 'خیابان چهارباغ پایین، ابتدای آمادگاه',
+    rating: 4.6,
+    reviews: 143,
+    hours: '۸ صبح تا ۹ شب',
+    phone: '۰۳۱-۳۲۲۲ ۳۳۳۰',
+    description:
+      'ارائه‌دهنده داروهای عمومی و تخصصی، محصولات مادر و کودک و اقلام مراقبت پوستی با امکان ارسال در محدوده.',
+    services: [
+      { name: 'لوراتادین ۱۰', price: 57000 },
+      { name: 'امپرازول ۲۰', price: 93000 },
+      { name: 'مولتی‌ویتامین مینرال', price: 245000 },
+    ],
+    recentReviews: [
+      {
+        name: 'سارا حسینی',
+        date: '۵ تیر ۱۴۰۵',
+        rating: 5,
+        comment: 'ارسال به‌موقع بود و همه اقلام نسخه را داشتند.',
+      },
+      {
+        name: 'امیر جعفری',
+        date: '۱۶ خرداد ۱۴۰۵',
+        rating: 4,
+        comment: 'کیفیت خدمات خوب بود، فقط کمی شلوغ بود.',
+      },
+    ],
+  },
 ];
 
 export function MedicalServices() {
   const navigate = useNavigate();
   const enabledServices = useSettingsStore((s) => s.services);
   const services = servicesCatalog.filter((s) => enabledServices[s.id as ServiceModuleId]);
+  const [details, setDetails] = useState<ProviderDetails | null>(null);
+  const [detailsType, setDetailsType] = useState<'lab' | 'pharmacy' | null>(null);
+
+  const openLabDetails = (lab: ProviderDetails) => {
+    setDetailsType('lab');
+    setDetails(lab);
+  };
+
+  const openPharmacyDetails = (pharmacy: ProviderDetails) => {
+    setDetailsType('pharmacy');
+    setDetails(pharmacy);
+  };
 
   if (services.length === 0) {
     return (
@@ -87,11 +286,11 @@ export function MedicalServices() {
                   name={lab.name}
                   city={lab.city}
                   rating={lab.rating}
-                  meta={lab.reviews}
+                  meta={lab.meta}
                   icon={servicesCatalog[0].icon}
                   iconBg="bg-sky-50 text-sky-600"
                   accent="text-sky-600"
-                  onClick={() => navigate('/services/labs')}
+                  onClick={() => openLabDetails(lab)}
                 />
               ))}
             </HorizontalScroll>
@@ -112,17 +311,38 @@ export function MedicalServices() {
                   name={pharmacy.name}
                   city={pharmacy.city}
                   rating={pharmacy.rating}
-                  meta={pharmacy.open}
+                  meta={pharmacy.meta}
                   icon={servicesCatalog[1].icon}
                   iconBg="bg-emerald-50 text-emerald-600"
                   accent="text-emerald-600"
-                  onClick={() => navigate('/services/pharmacy')}
+                  onClick={() => openPharmacyDetails(pharmacy)}
                 />
               ))}
             </HorizontalScroll>
           </>
         )}
       </div>
+
+      <ProviderDetailsDialog
+        key={details?.name ?? 'provider-details'}
+        open={details !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetails(null);
+            setDetailsType(null);
+          }
+        }}
+        details={details}
+        accent={detailsType === 'pharmacy' ? 'emerald' : 'sky'}
+        infoTitle={detailsType === 'pharmacy' ? 'اطلاعات داروخانه' : 'اطلاعات آزمایشگاه'}
+        servicesTitle={detailsType === 'pharmacy' ? 'لیست داروها' : 'خدمات آزمایشی'}
+        servicesIcon={detailsType === 'pharmacy' ? Pill : TestTube}
+        reviewPlaceholder={
+          detailsType === 'pharmacy'
+            ? 'نظر خود را درباره خدمات این داروخانه بنویسید'
+            : 'نظر خود را درباره خدمات این آزمایشگاه بنویسید'
+        }
+      />
     </div>
   );
 }
