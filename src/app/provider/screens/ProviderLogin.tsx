@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate, Navigate } from 'react-router';
-import { Loader2, Phone, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Loader2, Smartphone, ShieldCheck, ArrowRight, UserRound, Building2 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../components/ui/input-otp';
 import { useSettingsStore } from '../../admin/store/settingsStore';
 import type { ProviderRole, NurseAccountType } from '../config/providerNav';
@@ -303,38 +303,45 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                     ) : (
                         <form onSubmit={sendOtp} className="space-y-5">
                             {role === 'nurse' && (
-                                <div>
-                                    <label className="mb-2 block text-sm text-slate-700">نوع حساب</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setNurseAccountType('individual')}
-                                            className={`rounded-xl border px-3 py-2.5 text-sm transition ${
-                                                nurseAccountType === 'individual'
-                                                    ? 'border-rose-400 bg-rose-50 text-rose-700'
-                                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                <div className="grid grid-cols-2 gap-2.5 rounded-2xl bg-slate-100/80 p-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setNurseAccountType('individual')}
+                                        className={`flex flex-col items-center gap-1.5 rounded-xl px-3 py-3.5 text-sm font-medium transition-all ${
+                                            nurseAccountType === 'individual'
+                                                ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-200/80'
+                                                : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <UserRound
+                                            className={`h-5 w-5 ${
+                                                nurseAccountType === 'individual' ? 'text-rose-500' : 'text-slate-400'
                                             }`}
-                                        >
-                                            پرستار مستقل
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setNurseAccountType('company')}
-                                            className={`rounded-xl border px-3 py-2.5 text-sm transition ${
-                                                nurseAccountType === 'company'
-                                                    ? 'border-rose-400 bg-rose-50 text-rose-700'
-                                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                        />
+                                        پرستار مستقل
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNurseAccountType('company')}
+                                        className={`flex flex-col items-center gap-1.5 rounded-xl px-3 py-3.5 text-sm font-medium transition-all ${
+                                            nurseAccountType === 'company'
+                                                ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-200/80'
+                                                : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <Building2
+                                            className={`h-5 w-5 ${
+                                                nurseAccountType === 'company' ? 'text-rose-500' : 'text-slate-400'
                                             }`}
-                                        >
-                                            شرکت خدمات پرستاری
-                                        </button>
-                                    </div>
+                                        />
+                                        شرکت خدمات پرستاری
+                                    </button>
                                 </div>
                             )}
                             <div>
                                 <label className="mb-2 block text-sm text-slate-700">شماره موبایل</label>
                                 <div className="relative">
-                                    <Phone className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                    <Smartphone className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                                     <input
                                         type="tel"
                                         value={phone}
