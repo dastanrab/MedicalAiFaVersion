@@ -5,6 +5,13 @@ import { AppBar } from "../components/AppBar";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "../components/ui/dialog";
+import {
     UploadCloud,
     TestTube,
     CheckCircle2,
@@ -17,7 +24,11 @@ import {
     X,
     ChevronDown,
     Loader2,
-    Home,
+    Info,
+    Clock3,
+    Smartphone,
+    Star,
+    MessageCircleMore,
 } from "lucide-react";
 
 const API_BASE_URL = "http://185.222.163.113:7000";
@@ -30,6 +41,13 @@ type TestPack = {
     max_price: number | null;
 };
 
+type LabReview = {
+    name: string;
+    date: string;
+    rating: number;
+    comment: string;
+};
+
 type LabCenter = {
     id: number;
     name: string;
@@ -40,6 +58,58 @@ type LabCenter = {
     work_hours: string | null;
     image: string | null;
     total_price: number;
+};
+
+type LabDetails = LabCenter & {
+    description: string;
+    phone: string;
+    rating: number;
+    reviewsCount: number;
+    recentReviews: LabReview[];
+};
+
+const getLabDetails = (lab: LabCenter): LabDetails => {
+    const seed = lab.id % 4;
+
+    const descriptions = [
+        "آزمایشگاه مجهز با امکان نمونه‌گیری در محل، ارائه پکیج‌های چکاپ کامل و ارسال آنلاین نتایج آزمایش.",
+        "مرکز تشخیصی با تجهیزات به‌روز، پرسنل مجرب و پوشش گسترده آزمایش‌های تخصصی و عمومی.",
+        "آزمایشگاه همکار بیمه با پذیرش نسخه الکترونیک، پاسخ‌گویی سریع و امکان پیگیری آنلاین نتایج.",
+        "ارائه‌دهنده خدمات آزمایشگاهی عمومی و تخصصی با ساعت کاری منعطف و نمونه‌گیری در منزل.",
+    ];
+
+    const phones = ["۰۵۱-۳۷۶۶ ۱۱۲۲", "۰۵۱-۳۸۴۰ ۲۲۳۳", "۰۵۱-۳۷۲۱ ۴۴۵۵", "۰۵۱-۳۸۵۵ ۶۶۷۷"];
+
+    const reviewsPool: LabReview[][] = [
+        [
+            { name: "مریم احمدی", date: "۱۲ تیر ۱۴۰۵", rating: 5, comment: "نمونه‌گیری در محل خیلی مرتب و سریع انجام شد." },
+            { name: "علی رضایی", date: "۲۸ خرداد ۱۴۰۵", rating: 4, comment: "نتایج به‌موقع آماده شد و پشتیبانی خوبی داشتند." },
+        ],
+        [
+            { name: "زهرا کریمی", date: "۹ تیر ۱۴۰۵", rating: 5, comment: "پرسنل حرفه‌ای بودند و هماهنگی نمونه‌گیری عالی بود." },
+            { name: "رضا محمدی", date: "۲۰ خرداد ۱۴۰۵", rating: 5, comment: "از کیفیت خدمات و سرعت پاسخ‌دهی راضی بودم." },
+        ],
+        [
+            { name: "سارا حسینی", date: "۵ تیر ۱۴۰۵", rating: 4, comment: "همه آزمایش‌ها پوشش داده شد و هزینه شفاف بود." },
+            { name: "امیر جعفری", date: "۱۶ خرداد ۱۴۰۵", rating: 4, comment: "خدمات خوب بود، فقط کمی در هماهنگی تأخیر داشت." },
+        ],
+        [
+            { name: "نرگس صادقی", date: "۲ تیر ۱۴۰۵", rating: 5, comment: "نتایج آزمایش سریع و دقیق اعلام شد." },
+            { name: "حسین مرادی", date: "۱۰ خرداد ۱۴۰۵", rating: 4, comment: "محیط تمیز و کارکنان خوش‌برخورد بودند." },
+        ],
+    ];
+
+    const ratings = [4.8, 4.9, 4.6, 4.7];
+    const reviewsCounts = [186, 142, 97, 121];
+
+    return {
+        ...lab,
+        description: descriptions[seed],
+        phone: phones[seed],
+        rating: ratings[seed],
+        reviewsCount: reviewsCounts[seed],
+        recentReviews: reviewsPool[seed],
+    };
 };
 
 type UserAddress = {
@@ -74,6 +144,10 @@ export function LabsFlow() {
     const [selectedTests, setSelectedTests] = useState<number[]>([]);
     const [labs, setLabs] = useState<LabCenter[]>([]);
     const [selectedLab, setSelectedLab] = useState<number | null>(null);
+    const [labDetails, setLabDetails] = useState<LabDetails | null>(null);
+    const [reviewRating, setReviewRating] = useState(0);
+    const [reviewText, setReviewText] = useState("");
+    const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
     const [addresses, setAddresses] = useState<UserAddress[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
@@ -387,6 +461,35 @@ export function LabsFlow() {
             prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
         );
     };
+
+    const openLabDetails = (lab: LabCenter) => {
+        setReviewRating(0);
+        setReviewText("");
+        setReviewSubmitted(false);
+        setLabDetails(getLabDetails(lab));
+    };
+
+    const submitReview = () => {
+        if (reviewRating === 0 || reviewText.trim().length === 0) return;
+        setReviewSubmitted(true);
+    };
+
+    const getServicePrice = (test: TestPack) => {
+        if (test.min_price != null && test.max_price != null) {
+            return Math.round((test.min_price + test.max_price) / 2);
+        }
+        return test.min_price ?? test.max_price ?? null;
+    };
+
+    const selectedLabServices = useMemo(() => {
+        return testPacks
+            .filter((test) => selectedTests.includes(test.id))
+            .map((test) => ({
+                id: test.id,
+                name: test.name,
+                price: getServicePrice(test),
+            }));
+    }, [testPacks, selectedTests]);
 
     const handleNextStep = async () => {
         if (!selectedAddressId) {
@@ -707,7 +810,9 @@ export function LabsFlow() {
                             </h2>
 
                             {loadingTests ? (
-                                <div className="py-8 text-center text-sm text-slate-500">در حال بارگذاری آزمایش‌ها...</div>
+                                <div className="flex items-center justify-center py-10">
+                                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                                </div>
                             ) : (
                                 <div className="mb-6 grid grid-cols-2 gap-3">
                                     {testPacks.map((test) => {
@@ -766,8 +871,7 @@ export function LabsFlow() {
                                         return (
                                             <div
                                                 key={c.id}
-                                                onClick={() => setSelectedLab(c.id)}
-                                                className={`cursor-pointer rounded-3xl border-2 p-4 shadow-sm transition-all ${
+                                                className={`rounded-3xl border-2 p-4 shadow-sm transition-all ${
                                                     isSelected ? "border-blue-500 bg-blue-50/80" : "border-slate-100 bg-white hover:border-blue-200"
                                                 }`}
                                             >
@@ -794,11 +898,40 @@ export function LabsFlow() {
                                                         <p className="mt-1 truncate text-[11px] text-slate-500">{c.address}</p>
                                                         <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
                                                             <span className="flex items-center gap-1">
-                                                                <MapPin className="h-3 w-3" />
+                                                                <Clock3 className="h-3 w-3" />
                                                                 {c.work_hours || "ساعت کاری نامشخص"}
                                                             </span>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => setSelectedLab(c.id)}
+                                                        className={`h-10 rounded-full text-xs font-bold transition-all ${
+                                                            isSelected
+                                                                ? "bg-blue-700 text-white shadow-md shadow-blue-200 hover:bg-blue-800"
+                                                                : "bg-gradient-to-l from-sky-500 to-blue-600 text-white shadow-md shadow-blue-200 hover:from-sky-600 hover:to-blue-700"
+                                                        }`}
+                                                    >
+                                                        {isSelected ? (
+                                                            <>
+                                                                <CheckCircle2 className="ml-1.5 h-4 w-4" />
+                                                                انتخاب شده
+                                                            </>
+                                                        ) : (
+                                                            "انتخاب آزمایشگاه"
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => openLabDetails(c)}
+                                                        className="h-10 rounded-full border-blue-200 bg-white text-xs font-bold text-blue-700 shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
+                                                    >
+                                                        <Info className="ml-1.5 h-4 w-4" />
+                                                        جزئیات آزمایشگاه
+                                                    </Button>
                                                 </div>
                                             </div>
                                         );
@@ -894,6 +1027,210 @@ export function LabsFlow() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={labDetails !== null} onOpenChange={(open) => !open && setLabDetails(null)}>
+                <DialogContent
+                    dir="rtl"
+                    className="flex max-h-[90dvh] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-3xl border-0 bg-white p-0 text-right shadow-2xl [&>button]:left-4 [&>button]:right-auto [&>button]:text-white [&>button]:opacity-100 sm:max-w-md"
+                >
+                    {labDetails && (
+                        <>
+                            <div className="bg-gradient-to-l from-sky-500 to-blue-600 px-6 py-6 text-white">
+                                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30">
+                                    <Building2 className="h-6 w-6" />
+                                </div>
+                                <DialogHeader className="text-right sm:text-right">
+                                    <DialogTitle className="text-lg font-black leading-7 text-white">
+                                        {labDetails.name}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs text-white/80">
+                                        {labDetails.address}
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+
+                            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5">
+                                <section className="space-y-3">
+                                    <h3 className="flex items-center gap-2 text-sm font-black text-slate-800">
+                                        <Info className="h-4 w-4 text-blue-600" />
+                                        اطلاعات آزمایشگاه
+                                    </h3>
+                                    <div className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3.5">
+                                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                                        <div>
+                                            <p className="text-[11px] font-bold text-slate-700">توضیحات</p>
+                                            <p className="mt-1 text-[11px] leading-5 text-slate-500">{labDetails.description}</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3.5">
+                                            <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                                            <div>
+                                                <p className="text-[11px] font-bold text-slate-700">ساعت کاری</p>
+                                                <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                                                    {labDetails.work_hours || "ساعت کاری نامشخص"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3.5">
+                                            <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                                            <div>
+                                                <p className="text-[11px] font-bold text-slate-700">تلفن تماس</p>
+                                                <p className="mt-1 text-[11px] leading-5 text-slate-500" dir="ltr">
+                                                    {labDetails.phone}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section className="space-y-3 border-t border-slate-100 pt-5">
+                                    <h3 className="flex items-center gap-2 text-sm font-black text-slate-800">
+                                        <TestTube className="h-4 w-4 text-blue-600" />
+                                        خدمات آزمایشی
+                                    </h3>
+                                    <div className="overflow-hidden rounded-2xl border border-slate-100">
+                                        {selectedLabServices.length > 0 ? (
+                                            selectedLabServices.map((service, index) => (
+                                                <div
+                                                    key={service.id}
+                                                    className={`flex items-center justify-between gap-3 px-4 py-3.5 ${
+                                                        index !== selectedLabServices.length - 1 ? "border-b border-slate-100" : ""
+                                                    }`}
+                                                >
+                                                    <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-slate-700">
+                                                        <span className="h-2 w-2 shrink-0 rounded-full bg-blue-400" />
+                                                        {service.name}
+                                                    </span>
+                                                    <span className="shrink-0 text-[11px] font-normal text-slate-800">
+                                                        {service.price != null ? (
+                                                            <>
+                                                                {service.price.toLocaleString("fa-IR")}{" "}
+                                                                <span className="text-[9px] text-slate-500">تومان</span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-[10px] text-slate-400">نامشخص</span>
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="px-4 py-3.5 text-xs text-slate-500">
+                                                خدمت آزمایشی برای نمایش وجود ندارد.
+                                            </div>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section className="space-y-3 border-t border-slate-100 pt-5">
+                                    <h3 className="flex items-center gap-2 text-sm font-black text-slate-800">
+                                        <MessageCircleMore className="h-4 w-4 text-blue-600" />
+                                        امتیاز کاربران
+                                    </h3>
+                                    <div className="flex items-center justify-between rounded-3xl bg-gradient-to-l from-amber-50 to-orange-50 p-4 ring-1 ring-amber-100">
+                                        <div>
+                                            <div className="flex items-end gap-1">
+                                                <span className="text-3xl font-black leading-none text-slate-800">
+                                                    {labDetails.rating.toLocaleString("fa-IR")}
+                                                </span>
+                                                <span className="pb-0.5 text-xs text-slate-400">از ۵</span>
+                                            </div>
+                                            <p className="mt-2 text-[10px] text-slate-500">
+                                                بر اساس {labDetails.reviewsCount.toLocaleString("fa-IR")} نظر ثبت‌شده
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-1" dir="ltr">
+                                            {Array.from({ length: 5 }).map((_, index) => (
+                                                <Star
+                                                    key={index}
+                                                    className={`h-4 w-4 ${
+                                                        index < Math.round(labDetails.rating)
+                                                            ? "fill-amber-400 text-amber-400"
+                                                            : "fill-white text-amber-200"
+                                                    }`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2.5">
+                                        {labDetails.recentReviews.map((review) => (
+                                            <article key={`${review.name}-${review.date}`} className="rounded-2xl bg-slate-50 p-4">
+                                                <div className="mb-2 flex items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-700">{review.name}</p>
+                                                        <p className="mt-0.5 text-[10px] text-slate-400">{review.date}</p>
+                                                    </div>
+                                                    <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700">
+                                                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                        {review.rating.toLocaleString("fa-IR")}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs leading-6 text-slate-500">{review.comment}</p>
+                                            </article>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <section className="space-y-3 border-t border-slate-100 pt-5">
+                                    <h3 className="flex items-center gap-2 text-sm font-black text-slate-800">
+                                        <MessageCircleMore className="h-4 w-4 text-blue-600" />
+                                        ثبت نظر
+                                    </h3>
+                                    {reviewSubmitted ? (
+                                        <div className="flex items-center gap-3 rounded-2xl bg-blue-50 p-4 text-xs font-bold text-blue-700">
+                                            <CheckCircle2 className="h-5 w-5 shrink-0" />
+                                            نظر شما با موفقیت ثبت شد.
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                                                <span className="text-xs font-bold text-slate-600">امتیاز شما</span>
+                                                <div className="flex gap-0.5" dir="ltr">
+                                                    {Array.from({ length: 5 }).map((_, index) => {
+                                                        const value = index + 1;
+                                                        return (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setReviewRating(value)}
+                                                                aria-label={`امتیاز ${value}`}
+                                                                className="rounded-full p-0.5 transition-transform hover:scale-110"
+                                                            >
+                                                                <Star
+                                                                    className={`h-3.5 w-3.5 ${
+                                                                        value <= reviewRating
+                                                                            ? "fill-amber-400 text-amber-400"
+                                                                            : "text-slate-300"
+                                                                    }`}
+                                                                />
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                            <textarea
+                                                value={reviewText}
+                                                onChange={(event) => setReviewText(event.target.value)}
+                                                rows={3}
+                                                placeholder="نظر خود را درباره خدمات این آزمایشگاه بنویسید"
+                                                className="w-full resize-none rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-6 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                            />
+                                            <Button
+                                                type="button"
+                                                onClick={submitReview}
+                                                disabled={reviewRating === 0 || reviewText.trim().length === 0}
+                                                className="h-11 w-full rounded-full bg-gradient-to-l from-sky-500 to-blue-600 text-sm font-bold text-white shadow-md shadow-blue-200 hover:from-sky-600 hover:to-blue-700"
+                                            >
+                                                ثبت نظر
+                                            </Button>
+                                        </>
+                                    )}
+                                </section>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
