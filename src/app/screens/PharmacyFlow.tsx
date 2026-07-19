@@ -4,6 +4,13 @@ import { AppBar } from "../components/AppBar";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "../components/ui/dialog";
+import {
     UploadCloud,
     FileText,
     Check,
@@ -20,13 +27,16 @@ import {
     Star,
     ChevronDown,
     Plus,
+    Clock3,
+    Phone,
+    Info,
 } from "lucide-react";
 
 const pharmacyCenters = [
-    { id: 1, name: "داروخانه شبانه‌روزی مرکزی", city: "مشهد", address: "بلوار وکیل‌آباد، نبش وکیل‌آباد ۱۰", rating: 4.8, reviews: 268, distanceKm: 1.4 },
-    { id: 2, name: "داروخانه دکتر عبیدی", city: "مشهد", address: "خیابان احمدآباد، پلاک ۸۸", rating: 4.9, reviews: 197, distanceKm: 2.7 },
-    { id: 3, name: "داروخانه بزرگ رضوی", city: "مشهد", address: "بلوار سجاد، نبش سجاد ۱۸", rating: 4.6, reviews: 143, distanceKm: 3.9 },
-    { id: 4, name: "داروخانه هلال احمر", city: "مشهد", address: "میدان راهنمایی، ابتدای کوهسنگی", rating: 4.7, reviews: 121, distanceKm: 5.1 },
+    { id: 1, name: "داروخانه شبانه‌روزی مرکزی", city: "مشهد", address: "بلوار وکیل‌آباد، نبش وکیل‌آباد ۱۰", rating: 4.8, reviews: 268, distanceKm: 1.4, hours: "شبانه‌روزی", phone: "۰۵۱-۳۸۸۸ ۲۴۲۴" },
+    { id: 2, name: "داروخانه دکتر عبیدی", city: "مشهد", address: "خیابان احمدآباد، پلاک ۸۸", rating: 4.9, reviews: 197, distanceKm: 2.7, hours: "۸ صبح تا ۱۲ شب", phone: "۰۵۱-۳۸۴۲ ۱۰۱۰" },
+    { id: 3, name: "داروخانه بزرگ رضوی", city: "مشهد", address: "بلوار سجاد، نبش سجاد ۱۸", rating: 4.6, reviews: 143, distanceKm: 3.9, hours: "۷:۳۰ صبح تا ۱۱ شب", phone: "۰۵۱-۳۷۶۵ ۳۳۳۰" },
+    { id: 4, name: "داروخانه هلال احمر", city: "مشهد", address: "میدان راهنمایی، ابتدای کوهسنگی", rating: 4.7, reviews: 121, distanceKm: 5.1, hours: "۸ صبح تا ۱۰ شب", phone: "۰۵۱-۳۸۵۹ ۰۰۲۰" },
 ];
 
 const stepsData = [
@@ -48,6 +58,7 @@ export function PharmacyFlow() {
     const [hasInsurance, setHasInsurance] = useState(false);
     const [note, setNote] = useState("");
     const [selectedPharmacy, setSelectedPharmacy] = useState<number | null>(null);
+    const [pharmacyDetails, setPharmacyDetails] = useState<(typeof pharmacyCenters)[number] | null>(null);
     const [openSection, setOpenSection] = useState<"code" | "upload" | null>(null);
     const [drugs, setDrugs] = useState<string[]>([]);
     const [drugInput, setDrugInput] = useState("");
@@ -393,8 +404,7 @@ export function PharmacyFlow() {
                                     return (
                                         <div
                                             key={c.id}
-                                            onClick={() => setSelectedPharmacy(c.id)}
-                                            className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
+                                            className={`p-4 rounded-3xl transition-all border-2 shadow-sm ${
                                                 isSelected ? "border-emerald-500 bg-emerald-50/80" : "border-slate-100 bg-white hover:border-emerald-200"
                                             }`}
                                         >
@@ -427,6 +437,35 @@ export function PharmacyFlow() {
                                                         </span>
                                                     </div>
                                                 </div>
+                                            </div>
+                                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => setSelectedPharmacy(c.id)}
+                                                    className={`h-10 rounded-full text-xs font-bold transition-all ${
+                                                        isSelected
+                                                            ? "bg-emerald-700 text-white shadow-md shadow-emerald-200 hover:bg-emerald-800"
+                                                            : "bg-gradient-to-l from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200 hover:from-emerald-600 hover:to-teal-700"
+                                                    }`}
+                                                >
+                                                    {isSelected ? (
+                                                        <>
+                                                            <CheckCircle2 className="ml-1.5 h-4 w-4" />
+                                                            انتخاب شده
+                                                        </>
+                                                    ) : (
+                                                        "انتخاب داروخانه"
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setPharmacyDetails(c)}
+                                                    className="h-10 rounded-full border-emerald-200 bg-white text-xs font-bold text-emerald-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
+                                                >
+                                                    <Info className="ml-1.5 h-4 w-4" />
+                                                    جزئیات داروخانه
+                                                </Button>
                                             </div>
                                         </div>
                                     );
@@ -513,6 +552,71 @@ export function PharmacyFlow() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={pharmacyDetails !== null} onOpenChange={(open) => !open && setPharmacyDetails(null)}>
+                <DialogContent
+                    dir="rtl"
+                    className="max-w-[calc(100%-2rem)] overflow-hidden rounded-3xl border-0 bg-white p-0 text-right shadow-2xl sm:max-w-md"
+                >
+                    {pharmacyDetails && (
+                        <>
+                            <div className="bg-gradient-to-l from-emerald-500 to-teal-600 px-6 py-6 text-white">
+                                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30">
+                                    <Building2 className="h-6 w-6" />
+                                </div>
+                                <DialogHeader className="text-right sm:text-right">
+                                    <DialogTitle className="text-lg font-black leading-7 text-white">
+                                        {pharmacyDetails.name}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs text-white/80">
+                                        اطلاعات تماس و موقعیت داروخانه
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+
+                            <div className="space-y-3 px-6 pb-6">
+                                <div className="-mt-1 flex items-center justify-between rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                                    <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                        امتیاز کاربران
+                                    </span>
+                                    <span className="text-sm font-black text-slate-800">
+                                        {pharmacyDetails.rating} از ۵
+                                    </span>
+                                </div>
+
+                                <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3.5">
+                                    <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-700">آدرس</p>
+                                        <p className="mt-1 text-xs leading-6 text-slate-500">{pharmacyDetails.address}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3.5">
+                                        <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                                        <div>
+                                            <p className="text-[11px] font-bold text-slate-700">ساعت کاری</p>
+                                            <p className="mt-1 text-[11px] leading-5 text-slate-500">{pharmacyDetails.hours}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3.5">
+                                        <Phone className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                                        <div>
+                                            <p className="text-[11px] font-bold text-slate-700">تلفن تماس</p>
+                                            <p className="mt-1 text-[11px] leading-5 text-slate-500" dir="ltr">{pharmacyDetails.phone}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between px-1 text-xs text-slate-500">
+                                    <span>{pharmacyDetails.city}</span>
+                                    <span>{pharmacyDetails.distanceKm.toLocaleString("fa-IR")} کیلومتر تا شما</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
