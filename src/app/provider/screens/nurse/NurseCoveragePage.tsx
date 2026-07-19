@@ -173,9 +173,7 @@ export default function NurseCoveragePage() {
                         type="button"
                         onClick={handleSave}
                         disabled={isSaving}
-                        className={`w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-colors ${
-                            isSaving ? 'bg-rose-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'
-                        }`}
+                        className="inline-flex min-w-[9.5rem] items-center justify-center gap-2 self-start rounded-[300px] bg-gradient-to-l from-rose-700 via-rose-600 to-rose-500 px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-rose-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-600/35 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50"
                     >
                         {isSaving ? 'در حال ذخیره...' : 'ذخیره محدوده'}
                     </button>

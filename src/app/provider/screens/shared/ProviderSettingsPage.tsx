@@ -95,6 +95,13 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
             : role === 'pharmacy' ? 'تنظیمات داروخانه'
                 : 'تنظیمات پروفایل';
 
+    const saveButtonClass =
+        role === 'lab'
+            ? 'from-amber-700 via-amber-600 to-amber-500 shadow-amber-600/25 hover:shadow-amber-600/35'
+            : role === 'pharmacy'
+                ? 'from-teal-700 via-teal-600 to-teal-500 shadow-teal-600/25 hover:shadow-teal-600/35'
+                : 'from-rose-700 via-rose-600 to-rose-500 shadow-rose-600/25 hover:shadow-rose-600/35';
+
     return (
         <div className="space-y-6">
             <PageHeader title={title} description="ویرایش اطلاعات و تنظیمات اعلان" />
@@ -125,7 +132,7 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
                 type="button"
                 onClick={role === 'lab' ? handleSaveLab : undefined}
                 disabled={isLoading}
-                className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className={`inline-flex min-w-[9.5rem] items-center justify-center gap-2 rounded-[300px] bg-gradient-to-l px-5 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:pointer-events-none disabled:opacity-50 ${saveButtonClass}`}
             >
                 {isLoading ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
             </button>

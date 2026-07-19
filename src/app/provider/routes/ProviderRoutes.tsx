@@ -98,7 +98,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="finance" element={<SharedFinance role="lab" />} />
                 <Route path="reviews" element={<ProviderReviewsPage />} />
                 <Route path="settings" element={<SharedSettings role="lab" />} />
-                <Route path="support" element={<ProviderSupportPage />} />
+                <Route path="support" element={<ProviderSupportPage role="lab" />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
         );
@@ -117,7 +117,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="finance" element={<SharedFinance role="pharmacy" />} />
                 <Route path="reviews" element={<ProviderReviewsPage />} />
                 <Route path="settings" element={<SharedSettings role="pharmacy" />} />
-                <Route path="support" element={<ProviderSupportPage />} />
+                <Route path="support" element={<ProviderSupportPage role="pharmacy" />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
         );
@@ -158,7 +158,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Route path="finance" element={<SharedFinance role="nurse" />} />
             <Route path="reviews" element={<ProviderReviewsPage />} />
             <Route path="settings" element={<SharedSettings role="nurse" />} />
-            <Route path="support" element={<ProviderSupportPage />} />
+            <Route path="support" element={<ProviderSupportPage role="nurse" />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Routes>
     );

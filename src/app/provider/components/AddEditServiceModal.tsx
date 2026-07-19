@@ -63,25 +63,15 @@ export function AddEditServiceModal({ open, onClose, onSubmit, initial }: AddEdi
             title={initial ? 'ویرایش خدمت' : 'افزودن خدمت پرستاری'}
             description="تعریف خدمت درمانی و نرخ آن"
             footer={
-                <>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={loading}
-                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                    >
-                        انصراف
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-                    >
-                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {initial ? 'ذخیره تغییرات' : 'افزودن خدمت'}
-                    </button>
-                </>
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="inline-flex min-w-[9.5rem] items-center justify-center gap-2 rounded-[300px] bg-gradient-to-l from-rose-700 via-rose-600 to-rose-500 px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-rose-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-600/35 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50"
+                >
+                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {initial ? 'ذخیره تغییرات' : 'افزودن خدمت'}
+                </button>
             }
         >
             <div className="grid gap-4">

@@ -2,11 +2,32 @@ import { useState } from 'react';
 import { MessageSquare, Send } from 'lucide-react';
 import { PageHeader } from '../../components';
 import { mockSupportTickets } from '../../data/mockData';
+import type { ProviderRole } from '../../config/providerNav';
 
-export function ProviderSupportPage() {
+interface ProviderSupportPageProps {
+    role?: ProviderRole;
+}
+
+export function ProviderSupportPage({ role = 'nurse' }: ProviderSupportPageProps) {
     const [tickets] = useState(mockSupportTickets);
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
+
+    const accent =
+        role === 'lab'
+            ? {
+                  focus: 'focus:border-amber-400',
+                  button: 'from-amber-700 via-amber-600 to-amber-500 shadow-amber-600/25 hover:shadow-amber-600/35',
+              }
+            : role === 'pharmacy'
+                ? {
+                      focus: 'focus:border-teal-400',
+                      button: 'from-teal-700 via-teal-600 to-teal-500 shadow-teal-600/25 hover:shadow-teal-600/35',
+                  }
+                : {
+                      focus: 'focus:border-rose-400',
+                      button: 'from-rose-700 via-rose-600 to-rose-500 shadow-rose-600/25 hover:shadow-rose-600/35',
+                  };
 
     return (
         <div className="space-y-6">
@@ -39,20 +60,22 @@ export function ProviderSupportPage() {
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
                             placeholder="موضوع"
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                            className={`w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ${accent.focus}`}
                         />
                         <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             placeholder="متن پیام..."
                             rows={5}
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                            className={`w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ${accent.focus}`}
                         />
                         <button
                             type="button"
-                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                            className={`group inline-flex items-center gap-2.5 rounded-[300px] bg-gradient-to-l px-5 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 ${accent.button}`}
                         >
-                            <Send className="h-4 w-4" />
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30 transition-colors group-hover:bg-white/30">
+                                <Send className="h-3.5 w-3.5" />
+                            </span>
                             ارسال تیکت
                         </button>
                     </div>

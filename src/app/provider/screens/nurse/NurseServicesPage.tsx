@@ -65,9 +65,11 @@ export function NurseServicesPage() {
                     <button
                         type="button"
                         onClick={openAdd}
-                        className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+                        className="group inline-flex items-center gap-2.5 rounded-[0.5rem] bg-gradient-to-l from-rose-700 via-rose-600 to-rose-500 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-rose-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-600/35 active:translate-y-0 active:shadow-md"
                     >
-                        <Plus className="h-4 w-4" />
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30 transition-colors group-hover:bg-white/30">
+                            <Plus className="h-4 w-4" strokeWidth={2.5} />
+                        </span>
                         افزودن خدمت
                     </button>
                 }
