@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate, Navigate } from 'react-router';
-import { Loader2, Smartphone, ShieldCheck, ArrowRight, UserRound, Building2 } from 'lucide-react';
+import { Loader2, Smartphone, ArrowRight, UserRound, Building2 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../components/ui/input-otp';
 import { useSettingsStore } from '../../admin/store/settingsStore';
 import type { ProviderRole, NurseAccountType } from '../config/providerNav';
@@ -14,6 +14,7 @@ import { useProviderAuthStore } from '../store/providerAuthStore';
 import { labAuthService } from '../services/labAuthService';
 import { medicalCenterAuthService } from '../services/medicalCenterAuthService';
 import { pharmacyAuthService } from '../services/pharmacyAuthService';
+import { showProviderError } from '../utils/toast';
 
 /** کد OTP نمایشی — تا اتصال API واقعی؛ با طول تنظیم‌شده در پنل ادمین هماهنگ است */
 function mockOtpForLength(length: number): string {
@@ -38,7 +39,6 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
     const [otp, setOtp] = useState('');
     const [pendingOtp, setPendingOtp] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
     const [cooldown, setCooldown] = useState(0);
     const [nurseAccountType, setNurseAccountType] = useState<NurseAccountType>('individual');
 
@@ -54,23 +54,20 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
         e?.preventDefault();
         const normalized = normalizePhone(phone);
         if (normalized.length < 10) {
-            setError('شماره موبایل معتبر وارد کنید');
+            showProviderError('شماره موبایل معتبر وارد کنید');
             return;
         }
 
         setLoading(true);
-        setError('');
 
         try {
             if (role === 'lab') {
                 await labAuthService.sendOtp(normalized);
-            }
-            else if (role === 'nurse') {
+            } else if (role === 'nurse') {
                 await medicalCenterAuthService.sendOtp(normalized);
-            }
-           else if (role === 'pharmacy') {
-            await pharmacyAuthService.sendOtp(normalized);
-          }else {
+            } else if (role === 'pharmacy') {
+                await pharmacyAuthService.sendOtp(normalized);
+            } else {
                 // mock سایر رول‌ها
                 await new Promise((r) => setTimeout(r, 600));
                 setPendingOtp(mockOtpForLength(otpLength));
@@ -80,7 +77,7 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
             setOtp('');
             setCooldown(resendCooldownSec);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'خطا در ارسال کد تأیید');
+            showProviderError(err instanceof Error ? err.message : 'خطا در ارسال کد تأیید');
         } finally {
             setLoading(false);
         }
@@ -91,7 +88,6 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
         if (otp.length !== otpLength) return;
 
         setLoading(true);
-        setError('');
 
         try {
             if (role === 'lab') {
@@ -112,7 +108,7 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                     phone,
                     name: profileName,
                 });
-            }else if (role === 'nurse') {
+            } else if (role === 'nurse') {
                 const { token, user } = await medicalCenterAuthService.verifyOtp(phone, otp);
 
                 let profileName = (user.name as string) ?? providerDefaultNames[role];
@@ -143,12 +139,11 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                 }
 
                 setAuth(role, token, { phone, name: profileName });
-            }
-            else {
+            } else {
                 // mock سایر رول‌ها
                 await new Promise((r) => setTimeout(r, 500));
                 if (otp !== pendingOtp) {
-                    setError('کد تأیید نادرست است');
+                    showProviderError('کد تأیید نادرست است');
                     return;
                 }
                 const mockToken = `provider-${role}-${Date.now()}`;
@@ -160,21 +155,19 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
             }
             navigate(providerPath(role, 'dashboard'), { replace: true });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'خطا در تأیید کد');
+            showProviderError(err instanceof Error ? err.message : 'خطا در تأیید کد');
         } finally {
             setLoading(false);
         }
     };
 
-// در resendOtp:
     const resendOtp = async () => {
         if (cooldown > 0) return;
         setLoading(true);
-        setError('');
         try {
             if (role === 'lab') {
                 await labAuthService.sendOtp(phone);
-            }else if (role === 'nurse') {
+            } else if (role === 'nurse') {
                 await medicalCenterAuthService.sendOtp(phone);
             } else if (role === 'pharmacy') {
                 await pharmacyAuthService.sendOtp(phone);
@@ -185,7 +178,7 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
             setOtp('');
             setCooldown(resendCooldownSec);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'خطا در ارسال مجدد کد');
+            showProviderError(err instanceof Error ? err.message : 'خطا در ارسال مجدد کد');
         } finally {
             setLoading(false);
         }
@@ -213,10 +206,6 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                     <div className="space-y-5">
                         <h1 className="text-4xl font-bold leading-snug">{theme.headline}</h1>
                         <p className="block max-w-xl text-base leading-relaxed text-white/85">{theme.description}</p>
-                        <div className="flex items-center gap-2 text-sm text-white/70">
-                            <ShieldCheck className="h-4 w-4" />
-                            <span>ورود امن با کد یکبار مصرف (OTP)</span>
-                        </div>
                     </div>
 
                     <p className="text-xs text-white/50">© {new Date().getFullYear()} مدیرا AI</p>
@@ -258,18 +247,13 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                                 </InputOTP>
                             </div>
 
-                            {error && <ErrorBox message={error} />}
-
                             <button
                                 type="submit"
                                 disabled={otp.length !== otpLength || loading}
                                 className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l ${theme.buttonGradient} text-base font-medium text-white shadow-lg ${theme.buttonShadow} disabled:cursor-not-allowed disabled:opacity-50`}
                             >
                                 {loading ? (
-                                    <>
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        در حال تأیید...
-                                    </>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
                                     'تأیید و ورود'
                                 )}
@@ -281,7 +265,6 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                                     onClick={() => {
                                         setStep('phone');
                                         setOtp('');
-                                        setError('');
                                     }}
                                     className="flex items-center gap-1 text-slate-500 hover:text-slate-800"
                                 >
@@ -354,18 +337,13 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                                 </div>
                             </div>
 
-                            {error && <ErrorBox message={error} />}
-
                             <button
                                 type="submit"
                                 disabled={normalizePhone(phone).length < 10 || loading}
                                 className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l ${theme.buttonGradient} text-base font-medium text-white shadow-lg ${theme.buttonShadow} disabled:cursor-not-allowed disabled:opacity-50`}
                             >
                                 {loading ? (
-                                    <>
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        در حال ارسال...
-                                    </>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
                                     'دریافت کد تأیید'
                                 )}
@@ -376,14 +354,6 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                     <p className="mt-8 text-center text-xs text-slate-400">{theme.footerNote}</p>
                 </div>
             </div>
-        </div>
-    );
-}
-
-function ErrorBox({ message }: { message: string }) {
-    return (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {message}
         </div>
     );
 }

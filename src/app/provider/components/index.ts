@@ -6,3 +6,4 @@ export { AddPersonnelModal } from './AddPersonnelModal';
 export { AddEditServiceModal } from './AddEditServiceModal';
 export { AddEditLabTestModal } from './AddEditLabTestModal';
 export { AddLabResultModal } from './AddLabResultModal';
+export { ProviderToaster } from './ProviderToaster';

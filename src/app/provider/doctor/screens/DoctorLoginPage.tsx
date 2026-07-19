@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate, Navigate } from 'react-router';
-import { Loader2, Phone, Lock, ShieldCheck, Stethoscope } from 'lucide-react';
+import { Loader2, Phone, Lock, Stethoscope } from 'lucide-react';
 import { providerLoginThemes } from '../../config/providerTheme';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
+import { showProviderError } from '../../utils/toast';
 
 export function DoctorLoginPage() {
     const navigate = useNavigate();
@@ -13,23 +14,21 @@ export function DoctorLoginPage() {
     const [mobile, setMobile] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!mobile.trim() || !password) {
-            setError('شماره موبایل و رمز عبور را وارد کنید');
+            showProviderError('شماره موبایل و رمز عبور را وارد کنید');
             return;
         }
 
         setLoading(true);
-        setError('');
 
         const success = await login(mobile, password);
         if (success) {
             navigate('/provider/doctor/dashboard', { replace: true });
         } else {
-            setError('شماره موبایل یا رمز عبور نادرست است');
+            showProviderError('شماره موبایل یا رمز عبور نادرست است');
         }
         setLoading(false);
     };
@@ -55,10 +54,6 @@ export function DoctorLoginPage() {
                     <div className="space-y-5">
                         <h1 className="text-4xl font-bold leading-snug">{theme.headline}</h1>
                         <p className="block max-w-xl text-base leading-relaxed text-white/85">{theme.description}</p>
-                        <div className="flex items-center gap-2 text-sm text-white/70">
-                            <ShieldCheck className="h-4 w-4" />
-                            <span>ورود امن با حساب کاربری پزشک</span>
-                        </div>
                     </div>
 
                     <p className="text-xs text-white/50">© {new Date().getFullYear()} مدیرا AI</p>
@@ -110,22 +105,13 @@ export function DoctorLoginPage() {
                             </div>
                         </div>
 
-                        {error && (
-                            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                {error}
-                            </div>
-                        )}
-
                         <button
                             type="submit"
                             disabled={loading}
                             className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l ${theme.buttonGradient} text-base font-medium text-white shadow-lg ${theme.buttonShadow} disabled:cursor-not-allowed disabled:opacity-50`}
                         >
                             {loading ? (
-                                <>
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    در حال ورود...
-                                </>
+                                <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
                                 'ورود به پنل'
                             )}

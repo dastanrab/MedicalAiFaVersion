@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useParams } from 'react-router';
 import { ProviderLayoutShell } from '../layout/ProviderLayout';
+import { ProviderToaster } from '../components/ProviderToaster';
 import type { ProviderRole } from '../config/providerNav';
 import { providerPath } from '../config/providerNav';
 import { LabDashboard } from '../screens/lab/LabDashboard';
@@ -189,48 +190,51 @@ function ProtectedRolePanel({ role }: { role: ProviderRole }) {
 
 export function ProviderRoutes() {
     return (
-        <Routes>
-            <Route
-                path="lab/login"
-                element={
-                    <ProviderPublicRoute role="lab">
-                        <ProviderLogin role="lab" />
-                    </ProviderPublicRoute>
-                }
-            />
-            <Route path="lab/*" element={<ProtectedRolePanel role="lab" />} />
+        <>
+            <ProviderToaster />
+            <Routes>
+                <Route
+                    path="lab/login"
+                    element={
+                        <ProviderPublicRoute role="lab">
+                            <ProviderLogin role="lab" />
+                        </ProviderPublicRoute>
+                    }
+                />
+                <Route path="lab/*" element={<ProtectedRolePanel role="lab" />} />
 
-            <Route
-                path="pharmacy/login"
-                element={
-                    <ProviderPublicRoute role="pharmacy">
-                        <ProviderLogin role="pharmacy" />
-                    </ProviderPublicRoute>
-                }
-            />
-            <Route path="pharmacy/*" element={<ProtectedRolePanel role="pharmacy" />} />
+                <Route
+                    path="pharmacy/login"
+                    element={
+                        <ProviderPublicRoute role="pharmacy">
+                            <ProviderLogin role="pharmacy" />
+                        </ProviderPublicRoute>
+                    }
+                />
+                <Route path="pharmacy/*" element={<ProtectedRolePanel role="pharmacy" />} />
 
-            <Route
-                path="nurse/login"
-                element={
-                    <ProviderPublicRoute role="nurse">
-                        <ProviderLogin role="nurse" />
-                    </ProviderPublicRoute>
-                }
-            />
-            <Route path="nurse/*" element={<ProtectedRolePanel role="nurse" />} />
+                <Route
+                    path="nurse/login"
+                    element={
+                        <ProviderPublicRoute role="nurse">
+                            <ProviderLogin role="nurse" />
+                        </ProviderPublicRoute>
+                    }
+                />
+                <Route path="nurse/*" element={<ProtectedRolePanel role="nurse" />} />
 
-            <Route
-                path="doctor/login"
-                element={
-                    <DoctorPublicRoute>
-                        <DoctorLoginPage />
-                    </DoctorPublicRoute>
-                }
-            />
-            <Route path="doctor/*" element={<ProtectedRolePanel role="doctor" />} />
+                <Route
+                    path="doctor/login"
+                    element={
+                        <DoctorPublicRoute>
+                            <DoctorLoginPage />
+                        </DoctorPublicRoute>
+                    }
+                />
+                <Route path="doctor/*" element={<ProtectedRolePanel role="doctor" />} />
 
-            <Route index element={<Navigate to={providerPath('lab', 'login')} replace />} />
-        </Routes>
+                <Route index element={<Navigate to={providerPath('lab', 'login')} replace />} />
+            </Routes>
+        </>
     );
 }
