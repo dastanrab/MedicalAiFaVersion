@@ -11,6 +11,7 @@ import { KpiCard, PageHeader, formatPrice } from '../../components';
 import type { ProviderRole } from '../../config/providerNav';
 import {format} from "date-fns";
 import {useProviderSession} from "../../store/providerAuthStore";
+import {useNavigate} from "react-router";
 
 const chartConfig = {
     amount: { label: 'مبلغ', color: '#f59e0b' },
@@ -23,6 +24,7 @@ interface TransactionRow {
     type: 1 | 2; // 1: واریز (Deposit), 2: برداشت (Withdraw)
     description: string;
     date: string;
+    reason_ref?: string | null; // اضافه شد
 }
 
 interface ProviderFinancePageProps {
@@ -35,9 +37,9 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
     const [rows, setRows] = useState<TransactionRow[]>([]);
     const [totalIncome, setTotalIncome] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
-
+    console.log(role,'ssss')
     const isLab = role === 'lab';
-
+    const navigate = useNavigate();
     // دریافت داده‌ها از API
     useEffect(() => {
         const fetchFinanceData = async () => {
@@ -140,7 +142,7 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="mb-4 text-sm font-semibold text-slate-700">نمودار درآمد (واریزی‌ها)</p>
                 <ChartContainer config={chartConfig} className="h-[220px] w-full">
-                    <BarChart data={chartData}>
+                    <BarChart data={chartData} barSize={36}>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} />
                         <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => formatPrice(v)} fontSize={12} width={80} />
@@ -168,7 +170,21 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
                         <tr><td colSpan={5} className="p-4 text-center text-slate-500">تراکنشی در این بازه زمانی یافت نشد.</td></tr>
                     ) : (
                         rows.map((r) => (
-                            <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                            <tr key={r.id} onClick={() => {
+                                if ( r.reason_ref) {
+                                    if (role === 'nurse')
+                                    {
+                                        navigate(`/provider/nurse/requests/${r.reason_ref}`);
+                                    }
+                                    if (role === 'doctor')
+                                    {
+                                        navigate(`/provider/doctor/appointments/${r.reason_ref}`);
+                                    }
+
+                                }
+                            }} className={`border-t border-slate-100 hover:bg-slate-50 ${
+                                (role === 'nurse' || role === 'doctor') && r.reason_ref ? 'cursor-pointer' : ''
+                            }`}>
                                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{r.code}</td>
                                 <td className="px-4 py-3 font-medium text-slate-700">{r.description}</td>
                                 <td className="px-4 py-3 font-mono">

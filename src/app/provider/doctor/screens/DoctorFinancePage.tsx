@@ -1,45 +1,60 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Wallet, TrendingUp, ArrowDownRight } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Wallet, TrendingUp } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
     ChartContainer,
-    ChartTooltip,
     ChartTooltipContent,
-    type ChartConfig,
+    type ChartConfig, ChartTooltip,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, formatPrice } from '../../components';
-import {useDoctorAuthStore} from "../store/doctorAuthStore";
+import { useDoctorAuthStore } from "../store/doctorAuthStore";
 
+interface TransactionRow {
+    id: number;
+    code: string;
+    amount: number;
+    type: 1 | 2;
+    description: string;
+    date: string;
+    reason_ref?: string | null;
+    patientName?: string | null;
+    patientPhone?: string | null;
+}
+
+interface FinanceData {
+    balance: number;
+    totalIncome: number;
+    rows: TransactionRow[];
+}
 
 const chartConfig = {
     amount: { label: 'مبلغ', color: '#2563eb' },
 } satisfies ChartConfig;
 
 export function DoctorFinancePage() {
-    // گرفتن توکن از استور
-     const { token } = useDoctorAuthStore();
+    const { token } = useDoctorAuthStore();
+    const navigate = useNavigate();
 
-    // مقادیر State
-    const [financeData, setFinanceData] = useState({
+    const [financeData, setFinanceData] = useState<FinanceData>({
         balance: 0,
         totalIncome: 0,
-        rows: []
+        rows: [],
     });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchFinanceData = async () => {
             try {
-                // TODO: Uncomment token check if token is available
-                 if (!token) return;
+                if (!token) return;
 
                 const response = await fetch('http://185.222.163.113:7000/api/doctor/finance', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
+                        'Authorization': `Bearer ${token}`,
+                    },
                 });
 
                 const result = await response.json();
@@ -55,17 +70,23 @@ export function DoctorFinancePage() {
         };
 
         fetchFinanceData();
-    }, []); // اگر توکن اضافه شد، token را به آرایه وابستگی‌ها اضافه کنید
+    }, [token]);
 
     const chartData = useMemo(() => {
-        // ایجاد داده برای نمودار بر اساس تاریخ (گروه‌بندی ساده یا نمایش مستقیم رکوردها)
         return financeData.rows
-            .filter((t) => t.type === 1) // فرض: 1 یعنی درآمد
+            .filter((t) => t.type === 1)
             .map((t) => ({
-                name: new Date(t.date).toLocaleDateString('fa-IR'), // تبدیل تاریخ میلادی به شمسی
-                amount: t.amount
-            })).reverse(); // برای اینکه از قدیم به جدید باشد
+                name: new Date(t.date).toLocaleDateString('fa-IR'),
+                amount: t.amount,
+            }))
+            .reverse();
     }, [financeData.rows]);
+
+    const handleRowClick = (t: TransactionRow) => {
+        if (t.reason_ref) {
+            navigate(`/provider/doctor/appointments/${t.reason_ref}`);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -97,16 +118,22 @@ export function DoctorFinancePage() {
                                 <BarChart data={chartData}>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
                                     <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} />
-                                    <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => formatPrice(v)} />
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickFormatter={(v) => formatPrice(v)}
+                                    />
                                     <ChartTooltip content={<ChartTooltipContent />} />
-                                    <Bar dataKey="amount" fill="var(--color-amount)" radius={[6, 6, 0, 0]} />
+                                    <Bar dataKey="amount" fill="var(--color-amount)"  />
                                 </BarChart>
                             </ChartContainer>
                         </div>
                     )}
 
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                        <p className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">تراکنش‌ها</p>
+                        <p className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
+                            تراکنش‌ها
+                        </p>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead className="bg-slate-50">
@@ -120,11 +147,19 @@ export function DoctorFinancePage() {
                                 </thead>
                                 <tbody>
                                 {financeData.rows.map((t) => (
-                                    <tr key={t.id} className="border-t border-slate-100">
+                                    <tr
+                                        key={t.id}
+                                        onClick={() => handleRowClick(t)}
+                                        className={`border-t border-slate-100 transition-colors hover:bg-slate-50 ${
+                                            t.reason_ref ? 'cursor-pointer' : 'cursor-default'
+                                        }`}
+                                    >
                                         <td className="px-4 py-3 font-mono text-xs">{t.code}</td>
                                         <td className="px-4 py-3">
                                             <div>{t.patientName || '---'}</div>
-                                            <div className="text-xs text-slate-500">{t.description}</div>
+                                            <div className="text-xs text-slate-500">
+                                                {t.patientPhone || t.description}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3">{formatPrice(t.amount)}</td>
                                         <td className="px-4 py-3">
@@ -135,10 +170,10 @@ export function DoctorFinancePage() {
                                                             : 'bg-indigo-50 text-indigo-700'
                                                     }`}
                                                 >
-                                                    {t.type === 1 ? 'درآمد' : 'سایر / تسویه'}
-                                                </span>
+                                {t.type === 1 ? 'درآمد' : 'سایر / تسویه'}
+                                </span>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500 text-xs text-center" dir='ltr'>
+                                        <td className="px-4 py-3 text-slate-500 text-xs text-center" dir="ltr">
                                             {t.date}
                                         </td>
                                     </tr>
