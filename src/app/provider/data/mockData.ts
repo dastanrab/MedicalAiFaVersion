@@ -105,6 +105,7 @@ export interface NursePersonnel {
     lastName: string;
     phone: string;
     nationalCode: string;
+    gender: 'male' | 'female';
     active: boolean;
 }
 
@@ -422,6 +423,7 @@ export const mockNursePersonnel: NursePersonnel[] = [
         lastName: 'حسینی',
         phone: '09121112233',
         nationalCode: '0012345678',
+        gender: 'female',
         active: true,
     },
     {
@@ -430,6 +432,7 @@ export const mockNursePersonnel: NursePersonnel[] = [
         lastName: 'کاظمی',
         phone: '09124445566',
         nationalCode: '0023456789',
+        gender: 'male',
         active: true,
     },
     {
@@ -438,6 +441,7 @@ export const mockNursePersonnel: NursePersonnel[] = [
         lastName: 'جعفری',
         phone: '09127778899',
         nationalCode: '0034567890',
+        gender: 'female',
         active: false,
     },
 ];

@@ -81,6 +81,18 @@ export const useNurseStore = create<NurseDataState>()(
         }),
         {
             name: 'nurse-panel-storage',
+            version: 1,
+            migrate: (persisted, version) => {
+                const state = persisted as Partial<NurseDataState> | undefined;
+                if (!state) return persisted as NurseDataState;
+                if (version < 1 && Array.isArray(state.personnel)) {
+                    state.personnel = state.personnel.map((p) => ({
+                        ...p,
+                        gender: p.gender ?? 'female',
+                    }));
+                }
+                return state as NurseDataState;
+            },
             partialize: (state) => ({
                 requests: state.requests,
                 personnel: state.personnel,

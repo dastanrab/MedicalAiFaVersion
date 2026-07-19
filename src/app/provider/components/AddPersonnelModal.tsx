@@ -17,6 +17,7 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
     const [lastName, setLastName] = useState(initial?.lastName ?? '');
     const [phone, setPhone] = useState(initial?.phone ?? '');
     const [nationalCode, setNationalCode] = useState(initial?.nationalCode ?? '');
+    const [gender, setGender] = useState<'male' | 'female'>(initial?.gender ?? 'female');
     const [active, setActive] = useState(initial?.active ?? true);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitError, setSubmitError] = useState('');
@@ -43,6 +44,7 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
                 lastName: lastName.trim(),
                 phone: phone.replace(/\D/g, ''),
                 nationalCode: nationalCode.replace(/\D/g, ''),
+                gender,
                 active,
             });
             onClose();
@@ -60,25 +62,15 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
             title={initial ? 'ویرایش پرسنل' : 'افزودن پرسنل'}
             description="اطلاعات پرسنل شرکت خدمات پرستاری"
             footer={
-                <>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={loading}
-                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                    >
-                        انصراف
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-                    >
-                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {initial ? 'ذخیره تغییرات' : 'افزودن پرسنل'}
-                    </button>
-                </>
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="inline-flex min-w-[9.5rem] items-center justify-center gap-2 rounded-[300px] bg-gradient-to-l from-rose-700 via-rose-600 to-rose-500 px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-rose-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-600/35 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50"
+                >
+                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {initial ? 'ذخیره تغییرات' : 'افزودن پرسنل'}
+                </button>
             }
         >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -115,18 +107,46 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
                         dir="ltr"
                     />
                 </ProviderFormField>
-                <div className="sm:col-span-2">
-                    <ProviderFormField label="وضعیت">
-                        <select
-                            className={inputClass}
-                            value={active ? 'active' : 'inactive'}
-                            onChange={(e) => setActive(e.target.value === 'active')}
-                        >
-                            <option value="active">فعال</option>
-                            <option value="inactive">غیرفعال</option>
-                        </select>
-                    </ProviderFormField>
-                </div>
+                <ProviderFormField label="جنسیت">
+                    <div
+                        className="flex h-[42px] w-full items-center rounded-full bg-slate-200/70 p-1"
+                        role="group"
+                        aria-label="انتخاب جنسیت"
+                    >
+                        {(
+                            [
+                                { value: 'male' as const, label: 'مرد' },
+                                { value: 'female' as const, label: 'زن' },
+                            ] as const
+                        ).map((option) => {
+                            const selected = gender === option.value;
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setGender(option.value)}
+                                    className={`flex-1 rounded-full py-2 text-sm font-medium transition-all duration-200 ${
+                                        selected
+                                            ? 'bg-slate-600 text-white shadow-sm shadow-slate-600/30'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </ProviderFormField>
+                <ProviderFormField label="وضعیت">
+                    <select
+                        className={inputClass}
+                        value={active ? 'active' : 'inactive'}
+                        onChange={(e) => setActive(e.target.value === 'active')}
+                    >
+                        <option value="active">فعال</option>
+                        <option value="inactive">غیرفعال</option>
+                    </select>
+                </ProviderFormField>
             </div>
             {submitError && (
                 <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
