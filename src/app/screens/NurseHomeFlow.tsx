@@ -3,6 +3,10 @@ import { useNavigate } from "react-router";
 import { AppBar } from "../components/AppBar";
 import { Button } from "../components/ui/button";
 import {
+    ProviderDetailsDialog,
+    type ProviderDetails,
+} from "../components/ProviderDetailsDialog";
+import {
     Syringe,
     Bandage,
     UserRound,
@@ -19,7 +23,9 @@ import {
     Home as HomeIcon,
     Building2,
     Star,
-    Loader2
+    Loader2,
+    Info,
+    CheckCircle2,
 } from "lucide-react";
 import {useAuthStore} from "../store/authStore";
 // فرض می‌کنیم هوک استور شما اینجا قرار دارد
@@ -37,6 +43,59 @@ const getServiceIcon = (slug: string) => {
         'physio': Dumbbell
     };
     return icons[slug] || HeartHandshake;
+};
+
+const getClinicDetails = (
+    clinic: any,
+    selectedServices: { name: string; price?: number }[],
+): ProviderDetails => {
+    const seed = Number(clinic.id || 0) % 4;
+    const phones = ["۰۵۱-۳۷۲۰ ۱۱۲۲", "۰۵۱-۳۸۴۱ ۲۲۳۳", "۰۵۱-۳۷۶۸ ۴۴۵۵", "۰۵۱-۳۸۵۰ ۶۶۷۷"];
+    const hours = ["۸ صبح تا ۸ شب", "۷ صبح تا ۹ شب", "شبانه‌روزی", "۸ صبح تا ۱۰ شب"];
+    const descriptions = [
+        "درمانگاه ارائه‌دهنده خدمات پرستاری در منزل با پرسنل مجرب و امکان اعزام سریع.",
+        "مرکز مراقبت در منزل با پوشش تزریقات، پانسمان و مراقبت سالمندان در محدوده شهری.",
+        "درمانگاه همکار با امکان انتخاب جنسیت پرستار و هماهنگی زمان مراجعه.",
+        "ارائه‌دهنده خدمات پرستاری تخصصی در منزل با پشتیبانی و پیگیری پس از مراجعه.",
+    ];
+    const reviewsPool = [
+        [
+            { name: "مریم احمدی", date: "۱۲ تیر ۱۴۰۵", rating: 5, comment: "پرستار به‌موقع رسید و بسیار حرفه‌ای بود." },
+            { name: "علی رضایی", date: "۲۸ خرداد ۱۴۰۵", rating: 4, comment: "خدمات خوب و هماهنگی مناسب بود." },
+        ],
+        [
+            { name: "زهرا کریمی", date: "۹ تیر ۱۴۰۵", rating: 5, comment: "از کیفیت مراقبت و رفتار پرستار راضی بودم." },
+            { name: "رضا محمدی", date: "۲۰ خرداد ۱۴۰۵", rating: 5, comment: "اعزام سریع و خدمات کامل داشتند." },
+        ],
+        [
+            { name: "سارا حسینی", date: "۵ تیر ۱۴۰۵", rating: 4, comment: "همه چیز مرتب بود، فقط کمی در هماهنگی تأخیر داشت." },
+            { name: "امیر جعفری", date: "۱۶ خرداد ۱۴۰۵", rating: 4, comment: "پرستار دقیق و دلسوز بود." },
+        ],
+        [
+            { name: "نرگس صادقی", date: "۲ تیر ۱۴۰۵", rating: 5, comment: "خدمات در منزل عالی و بدون دردسر انجام شد." },
+            { name: "حسین مرادی", date: "۱۰ خرداد ۱۴۰۵", rating: 4, comment: "پشتیبانی خوب و هزینه شفاف بود." },
+        ],
+    ];
+
+    return {
+        name: clinic.name,
+        address: clinic.address || "آدرس ثبت نشده",
+        description: descriptions[seed],
+        hours: clinic.work_hours || hours[seed],
+        phone: clinic.phone || phones[seed],
+        rating: Number(clinic.rating) || [4.8, 4.9, 4.6, 4.7][seed],
+        reviews: Number(clinic.reviews_count) || [156, 132, 98, 114][seed],
+        lat: clinic.lat ?? null,
+        lng: clinic.lng ?? null,
+        services:
+            selectedServices.length > 0
+                ? selectedServices.map((service) => ({
+                      name: service.name,
+                      price: service.price ?? (Number(clinic.total_estimated_price) || 0),
+                  }))
+                : [{ name: "خدمات پرستاری در منزل", price: Number(clinic.total_estimated_price) || 0 }],
+        recentReviews: reviewsPool[seed],
+    };
 };
 
 const genderOptions: { value: "any" | "female" | "male"; label: string }[] = [
@@ -74,6 +133,7 @@ export function NurseHomeFlow() {
     const [condition, setCondition] = useState("");
     const [urgent, setUrgent] = useState(false);
     const [selectedClinic, setSelectedClinic] = useState<number | null>(null);
+    const [clinicDetails, setClinicDetails] = useState<ProviderDetails | null>(null);
 
     // مرحله ۱: دریافت خدمات از API
     useEffect(() => {
@@ -168,6 +228,18 @@ export function NurseHomeFlow() {
     const clinic = clinicsList.find((c) => c.id === selectedClinic) ?? null;
     // استخراج قیمت نهایی کلینیک انتخاب شده از API
     const finalPrice = clinic ? parseFloat(clinic.total_estimated_price) : 0;
+
+    const openClinicDetails = (clinicItem: any) => {
+        const total = Number(clinicItem.total_estimated_price) || 0;
+        const items = selectedServiceItems.map((service) => ({
+            name: service.name,
+            price:
+                selectedServiceItems.length > 0
+                    ? Math.round(total / selectedServiceItems.length)
+                    : total,
+        }));
+        setClinicDetails(getClinicDetails(clinicItem, items));
+    };
 
     const isStep2Valid = address.trim().length > 0 && condition.trim().length > 0;
     const isStep3Valid = selectedClinic !== null;
@@ -386,8 +458,7 @@ export function NurseHomeFlow() {
                                         return (
                                             <div
                                                 key={c.id}
-                                                onClick={() => setSelectedClinic(c.id)}
-                                                className={`p-4 rounded-3xl cursor-pointer transition-all border-2 shadow-sm ${
+                                                className={`p-4 rounded-3xl transition-all border-2 shadow-sm ${
                                                     isSelected ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white hover:border-rose-200"
                                                 }`}
                                             >
@@ -417,6 +488,35 @@ export function NurseHomeFlow() {
                                                             </div>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => setSelectedClinic(c.id)}
+                                                        className={`h-10 rounded-full text-xs font-bold transition-all ${
+                                                            isSelected
+                                                                ? "bg-rose-700 text-white shadow-md shadow-rose-200 hover:bg-rose-800"
+                                                                : "bg-gradient-to-l from-rose-500 to-pink-600 text-white shadow-md shadow-rose-200 hover:from-rose-600 hover:to-pink-700"
+                                                        }`}
+                                                    >
+                                                        {isSelected ? (
+                                                            <>
+                                                                <CheckCircle2 className="ml-1.5 h-4 w-4" />
+                                                                انتخاب شده
+                                                            </>
+                                                        ) : (
+                                                            "انتخاب درمانگاه"
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => openClinicDetails(c)}
+                                                        className="h-10 rounded-full border-rose-200 bg-white text-xs font-bold text-rose-700 shadow-sm hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800"
+                                                    >
+                                                        <Info className="ml-1.5 h-4 w-4" />
+                                                        جزئیات درمانگاه
+                                                    </Button>
                                                 </div>
                                             </div>
                                         );
@@ -504,6 +604,20 @@ export function NurseHomeFlow() {
                     </div>
                 </div>
             </div>
+
+            <ProviderDetailsDialog
+                key={clinicDetails?.name ?? "clinic-details"}
+                open={clinicDetails !== null}
+                onOpenChange={(open) => {
+                    if (!open) setClinicDetails(null);
+                }}
+                details={clinicDetails}
+                accent="rose"
+                infoTitle="اطلاعات درمانگاه"
+                servicesTitle="خدمات پرستاری"
+                servicesIcon={HeartHandshake}
+                reviewPlaceholder="نظر خود را درباره خدمات این درمانگاه بنویسید"
+            />
         </div>
     );
 }

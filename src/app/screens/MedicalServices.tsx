@@ -30,6 +30,8 @@ const topLabs: (ProviderDetails & { city: string; meta: string })[] = [
     reviews: 240,
     hours: '۶:۳۰ صبح تا ۱۰ شب',
     phone: '۰۵۱-۳۷۶۶ ۱۱۲۲',
+    lat: 36.3178,
+    lng: 59.5172,
     description:
       'آزمایشگاه مجهز با امکان نمونه‌گیری در محل، ارائه پکیج‌های چکاپ کامل و ارسال آنلاین نتایج آزمایش.',
     services: [
@@ -61,6 +63,8 @@ const topLabs: (ProviderDetails & { city: string; meta: string })[] = [
     reviews: 185,
     hours: '۷ صبح تا ۹ شب',
     phone: '۰۲۱-۸۸۷۷ ۲۲۳۳',
+    lat: 35.7575,
+    lng: 51.41,
     description:
       'مرکز تشخیصی با تجهیزات به‌روز، پرسنل مجرب و پوشش گسترده آزمایش‌های تخصصی و عمومی.',
     services: [
@@ -92,6 +96,8 @@ const topLabs: (ProviderDetails & { city: string; meta: string })[] = [
     reviews: 156,
     hours: '۷ صبح تا ۸ شب',
     phone: '۰۳۱-۳۶۲۲ ۴۴۵۵',
+    lat: 32.6442,
+    lng: 51.6675,
     description:
       'آزمایشگاه همکار بیمه با پذیرش نسخه الکترونیک، پاسخ‌گویی سریع و امکان پیگیری آنلاین نتایج.',
     services: [
@@ -126,6 +132,8 @@ const pharmacies: (ProviderDetails & { city: string; meta: string })[] = [
     reviews: 268,
     hours: 'شبانه‌روزی',
     phone: '۰۵۱-۳۸۸۸ ۲۴۲۴',
+    lat: 36.3186,
+    lng: 59.5168,
     description:
       'داروخانه شبانه‌روزی با امکان تهیه داروهای نسخه‌ای، مکمل‌های غذایی و محصولات بهداشتی. سفارش‌ها پیش از ارسال توسط داروساز بررسی می‌شوند.',
     services: [
@@ -157,6 +165,8 @@ const pharmacies: (ProviderDetails & { city: string; meta: string })[] = [
     reviews: 197,
     hours: '۸ صبح تا ۱۲ شب',
     phone: '۰۵۱-۳۸۴۲ ۱۰۱۰',
+    lat: 36.2981,
+    lng: 59.5782,
     description:
       'مرکز عرضه داروهای تخصصی، مکمل و تجهیزات پزشکی با حضور داروساز و امکان مشاوره درباره نحوه مصرف دارو.',
     services: [
@@ -188,6 +198,8 @@ const pharmacies: (ProviderDetails & { city: string; meta: string })[] = [
     reviews: 143,
     hours: '۸ صبح تا ۹ شب',
     phone: '۰۳۱-۳۲۲۲ ۳۳۳۰',
+    lat: 32.6526,
+    lng: 51.6746,
     description:
       'ارائه‌دهنده داروهای عمومی و تخصصی، محصولات مادر و کودک و اقلام مراقبت پوستی با امکان ارسال در محدوده.',
     services: [

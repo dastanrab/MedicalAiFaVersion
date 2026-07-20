@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "../components/ui/dialog";
+import { LocationMap } from "../components/LocationMap";
 import {
     UploadCloud,
     FileText,
@@ -44,6 +45,8 @@ const pharmacyCenters = [
         distanceKm: 1.4,
         hours: "شبانه‌روزی",
         phone: "۰۵۱-۳۸۸۸ ۲۴۲۴",
+        lat: 36.3186,
+        lng: 59.5168,
         description: "داروخانه شبانه‌روزی با امکان تهیه داروهای نسخه‌ای، مکمل‌های غذایی و محصولات بهداشتی. سفارش‌ها پیش از ارسال توسط داروساز بررسی می‌شوند.",
         medicines: [
             { name: "استامینوفن ۵۰۰", price: 48000 },
@@ -65,6 +68,8 @@ const pharmacyCenters = [
         distanceKm: 2.7,
         hours: "۸ صبح تا ۱۲ شب",
         phone: "۰۵۱-۳۸۴۲ ۱۰۱۰",
+        lat: 36.2981,
+        lng: 59.5782,
         description: "مرکز عرضه داروهای تخصصی، مکمل و تجهیزات پزشکی با حضور داروساز و امکان مشاوره درباره نحوه مصرف دارو.",
         medicines: [
             { name: "ایبوپروفن ۴۰۰", price: 64000 },
@@ -86,6 +91,8 @@ const pharmacyCenters = [
         distanceKm: 3.9,
         hours: "۷:۳۰ صبح تا ۱۱ شب",
         phone: "۰۵۱-۳۷۶۵ ۳۳۳۰",
+        lat: 36.3202,
+        lng: 59.5451,
         description: "ارائه‌دهنده داروهای عمومی و تخصصی، محصولات مادر و کودک و اقلام مراقبت پوستی با امکان ارسال در محدوده.",
         medicines: [
             { name: "لوراتادین ۱۰", price: 57000 },
@@ -107,6 +114,8 @@ const pharmacyCenters = [
         distanceKm: 5.1,
         hours: "۸ صبح تا ۱۰ شب",
         phone: "۰۵۱-۳۸۵۹ ۰۰۲۰",
+        lat: 36.2871,
+        lng: 59.5604,
         description: "داروخانه مجهز برای تأمین داروهای عمومی و برخی داروهای کمیاب با خدمات مشاوره دارویی و بررسی نسخه.",
         medicines: [
             { name: "ناپروکسن ۲۵۰", price: 78000 },
@@ -698,6 +707,17 @@ export function PharmacyFlow() {
                                                 <p className="mt-1 text-[11px] leading-5 text-slate-500" dir="ltr">{pharmacyDetails.phone}</p>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="flex items-center gap-2 text-[11px] font-bold text-slate-700">
+                                            <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                                            موقعیت روی نقشه
+                                        </p>
+                                        <LocationMap
+                                            lat={pharmacyDetails.lat}
+                                            lng={pharmacyDetails.lng}
+                                            label={pharmacyDetails.name}
+                                        />
                                     </div>
                                 </section>
 
