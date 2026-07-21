@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "../components/ui/dialog";
+import { LocationMap } from "../components/LocationMap";
 import {
     UploadCloud,
     FileText,
@@ -55,6 +56,8 @@ const imagingCenters = [
         distanceKm: 2.4,
         hours: "۷ صبح تا ۱۰ شب",
         phone: "۰۵۱-۳۸۸۰ ۱۱۲۲",
+        lat: 36.3192,
+        lng: 59.5184,
         description: "مرکز مجهز تصویربرداری تشخیصی با دستگاه‌های MRI، CT و سونوگرافی پیشرفته و امکان نوبت‌دهی سریع.",
         recentReviews: [
             { name: "مریم احمدی", date: "۱۲ تیر ۱۴۰۵", rating: 5, comment: "نوبت‌دهی منظم بود و کیفیت تصاویر عالی بود." },
@@ -71,6 +74,8 @@ const imagingCenters = [
         distanceKm: 3.8,
         hours: "۸ صبح تا ۹ شب",
         phone: "۰۵۱-۳۸۴۵ ۲۲۳۳",
+        lat: 36.2991,
+        lng: 59.5795,
         description: "ارائه‌دهنده خدمات رادیوگرافی، سونوگرافی و سی‌تی‌اسکن با گزارش‌دهی سریع توسط متخصصین رادیولوژی.",
         recentReviews: [
             { name: "زهرا کریمی", date: "۹ تیر ۱۴۰۵", rating: 5, comment: "نتیجه MRI سریع آماده شد و راهنمایی کاملی دادند." },
@@ -87,6 +92,8 @@ const imagingCenters = [
         distanceKm: 5.0,
         hours: "۷:۳۰ صبح تا ۱۱ شب",
         phone: "۰۵۱-۳۷۶۰ ۴۴۵۵",
+        lat: 36.3211,
+        lng: 59.5462,
         description: "مرکز تخصصی تصویربرداری با پوشش خدمات ماموگرافی، دانسیتومتری و MRI و پذیرش نسخه‌های الکترونیک.",
         recentReviews: [
             { name: "سارا حسینی", date: "۵ تیر ۱۴۰۵", rating: 5, comment: "هماهنگی نوبت عالی و برخورد پرسنل بسیار خوب بود." },
@@ -103,6 +110,8 @@ const imagingCenters = [
         distanceKm: 6.5,
         hours: "۸ صبح تا ۸ شب",
         phone: "۰۵۱-۳۸۵۲ ۶۶۷۷",
+        lat: 36.2882,
+        lng: 59.5615,
         description: "مرکز تصویربرداری با تجهیزات به‌روز، فضای آرام برای بیماران و امکان پیگیری آنلاین نتایج.",
         recentReviews: [
             { name: "نرگس صادقی", date: "۲ تیر ۱۴۰۵", rating: 5, comment: "سونوگرافی دقیق و گزارش‌دهی سریع داشتند." },
@@ -626,6 +635,17 @@ export function RadiologyFlow() {
                                                 <p className="mt-1 text-[11px] leading-5 text-slate-500" dir="ltr">{centerDetails.phone}</p>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="flex items-center gap-2 text-[11px] font-bold text-slate-700">
+                                            <MapPin className="h-3.5 w-3.5 text-violet-600" />
+                                            موقعیت روی نقشه
+                                        </p>
+                                        <LocationMap
+                                            lat={centerDetails.lat}
+                                            lng={centerDetails.lng}
+                                            label={centerDetails.name}
+                                        />
                                     </div>
                                 </section>
 

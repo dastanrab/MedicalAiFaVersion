@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "../components/ui/dialog";
+import { LocationMap, MASHHAD_FALLBACK } from "../components/LocationMap";
 import {
     UploadCloud,
     TestTube,
@@ -1081,6 +1082,17 @@ export function LabsFlow() {
                                                 </p>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="flex items-center gap-2 text-[11px] font-bold text-slate-700">
+                                            <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                                            موقعیت روی نقشه
+                                        </p>
+                                        <LocationMap
+                                            lat={labDetails.lat ?? MASHHAD_FALLBACK.lat}
+                                            lng={labDetails.lng ?? MASHHAD_FALLBACK.lng}
+                                            label={labDetails.name}
+                                        />
                                     </div>
                                 </section>
 

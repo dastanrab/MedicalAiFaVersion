@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock3,
   Info,
+  MapPin,
   MessageCircleMore,
   Smartphone,
   Star,
@@ -17,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import { LocationMap, MASHHAD_FALLBACK } from "./LocationMap";
 
 export type ProviderReview = {
   name: string;
@@ -40,9 +42,11 @@ export type ProviderDetails = {
   reviews: number;
   services: ProviderServiceItem[];
   recentReviews: ProviderReview[];
+  lat?: number | null;
+  lng?: number | null;
 };
 
-type Accent = "emerald" | "sky";
+type Accent = "emerald" | "sky" | "violet" | "rose";
 
 const accentStyles: Record<
   Accent,
@@ -72,6 +76,24 @@ const accentStyles: Record<
     submitButton:
       "bg-gradient-to-l from-sky-500 to-blue-600 shadow-blue-200 hover:from-sky-600 hover:to-blue-700",
     focus: "focus:border-blue-400 focus:ring-blue-100",
+  },
+  violet: {
+    header: "from-violet-500 to-indigo-600",
+    icon: "text-violet-600",
+    dot: "bg-violet-400",
+    reviewSuccess: "bg-violet-50 text-violet-700",
+    submitButton:
+      "bg-gradient-to-l from-violet-500 to-indigo-600 shadow-violet-200 hover:from-violet-600 hover:to-indigo-700",
+    focus: "focus:border-violet-400 focus:ring-violet-100",
+  },
+  rose: {
+    header: "from-rose-500 to-pink-600",
+    icon: "text-rose-600",
+    dot: "bg-rose-400",
+    reviewSuccess: "bg-rose-50 text-rose-700",
+    submitButton:
+      "bg-gradient-to-l from-rose-500 to-pink-600 shadow-rose-200 hover:from-rose-600 hover:to-pink-700",
+    focus: "focus:border-rose-400 focus:ring-rose-100",
   },
 };
 
@@ -165,6 +187,17 @@ export function ProviderDetailsDialog({
                       </p>
                     </div>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="flex items-center gap-2 text-[11px] font-bold text-slate-700">
+                    <MapPin className={`h-3.5 w-3.5 ${styles.icon}`} />
+                    موقعیت روی نقشه
+                  </p>
+                  <LocationMap
+                    lat={details.lat ?? MASHHAD_FALLBACK.lat}
+                    lng={details.lng ?? MASHHAD_FALLBACK.lng}
+                    label={details.name}
+                  />
                 </div>
               </section>
 
