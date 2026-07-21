@@ -40,19 +40,25 @@ interface RequestDetail {
     user_name: string;
     user_mobile: string;
     user_national_code: string | null;
+    // فیلدهای نسخه (از پاسخ API)
+    prescription_type_id?: number;
+    prescription_status?: number;
+    prescription_details?: string; // JSON string
+    prescription_created_at?: string;
+    prescription_updated_at?: string;
+    prescription_type_name?: string;
 }
 
 interface RequestItem {
     id: number;
-    medicine_id: number;       // اصلاح: medicine_id نه pharmacy_medicine_id
-    quantity: number;          // از qty alias شده
+    medicine_id: number;
+    quantity: number;
     price: string;
     total_price: string;
     medicine_name: string;
     medicine_type_name: string;
     unit: string;
 }
-
 
 interface MedicineSearchResult {
     id: number;
@@ -218,13 +224,13 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
         try {
             const response = await fetch(`${BASE_URL}/${requestId}`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,'Accept': 'application/json'
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
                 }
             });
             const result = await response.json();
 
-            // اصلاح: 'success' نه true
-            if (result.status ==='success' && result.data) {
+            if (result.status === 'success' && result.data) {
                 setRequest(result.data.request);
                 setItems(result.data.items || []);
             }
@@ -234,7 +240,6 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
             setLoading(false);
         }
     };
-
 
     const handleAcceptRequest = async () => {
         setUpdating(true);
@@ -401,12 +406,76 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="space-y-4 lg:col-span-2">
+                    {/* کارت بیمار */}
                     <Card title="بیمار">
                         <Row label="نام" value={request.user_name} />
                         <Row label="موبایل" value={request.user_mobile} />
                         {request.user_national_code && <Row label="کد ملی" value={request.user_national_code} />}
                     </Card>
 
+                    {/* کارت جزئیات نسخه (جدید) */}
+                    <Card title="جزئیات نسخه">
+                        {request.prescription_type_name && (
+                            <Row label="نوع نسخه" value={request.prescription_type_name} />
+                        )}
+                        {request.prescription_status !== undefined && (
+                            <Row label="وضعیت نسخه" value={request.prescription_status === 1 ? 'فعال' : 'غیرفعال'} />
+                        )}
+                        {request.prescription_created_at && (
+                            <Row label="تاریخ ثبت نسخه" value={new Date(request.prescription_created_at).toLocaleDateString('fa-IR')} />
+                        )}
+                        {request.prescription_details && (() => {
+                            try {
+                                const details = JSON.parse(request.prescription_details);
+                                return (
+                                    <>
+                                        {details.code && <Row label="کد دیجیتال" value={details.code} />}
+                                        {details.medicines && (
+                                            <div className="flex justify-between py-2 text-sm">
+                                                <span className="text-slate-500">داروهای درخواستی</span>
+                                                <span className="font-medium">{details.medicines}</span>
+                                            </div>
+                                        )}
+                                        {details.files && details.files.length > 0 && (
+                                            <div className="flex justify-between py-2 text-sm">
+                                                <span className="text-slate-500">فایل‌های آپلود شده</span>
+                                                <span className="font-medium">
+                                                    {details.files.map((f: string) => (
+                                                        <a
+                                                            key={f}
+                                                            href={`http://185.222.163.113:7000/storage/${f}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="block text-xs text-teal-600 hover:underline"
+                                                        >
+                                                            {f.split('/').pop()}
+                                                        </a>
+                                                    ))}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {details.has_insurance !== undefined && (
+                                            <Row label="بیمه پایه" value={details.has_insurance ? 'دارد' : 'ندارد'} />
+                                        )}
+                                        {details.description && <Row label="توضیحات" value={details.description} />}
+                                        {details.delivery_type !== undefined && (
+                                            <Row label="نوع تحویل" value={details.delivery_type === '1' ? 'ارسال به درب' : 'حضوری'} />
+                                        )}
+                                        {details.user_address_id && (
+                                            <Row label="شناسه آدرس" value={String(details.user_address_id)} />
+                                        )}
+                                    </>
+                                );
+                            } catch (e) {
+                                return <Row label="جزئیات" value={request.prescription_details || '-'} />;
+                            }
+                        })()}
+                        {!request.prescription_details && (
+                            <p className="text-sm text-slate-500">اطلاعات نسخه موجود نیست</p>
+                        )}
+                    </Card>
+
+                    {/* کارت داروها */}
                     <Card title="داروها">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -448,6 +517,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                         </div>
                     </Card>
 
+                    {/* بخش افزودن دارو */}
                     {isFreeRequest ? (
                         <div className="rounded-2xl border border-purple-200 bg-purple-50 p-6 text-center">
                             <Unlock className="w-8 h-8 text-purple-400 mx-auto mb-3" />
@@ -546,6 +616,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                     ) : null}
                 </div>
 
+                {/* ستون راست */}
                 <div className="space-y-4">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                         <StatusBadge
