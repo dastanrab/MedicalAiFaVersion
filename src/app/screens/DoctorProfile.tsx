@@ -12,9 +12,10 @@ import {
   CheckCircle,
   Briefcase,
   Heart,
-  CirclePlay,
   FileText,
-  Loader2
+  Loader2,
+  ThumbsUp,
+  UserCircle
 } from 'lucide-react';
 import mapImage from 'figma:asset/64bcbcf457707b2cfce084e06eccf4fbded0e165.png';
 import { Button } from '../components/ui/button';
@@ -29,10 +30,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
-import {useAuthStore} from "../store/authStore";
+import { useAuthStore } from "../store/authStore";
 import { AppBar } from '../components/AppBar';
 import { PageLoader } from '../components/PageLoader';
-import { saveCheckoutSession } from '../lib/checkoutSession';
 
 interface DoctorData {
   id: number;
@@ -92,6 +92,14 @@ export function DoctorProfile() {
   const { id } = useParams();
   const location = useLocation();
   const sessionId = location.state?.sessionId || null;
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // استیت‌های مربوط به سیستم پیشنهاد همکار
+  const [recommenders, setRecommenders] = useState<any[]>([]);
+  const [isRecommendedByMe, setIsRecommendedByMe] = useState(false);
+  const [isTogglingRecommendation, setIsTogglingRecommendation] = useState(false);
+
   const [reserveError, setReserveError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -108,24 +116,97 @@ export function DoctorProfile() {
   const [reservationToken, setReservationToken] = useState<string | null>(null);
   const [reservationExpiry, setReservationExpiry] = useState<string | null>(null);
   const [isReserving, setIsReserving] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
-    fetchDoctorData();
+    if (id) {
+      fetchDoctorData();
+      fetchRecommendations();
+    }
   }, [id]);
 
-  // اضافه کردن useEffect برای بررسی رزرو فعال هنگام بارگذاری صفحه
+  useEffect(() => {
+    if (accessToken) {
+      fetchUserProfile();
+    }
+  }, [accessToken]);
+
   useEffect(() => {
     if (doctorData?.id && accessToken) {
       checkActiveReservation();
     }
   }, [doctorData?.id, accessToken]);
 
-// تابع بررسی رزرو فعال
+  // دریافت اطلاعات کاربر فعلی از سرور (برای اطمینان از نقش کاربر)
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch('http://185.222.163.113:7000/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setCurrentUser(result.data || result);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  // دریافت لیست پزشکان پیشنهاد دهنده
+  // دریافت لیست پزشکان پیشنهاد دهنده
+  const fetchRecommendations = async () => {
+    try {
+      const headers: any = { 'Accept': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+      const response = await fetch(`http://185.222.163.113:7000/api/user/doctors/${id}/recommendations`, { headers });
+      if (response.ok) {
+        const result = await response.json();
+        // اصلاح مسیر خواندن دیتا
+        if (result.success && result.data) {
+          setRecommenders(result.data.recommenders || []);
+          setIsRecommendedByMe(result.data.is_recommended_by_me || false);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+    }
+  };
+
+
+  // ثبت یا لغو پیشنهاد
+  const handleToggleRecommendation = async () => {
+    if (!accessToken) return;
+    setIsTogglingRecommendation(true);
+    try {
+      const response = await fetch(`http://185.222.163.113:7000/api/user/doctors/${id}/recommend`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setIsRecommendedByMe(result.status === 'attached');
+        fetchRecommendations();
+      }
+    } catch (error) {
+      console.error('Error toggling recommendation:', error);
+    } finally {
+      setIsTogglingRecommendation(false);
+    }
+  };
+
   const checkActiveReservation = async () => {
     try {
       const response = await fetch(
-          `http://185.222.163.113:7000/api/user/reservations/active?doctor_id=${doctorData.id}`,
+          `http://185.222.163.113:7000/api/user/reservations/active?doctor_id=${doctorData?.id}`,
           {
             method: 'GET',
             headers: {
@@ -139,26 +220,20 @@ export function DoctorProfile() {
         const result = await response.json();
 
         if (result.success && result.data) {
-          // تنظیم state ها با اطلاعات رزرو فعال
           setReservationToken(result.data.reservation_token);
           setReservationExpiry(result.data.expires_at);
 
-          // پیدا کردن اسلات مربوطه
-          const slot = availableSlots.find(s => s.id === result.data.slot_id);
+          const slot = availableSlots.find((s: any) => s.id === result.data.slot_id);
           if (slot) {
-            setSelectedSlot(slot);
+            setSelectedSlot(slot as any);
             setSelectedDate(result.data.slot_date);
           }
 
-          // نمایش مدال تایید نهایی
           setShowConfirmDialog(true);
-
-          // نمایش پیام اطلاع‌رسانی
           alert(`شما یک رزرو فعال دارید که ${Math.floor(result.data.remaining_seconds / 60)} دقیقه دیگر منقضی می‌شود`);
         }
       }
     } catch (error) {
-      // در صورت عدم وجود رزرو فعال، خطایی نمایش نمی‌دهیم
       console.log('No active reservation found');
     }
   };
@@ -182,7 +257,6 @@ export function DoctorProfile() {
         setDoctorData(result.data.doctor);
         setAvailableSlots(result.data.available_slots);
 
-        // انتخاب اولین تاریخ موجود به عنوان پیش‌فرض
         const dates = Object.keys(result.data.available_slots);
         if (dates.length > 0) {
           setSelectedDate(dates[0]);
@@ -195,12 +269,10 @@ export function DoctorProfile() {
       setLoading(false);
     }
   };
+
   const cancelReservation = async () => {
     if (!reservationToken) return;
-
-    if (!confirm('آیا از لغو رزرو موقت اطمینان دارید؟')) {
-      return;
-    }
+    if (!confirm('آیا از لغو رزرو موقت اطمینان دارید؟')) return;
 
     setIsCancelling(true);
     setConfirmError(null);
@@ -212,9 +284,7 @@ export function DoctorProfile() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify({
-          reservation_token: reservationToken
-        })
+        body: JSON.stringify({ reservation_token: reservationToken })
       });
 
       if (!response.ok) {
@@ -223,17 +293,12 @@ export function DoctorProfile() {
       }
 
       const result = await response.json();
-
       if (result.success) {
-        // پاک کردن state های رزرو
         setReservationToken(null);
         setReservationExpiry(null);
         setSelectedSlot(null);
         setShowConfirmDialog(false);
-
-        // بروزرسانی لیست نوبت‌ها
         await fetchDoctorData();
-
         alert('رزرو موقت شما لغو شد');
       }
     } catch (error) {
@@ -242,7 +307,6 @@ export function DoctorProfile() {
       setIsCancelling(false);
     }
   };
-
 
   const handleReserveSlot = async () => {
     if (!selectedSlot) return;
@@ -255,7 +319,7 @@ export function DoctorProfile() {
     }
 
     setIsReserving(true);
-    setReserveError(null); // پاک کردن خطای قبلی
+    setReserveError(null);
 
     try {
       const response = await fetch('http://185.222.163.113:7000/api/user/reservations/reserve', {
@@ -290,28 +354,50 @@ export function DoctorProfile() {
     }
   };
 
+  const confirmBooking = async () => {
+    if (!reservationToken) return;
 
-
-  const goToPayment = () => {
-    if (!reservationToken || !selectedSlot || !doctorData || !id) return;
-
+    setIsConfirming(true);
     setConfirmError(null);
-    saveCheckoutSession({
-      kind: 'reservation',
-      title: `ویزیت حضوری — ${doctorData.name}`,
-      providerName: doctorData.name,
-      amount: doctorData.visit_price,
-      serviceTypeLabel: 'مشاوره',
-      returnPath: `/doctor/${id}`,
-      reservationToken,
-      doctorId: String(id),
-      slotLabel: `${formatDate(selectedDate)} | ${selectedSlot.start_time} - ${selectedSlot.end_time}`,
-      expiresAt: reservationExpiry ?? undefined,
-    });
-    setShowConfirmDialog(false);
-    navigate('/checkout');
-  };
 
+    try {
+      const mockAuthority = `A${String(Date.now()).slice(-35)}`;
+      const mockStatus = 'OK';
+
+      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          reservation_token: reservationToken,
+          authority: mockAuthority,
+          status: mockStatus
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'خطا در تایید رزرو');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setReservationToken(null);
+        setReservationExpiry(null);
+        setSelectedSlot(null);
+        setShowConfirmDialog(false);
+        await fetchDoctorData();
+        alert(`رزرو با موفقیت تکمیل شد\nشماره پیگیری: ${result.data.payment.ref_id}`);
+      }
+    } catch (error) {
+      setConfirmError(error instanceof Error ? error.message : 'خطا در تایید رزرو');
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
@@ -327,17 +413,6 @@ export function DoctorProfile() {
     };
     return new Intl.DateTimeFormat('fa-IR', options).format(date);
   };
-
-  const handleBooking = () => {
-    if (selectedSlot) {
-      setShowBookingDialog(true);
-    }
-  };
-
-  // const confirmBooking = () => {
-  //   setShowBookingDialog(false);
-  //   navigate(`/consultation/${id}`);
-  // };
 
   async function startChat() {
     try {
@@ -424,6 +499,10 @@ export function DoctorProfile() {
       date: '۲ روز پیش',
     }
   ];
+
+  // بررسی نقش کاربر با توجه به دیتای دریافت‌شده از سرور
+  const isDoctor = currentUser?.user?.role === 'doctor' || currentUser?.role === 2;
+  console.log(isDoctor,currentUser)
 
   return (
       <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white" dir="rtl">
@@ -520,6 +599,30 @@ export function DoctorProfile() {
             )}
           </Card>
 
+          {/* کارت ثبت پیشنهاد (تنها برای پزشکان لاگین شده و غیر از صاحب پروفایل) */}
+          {/* کارت ثبت پیشنهاد (تنها برای پزشکان لاگین شده و غیر از صاحب پروفایل) */}
+          {isDoctor && currentUser?.id !== doctorData.id && (
+              <Card className="p-4 shadow-lg border-0 mb-6 bg-blue-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-blue-900 mb-1">پیشنهاد همکار</h3>
+                    <p className="text-xs text-blue-700">آیا این همکار را به بیماران پیشنهاد می‌دهید؟</p>
+                  </div>
+                  <Button
+                      onClick={handleToggleRecommendation}
+                      // اضافه کردن isRecommendedByMe به شرط غیرفعال بودن دکمه
+                      disabled={isTogglingRecommendation || isRecommendedByMe}
+                      variant={isRecommendedByMe ? "default" : "outline"}
+                      className={isRecommendedByMe ? "bg-blue-600 opacity-100" : "border-blue-600 text-blue-600"}
+                  >
+                    <ThumbsUp className="w-4 h-4 ml-2" />
+                    {isRecommendedByMe ? 'پیشنهاد داده‌اید' : 'پیشنهاد می‌دهم'}
+                  </Button>
+                </div>
+              </Card>
+          )}
+
+
           {/* بخش نقشه */}
           <Card className="overflow-hidden shadow-lg border-0 mb-6">
             <img
@@ -610,7 +713,6 @@ export function DoctorProfile() {
 
             <TabsContent value="reviews" className="mt-4">
               <Card className="p-5 shadow-lg border-0">
-                {/* بخش ثبت نظر */}
                 <div className="mb-6 pb-6 border-b">
                   <h3 className="text-lg text-gray-900 mb-3">ثبت نظر</h3>
                   <textarea
@@ -629,8 +731,6 @@ export function DoctorProfile() {
                     ثبت نظر
                   </Button>
                 </div>
-
-                {/* نظرات موجود */}
                 <h3 className="text-lg text-gray-900 mb-4">نظرات کاربران</h3>
                 <div className="text-center text-gray-500 py-8">
                   <p className="text-sm">هنوز نظری ثبت نشده است</p>
@@ -638,6 +738,33 @@ export function DoctorProfile() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* لیست همکارانی که این پزشک را پیشنهاد داده‌اند */}
+          {recommenders.length > 0 && (
+              <Card className="p-5 shadow-lg border-0 mb-6">
+                <h3 className="text-lg text-gray-900 mb-4 flex items-center gap-2">
+                  <ThumbsUp className="w-5 h-5 text-blue-500" />
+                  پزشکانی که ایشان را پیشنهاد داده‌اند ({recommenders.length})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {recommenders.map((peer, idx) => (
+                      <div
+                          key={idx}
+                          className="flex flex-col items-center p-3 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => navigate(`/doctor/${peer.id}`)}
+                      >
+                        {peer.image_url ? (
+                            <img src={peer.image_url} alt={peer.name} className="w-14 h-14 rounded-full mb-2 object-cover" />
+                        ) : (
+                            <UserCircle className="w-14 h-14 text-gray-300 mb-2" />
+                        )}
+                        <span className="text-sm font-semibold text-gray-800 text-center">{peer.name}</span>
+                        <span className="text-xs text-gray-500 text-center">{peer.specialty_name || 'پزشک'}</span>
+                      </div>
+                  ))}
+                </div>
+              </Card>
+          )}
 
           {/* بخش رزرو نوبت */}
           <Card className="p-5 shadow-xl border-0 mb-6">
@@ -663,7 +790,6 @@ export function DoctorProfile() {
             )}
             {Object.keys(availableSlots).length > 0 ? (
                 <>
-                  {/* انتخاب تاریخ */}
                   <div className="mb-4">
                     <label className="block text-sm text-gray-700 mb-2">انتخاب تاریخ</label>
                     <div className="flex gap-2 overflow-x-auto pb-2">
@@ -686,7 +812,6 @@ export function DoctorProfile() {
                     </div>
                   </div>
 
-                  {/* ساعت‌های موجود */}
                   {selectedDate && availableSlots[selectedDate] && (
                       <div className="mb-4">
                         <label className="block text-sm text-gray-700 mb-2">ساعت‌های موجود</label>
@@ -780,7 +905,6 @@ export function DoctorProfile() {
                   )}
                 </Button>
               </DialogContent>
-
             </Dialog>
 
             <Dialog open={showConfirmDialog} onOpenChange={(open) => {
@@ -820,16 +944,16 @@ export function DoctorProfile() {
 
                       <div className="flex gap-2">
                         <Button
-                            onClick={goToPayment}
-                            disabled={isCancelling}
+                            onClick={confirmBooking}
+                            disabled={isConfirming || isCancelling}
                             className="flex-1 bg-green-600 hover:bg-green-700"
                         >
-                          پرداخت آنلاین
+                          {isConfirming ? 'در حال تایید...' : 'تأیید نهایی'}
                         </Button>
 
                         <Button
                             onClick={cancelReservation}
-                            disabled={isCancelling}
+                            disabled={isConfirming || isCancelling}
                             variant="destructive"
                             className="flex-1"
                         >
@@ -840,7 +964,6 @@ export function DoctorProfile() {
                 )}
               </DialogContent>
             </Dialog>
-
 
             <div className="grid grid-cols-2 gap-3">
               <Button
