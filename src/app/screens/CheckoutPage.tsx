@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  BadgePercent,
-  Building2,
+  Check,
   CreditCard,
   Loader2,
   ShieldCheck,
-  Tag,
+  TicketPercent,
+  X,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
 import { Card } from '../components/ui/card';
@@ -28,6 +28,29 @@ import {
 const pageClass =
   'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
 
+function AmountWithToman({
+  amount,
+  prefix = '',
+  amountClassName = 'font-bold text-gray-900',
+  tomanClassName = 'text-[11px] font-normal text-gray-500',
+}: {
+  amount: number | string;
+  prefix?: string;
+  amountClassName?: string;
+  tomanClassName?: string;
+}) {
+  const value = typeof amount === 'number' ? formatPrice(amount) : amount;
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span className={amountClassName}>
+        {prefix}
+        {value}
+      </span>
+      <span className={tomanClassName}>تومان</span>
+    </span>
+  );
+}
+
 export function CheckoutPage() {
   const navigate = useNavigate();
   const [session, setSession] = useState<CheckoutSession | null>(null);
@@ -35,7 +58,6 @@ export function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<SampleDiscountCode | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
   const [isPaying, setIsPaying] = useState(false);
 
   useEffect(() => {
@@ -56,7 +78,6 @@ export function CheckoutPage() {
 
   const applyCoupon = () => {
     setCouponError(null);
-    setCouponSuccess(null);
     const found = findDiscountCode(couponInput);
     if (!found) {
       setAppliedDiscount(null);
@@ -69,14 +90,13 @@ export function CheckoutPage() {
       return;
     }
     setAppliedDiscount(found);
-    setCouponSuccess(found.description);
+    setCouponInput(found.code);
   };
 
   const removeCoupon = () => {
     setAppliedDiscount(null);
     setCouponInput('');
     setCouponError(null);
-    setCouponSuccess(null);
   };
 
   const handlePay = () => {
@@ -93,7 +113,6 @@ export function CheckoutPage() {
       coupon: appliedDiscount?.code ?? '',
     });
 
-    // شبیه‌سازی تأخیر اتصال به درگاه (نمایشی)
     window.setTimeout(() => {
       navigate(`/payment/callback?${params.toString()}`, { replace: true });
     }, 1200);
@@ -148,53 +167,87 @@ export function CheckoutPage() {
             </div>
             <div className="shrink-0 text-left">
               <p className="text-[11px] text-gray-400">مبلغ</p>
-              <p className="text-sm font-bold text-gray-900">{formatPrice(session.amount)} ت</p>
+              <AmountWithToman
+                amount={session.amount}
+                amountClassName="text-sm font-bold text-gray-900"
+                tomanClassName="text-[10px] font-normal text-gray-400"
+              />
             </div>
           </div>
         </Card>
 
-        <Card className="mb-3 gap-0 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center gap-2">
-            <Tag className="h-4 w-4 text-violet-500" />
-            <h3 className="text-sm font-bold text-gray-900">کد تخفیف</h3>
+        <Card className="mb-3 gap-0 overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-l from-blue-50/80 to-white p-0 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-blue-100/80 px-4 py-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+              <TicketPercent className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">کد تخفیف</h3>
+              <p className="text-[11px] text-gray-500">در صورت داشتن کد، اینجا وارد کنید</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={couponInput}
-              onChange={(e) => setCouponInput(e.target.value)}
-              placeholder="مثال: HEALTH10"
-              disabled={!!appliedDiscount || isPaying}
-              className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none ring-blue-500 focus:ring-2 disabled:opacity-60"
-              dir="ltr"
-            />
+
+          <div className="px-4 py-3">
             {appliedDiscount ? (
-              <Button type="button" variant="outline" onClick={removeCoupon} disabled={isPaying}>
-                حذف
-              </Button>
+              <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2.5 ring-1 ring-blue-200">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-blue-900" dir="ltr">
+                    {appliedDiscount.code}
+                  </p>
+                  <p className="text-[11px] text-blue-700">{appliedDiscount.description}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeCoupon}
+                  disabled={isPaying}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-700 transition hover:bg-blue-100"
+                  aria-label="حذف کد تخفیف"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             ) : (
-              <Button type="button" onClick={applyCoupon} disabled={!couponInput.trim() || isPaying}>
-                اعمال
-              </Button>
+              <div className="flex gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <TicketPercent className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-400" />
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value);
+                      if (couponError) setCouponError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyCoupon();
+                      }
+                    }}
+                    placeholder="کد تخفیف را وارد کنید"
+                    disabled={isPaying}
+                    className="h-11 w-full rounded-xl border border-blue-200 bg-white pr-10 pl-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 disabled:opacity-60"
+                    dir="rtl"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={!couponInput.trim() || isPaying}
+                  className="h-11 shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  اعمال
+                </Button>
+              </div>
             )}
+            {couponError && <p className="mt-2 text-xs text-red-600">{couponError}</p>}
           </div>
-          {couponError && <p className="mt-2 text-xs text-red-600">{couponError}</p>}
-          {couponSuccess && (
-            <p className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-600">
-              <BadgePercent className="h-3.5 w-3.5" />
-              {couponSuccess}
-            </p>
-          )}
-          <p className="mt-2 text-[10px] text-gray-400">
-            کدهای نمونه: HEALTH10 · FIRST50 · WELCOME
-          </p>
         </Card>
 
         <Card className="mb-3 gap-0 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-blue-500" />
-            <h3 className="text-sm font-bold text-gray-900">انتخاب درگاه بانکی</h3>
-          </div>
+          <h3 className="mb-3 text-sm font-bold text-gray-900">انتخاب درگاه بانکی</h3>
           <div className="space-y-2">
             {paymentGateways.map((gateway) => {
               const selected = gatewayId === gateway.id;
@@ -206,31 +259,28 @@ export function CheckoutPage() {
                   onClick={() => setGatewayId(gateway.id)}
                   className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-right transition ${
                     selected
-                      ? `border-transparent bg-blue-50 ring-2 ${gateway.selectedRingClass}`
+                      ? `border-transparent bg-blue-50/80 ring-2 ${gateway.selectedRingClass}`
                       : 'border-gray-100 bg-white hover:bg-gray-50'
                   }`}
                 >
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gateway.accentClass} text-xs font-bold text-white`}
-                  >
-                    {gateway.nameEn.slice(0, 2).toUpperCase()}
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-gray-100">
+                    <img
+                      src={gateway.logo}
+                      alt={gateway.name}
+                      className="h-10 w-10 object-contain"
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-gray-900">{gateway.name}</p>
-                      {gateway.isSample && (
-                        <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200">
-                          نمونه
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-sm font-bold text-gray-900">{gateway.name}</p>
                     <p className="mt-0.5 text-[11px] text-gray-500">{gateway.description}</p>
                   </div>
                   <span
-                    className={`h-4 w-4 shrink-0 rounded-full border-2 ${
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
                       selected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
                     }`}
-                  />
+                  >
+                    {selected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                  </span>
                 </button>
               );
             })}
@@ -238,20 +288,31 @@ export function CheckoutPage() {
         </Card>
 
         <Card className="mb-4 gap-0 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600">
+          <div className="space-y-2.5 text-sm">
+            <div className="flex items-center justify-between text-gray-600">
               <span>مبلغ سفارش</span>
-              <span>{formatPrice(session.amount)} تومان</span>
+              <AmountWithToman
+                amount={session.amount}
+                amountClassName="font-bold text-gray-800"
+                tomanClassName="text-[11px] font-normal text-gray-500"
+              />
             </div>
-            <div className="flex justify-between text-gray-600">
+            <div className="flex items-center justify-between text-gray-600">
               <span>تخفیف</span>
-              <span className={discountAmount > 0 ? 'text-emerald-600' : ''}>
-                {discountAmount > 0 ? `−${formatPrice(discountAmount)}` : '۰'} تومان
-              </span>
+              <AmountWithToman
+                amount={discountAmount > 0 ? formatPrice(discountAmount) : '۰'}
+                prefix={discountAmount > 0 ? '−' : ''}
+                amountClassName={`font-bold ${discountAmount > 0 ? 'text-emerald-600' : 'text-gray-800'}`}
+                tomanClassName="text-[11px] font-normal text-gray-500"
+              />
             </div>
-            <div className="flex justify-between border-t border-gray-100 pt-2 text-base font-bold text-gray-900">
-              <span>مبلغ قابل پرداخت</span>
-              <span>{formatPrice(payable)} تومان</span>
+            <div className="flex items-center justify-between border-t border-gray-100 pt-2.5">
+              <span className="text-base font-bold text-gray-900">مبلغ قابل پرداخت</span>
+              <AmountWithToman
+                amount={payable}
+                amountClassName="text-base font-bold text-gray-900"
+                tomanClassName="text-[11px] font-normal text-gray-500"
+              />
             </div>
           </div>
         </Card>
@@ -277,7 +338,10 @@ export function CheckoutPage() {
           ) : (
             <>
               <CreditCard className="ml-2 h-5 w-5" />
-              پرداخت آنلاین — {formatPrice(payable)} تومان
+              <span className="inline-flex items-baseline gap-1">
+                <span>پرداخت آنلاین — {formatPrice(payable)}</span>
+                <span className="text-xs font-normal opacity-90">تومان</span>
+              </span>
             </>
           )}
         </Button>

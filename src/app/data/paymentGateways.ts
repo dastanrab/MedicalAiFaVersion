@@ -1,3 +1,6 @@
+import mellatLogo from '../assets/banks/mellat.png';
+import samanLogo from '../assets/banks/saman.png';
+
 export type PaymentGatewayId = 'mellat' | 'saman';
 
 export interface PaymentGateway {
@@ -5,9 +8,9 @@ export interface PaymentGateway {
   name: string;
   nameEn: string;
   description: string;
+  logo: string;
   /** Sample / display-only — no real bank redirect */
   isSample: boolean;
-  accentClass: string;
   selectedRingClass: string;
 }
 
@@ -26,18 +29,18 @@ export const paymentGateways: PaymentGateway[] = [
     id: 'mellat',
     name: 'بانک ملت',
     nameEn: 'Mellat',
-    description: 'درگاه پرداخت بانک ملت — فعلاً نمایشی',
+    description: 'پرداخت امن از طریق درگاه بانک ملت',
+    logo: mellatLogo,
     isSample: true,
-    accentClass: 'from-red-600 to-rose-700',
     selectedRingClass: 'ring-red-400',
   },
   {
     id: 'saman',
     name: 'بانک سامان',
     nameEn: 'Saman',
-    description: 'درگاه پرداخت بانک سامان — فعلاً نمایشی',
+    description: 'پرداخت امن از طریق درگاه بانک سامان',
+    logo: samanLogo,
     isSample: true,
-    accentClass: 'from-sky-600 to-blue-700',
     selectedRingClass: 'ring-sky-400',
   },
 ];
