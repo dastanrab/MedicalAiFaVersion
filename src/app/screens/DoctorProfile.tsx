@@ -32,6 +32,7 @@ import {
 import {useAuthStore} from "../store/authStore";
 import { AppBar } from '../components/AppBar';
 import { PageLoader } from '../components/PageLoader';
+import { saveCheckoutSession } from '../lib/checkoutSession';
 
 interface DoctorData {
   id: number;
@@ -107,7 +108,6 @@ export function DoctorProfile() {
   const [reservationToken, setReservationToken] = useState<string | null>(null);
   const [reservationExpiry, setReservationExpiry] = useState<string | null>(null);
   const [isReserving, setIsReserving] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
@@ -292,57 +292,24 @@ export function DoctorProfile() {
 
 
 
-  const confirmBooking = async () => {
-    if (!reservationToken) return;
+  const goToPayment = () => {
+    if (!reservationToken || !selectedSlot || !doctorData || !id) return;
 
-    setIsConfirming(true);
     setConfirmError(null);
-
-    try {
-      // ─────────────────────────────────────────────
-      // شبیه‌سازی authority و status از درگاه
-      // ─────────────────────────────────────────────
-      const mockAuthority = `A${String(Date.now()).slice(-35)}`;
-      const mockStatus = 'OK'; // برای تست، همیشه موفق فرض می‌شود
-
-      // در پروداکشن واقعی، این مقادیر از query parameters callback URL می‌آیند
-
-      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/confirm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          reservation_token: reservationToken,
-          authority: mockAuthority,  // ← اضافه شد
-          status: mockStatus          // ← اضافه شد
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'خطا در تایید رزرو');
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setReservationToken(null);
-        setReservationExpiry(null);
-        setSelectedSlot(null);
-        setShowConfirmDialog(false);
-
-        await fetchDoctorData();
-
-        // نمایش پیام موفقیت با RefID
-        alert(`رزرو با موفقیت تکمیل شد\nشماره پیگیری: ${result.data.payment.ref_id}`);
-      }
-    } catch (error) {
-      setConfirmError(error instanceof Error ? error.message : 'خطا در تایید رزرو');
-    } finally {
-      setIsConfirming(false);
-    }
+    saveCheckoutSession({
+      kind: 'reservation',
+      title: `ویزیت حضوری — ${doctorData.name}`,
+      providerName: doctorData.name,
+      amount: doctorData.visit_price,
+      serviceTypeLabel: 'مشاوره',
+      returnPath: `/doctor/${id}`,
+      reservationToken,
+      doctorId: String(id),
+      slotLabel: `${formatDate(selectedDate)} | ${selectedSlot.start_time} - ${selectedSlot.end_time}`,
+      expiresAt: reservationExpiry ?? undefined,
+    });
+    setShowConfirmDialog(false);
+    navigate('/checkout');
   };
 
 
@@ -853,16 +820,16 @@ export function DoctorProfile() {
 
                       <div className="flex gap-2">
                         <Button
-                            onClick={confirmBooking}
-                            disabled={isConfirming || isCancelling}
+                            onClick={goToPayment}
+                            disabled={isCancelling}
                             className="flex-1 bg-green-600 hover:bg-green-700"
                         >
-                          {isConfirming ? 'در حال تایید...' : 'تأیید نهایی'}
+                          پرداخت آنلاین
                         </Button>
 
                         <Button
                             onClick={cancelReservation}
-                            disabled={isConfirming || isCancelling}
+                            disabled={isCancelling}
                             variant="destructive"
                             className="flex-1"
                         >

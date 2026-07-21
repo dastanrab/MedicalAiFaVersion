@@ -31,6 +31,8 @@ import { RadiologyFlow } from "./screens/RadiologyFlow";
 import { NurseHomeFlow } from "./screens/NurseHomeFlow";
 import { PricingPlans } from './screens/PricingPlans';
 import { UserFinance } from './screens/UserFinance';
+import { CheckoutPage } from './screens/CheckoutPage';
+import { PaymentCallbackPage } from './screens/PaymentCallbackPage';
 import { OrdersPage } from './screens/OrdersPage';
 import ExerciseExtractor from "./screens/ExerciseExtractor";
 import { AdminLogin } from './admin/screens/AdminLogin';
@@ -355,6 +357,26 @@ function App() {
                         <ProtectedRoute>
                             <AppContainer showNavbar>
                                 <UserFinance />
+                            </AppContainer>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/checkout"
+                    element={
+                        <ProtectedRoute>
+                            <AppContainer>
+                                <CheckoutPage />
+                            </AppContainer>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/payment/callback"
+                    element={
+                        <ProtectedRoute>
+                            <AppContainer>
+                                <PaymentCallbackPage />
                             </AppContainer>
                         </ProtectedRoute>
                     }

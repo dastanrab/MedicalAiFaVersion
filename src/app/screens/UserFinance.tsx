@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentType } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Wallet,
   ShoppingBag,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
 import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   formatPrice,
@@ -31,6 +33,7 @@ import {
   type UserTransactionStatus,
   type UserTransactionType,
 } from '../data/userFinanceMockData';
+import { saveCheckoutSession } from '../lib/checkoutSession';
 
 const pageClass =
   'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
@@ -50,7 +53,32 @@ const transactionStatusStyles: Record<UserTransactionStatus, string> = {
   failed: 'bg-red-50 text-red-700 ring-red-200',
 };
 
+function startOrderCheckout(order: UserOrder) {
+  saveCheckoutSession({
+    kind: 'order',
+    title: order.title,
+    providerName: order.providerName,
+    amount: order.finalAmount,
+    serviceTypeLabel: serviceTypeLabels[order.serviceType],
+    returnPath: '/finance',
+    orderId: order.id,
+    orderCode: order.code,
+  });
+}
+
+function startWalletChargeCheckout(amount = 500_000) {
+  saveCheckoutSession({
+    kind: 'wallet_charge',
+    title: 'شارژ کیف پول',
+    subtitle: 'افزایش موجودی قابل استفاده',
+    amount,
+    serviceTypeLabel: 'کیف پول',
+    returnPath: '/finance',
+  });
+}
+
 export function UserFinance() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
   const totalSpent = useMemo(
@@ -61,22 +89,34 @@ export function UserFinance() {
     []
   );
 
-  const pendingOrders = useMemo(
-    () => mockUserOrders.filter((o) => o.status === 'pending').length,
+  const awaitingPaymentOrders = useMemo(
+    () => mockUserOrders.filter((o) => o.status === 'pending'),
     []
   );
+
+  const pendingOrders = awaitingPaymentOrders.length;
 
   const successfulTransactions = useMemo(
     () => mockUserTransactions.filter((t) => t.status === 'success').length,
     []
   );
 
+  const goToCheckout = (order: UserOrder) => {
+    startOrderCheckout(order);
+    navigate('/checkout');
+  };
+
+  const goToWalletCharge = () => {
+    startWalletChargeCheckout();
+    navigate('/checkout');
+  };
+
   return (
     <div className={pageClass}>
       <AppBar backTo="/home" />
 
       <div className="mx-auto w-full max-w-lg px-3 pb-6 pt-24 sm:px-4">
-        <FinanceHero wallet={mockUserWallet} />
+        <FinanceHero wallet={mockUserWallet} onCharge={goToWalletCharge} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4" dir="rtl">
           <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-gray-100">
@@ -125,7 +165,19 @@ export function UserFinance() {
               />
             </div>
 
-            <RecentOrdersPreview orders={mockUserOrders.slice(0, 3)} onViewAll={() => setActiveTab('orders')} />
+            {awaitingPaymentOrders.length > 0 && (
+              <AwaitingPaymentSection
+                orders={awaitingPaymentOrders}
+                onPay={goToCheckout}
+                onViewAll={() => setActiveTab('orders')}
+              />
+            )}
+
+            <RecentOrdersPreview
+              orders={mockUserOrders.slice(0, 3)}
+              onViewAll={() => setActiveTab('orders')}
+              onPay={goToCheckout}
+            />
             <RecentTransactionsPreview
               transactions={mockUserTransactions.slice(0, 4)}
               onViewAll={() => setActiveTab('transactions')}
@@ -134,7 +186,7 @@ export function UserFinance() {
 
           <TabsContent value="orders" className="mt-4 space-y-3">
             {mockUserOrders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard key={order.id} order={order} onPay={goToCheckout} />
             ))}
           </TabsContent>
 
@@ -149,7 +201,13 @@ export function UserFinance() {
   );
 }
 
-function FinanceHero({ wallet }: { wallet: typeof mockUserWallet }) {
+function FinanceHero({
+  wallet,
+  onCharge,
+}: {
+  wallet: typeof mockUserWallet;
+  onCharge: () => void;
+}) {
   const available = wallet.balance - wallet.blockedBalance;
 
   return (
@@ -196,6 +254,7 @@ function FinanceHero({ wallet }: { wallet: typeof mockUserWallet }) {
         <div className="mt-4 flex gap-2">
           <button
             type="button"
+            onClick={onCharge}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"
           >
             <Plus className="h-4 w-4" />
@@ -213,6 +272,35 @@ function FinanceHero({ wallet }: { wallet: typeof mockUserWallet }) {
         <p className="mt-3 text-[10px] text-emerald-100/80">آخرین بروزرسانی: {wallet.lastUpdated}</p>
       </div>
     </div>
+  );
+}
+
+function AwaitingPaymentSection({
+  orders,
+  onPay,
+  onViewAll,
+}: {
+  orders: UserOrder[];
+  onPay: (order: UserOrder) => void;
+  onViewAll: () => void;
+}) {
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between px-1">
+        <h2 className="flex items-center gap-1.5 text-sm font-bold text-amber-800">
+          <Clock className="h-4 w-4 text-amber-500" />
+          در انتظار پرداخت
+        </h2>
+        <button type="button" onClick={onViewAll} className="text-xs font-medium text-blue-600 hover:text-blue-700">
+          مشاهده همه
+        </button>
+      </div>
+      <div className="space-y-2">
+        {orders.map((order) => (
+          <OrderCard key={order.id} order={order} onPay={onPay} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -252,9 +340,11 @@ function SummaryCard({
 function RecentOrdersPreview({
   orders,
   onViewAll,
+  onPay,
 }: {
   orders: UserOrder[];
   onViewAll: () => void;
+  onPay: (order: UserOrder) => void;
 }) {
   return (
     <section>
@@ -269,7 +359,7 @@ function RecentOrdersPreview({
       </div>
       <div className="space-y-2">
         {orders.map((order) => (
-          <OrderCard key={order.id} order={order} compact />
+          <OrderCard key={order.id} order={order} compact onPay={onPay} />
         ))}
       </div>
     </section>
@@ -303,7 +393,17 @@ function RecentTransactionsPreview({
   );
 }
 
-function OrderCard({ order, compact = false }: { order: UserOrder; compact?: boolean }) {
+function OrderCard({
+  order,
+  compact = false,
+  onPay,
+}: {
+  order: UserOrder;
+  compact?: boolean;
+  onPay?: (order: UserOrder) => void;
+}) {
+  const canPay = order.status === 'pending' && !!onPay;
+
   return (
     <Card
       dir="rtl"
@@ -345,6 +445,17 @@ function OrderCard({ order, compact = false }: { order: UserOrder; compact?: boo
 
       {compact && (
         <p className="mt-2 text-[10px] text-gray-400">{order.code} · {order.createdAt}</p>
+      )}
+
+      {canPay && (
+        <Button
+          type="button"
+          onClick={() => onPay(order)}
+          className="mt-3 h-10 w-full bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700"
+        >
+          <CreditCard className="ml-1.5 h-4 w-4" />
+          پرداخت آنلاین
+        </Button>
       )}
     </Card>
   );
