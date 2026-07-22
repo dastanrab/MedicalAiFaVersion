@@ -1,3 +1,6 @@
+// PharmacyRequestsPage.tsx و PharmacyRequestDetailPage.tsx
+// در یک فایل قرار دهید (مثلاً src/pages/provider/pharmacy/Requests.tsx)
+
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { Eye, Trash2, Search, Plus, Unlock, Lock } from 'lucide-react';
@@ -12,21 +15,28 @@ import {
 import { providerPath } from '../../config/providerNav';
 import { useProviderSession } from "../../store/providerAuthStore";
 
+// ================== STATUS CONFIG ==================
 const statusConfig: Record<number, { label: string; style: string }> = {
-    0: { label: 'در انتظار بررسی', style: 'bg-yellow-100 text-yellow-800' },
-    1: { label: 'تایید شده (در انتظار پرداخت)', style: 'bg-blue-100 text-blue-800' },
-    2: { label: 'رد شده', style: 'bg-red-100 text-red-800' },
-    3: { label: 'تکمیل شده', style: 'bg-emerald-100 text-emerald-800' },
+    0: { label: 'در انتظار تأیید داروخانه', style: 'bg-yellow-100 text-yellow-800' },
+    1: { label: 'در انتظار پرداخت',      style: 'bg-blue-100 text-blue-800' },
+    2: { label: 'در حال آماده‌سازی',     style: 'bg-purple-100 text-purple-800' },
+    3: { label: 'آماده ارسال',           style: 'bg-indigo-100 text-indigo-800' },
+    4: { label: 'در حال ارسال',          style: 'bg-cyan-100 text-cyan-800' },
+    5: { label: 'تحویل شده',             style: 'bg-green-100 text-green-800' },
+    6: { label: 'تکمیل شده',             style: 'bg-emerald-100 text-emerald-800' },
+    7: { label: 'لغو شده',               style: 'bg-red-100 text-red-800' },
 };
 
 const statusOptions = [
     { value: 'all', label: 'همه' },
-    { value: '0', label: 'در انتظار بررسی' },
-    { value: '1', label: 'تایید شده' },
-    { value: '2', label: 'رد شده' },
-    { value: '3', label: 'تکمیل شده' },
+    ...Object.entries(statusConfig).map(([value, { label }]) => ({ value, label })),
 ];
 
+// ================== CONSTANTS ==================
+const BASE_URL = 'http://185.222.163.113:7000/api/owner/pharmacy/requests';
+const SEARCH_URL = 'http://185.222.163.113:7000/api/owner/pharmacy/medicines/search';
+
+// ================== INTERFACES ==================
 interface RequestDetail {
     id: number;
     user_id: number;
@@ -40,10 +50,9 @@ interface RequestDetail {
     user_name: string;
     user_mobile: string;
     user_national_code: string | null;
-    // فیلدهای نسخه (از پاسخ API)
     prescription_type_id?: number;
     prescription_status?: number;
-    prescription_details?: string; // JSON string
+    prescription_details?: string;
     prescription_created_at?: string;
     prescription_updated_at?: string;
     prescription_type_name?: string;
@@ -69,9 +78,7 @@ interface MedicineSearchResult {
     pharmacy_unit: string | null;
 }
 
-const BASE_URL = 'http://185.222.163.113:7000/api/owner/pharmacy/requests';
-const SEARCH_URL = 'http://185.222.163.113:7000/api/owner/pharmacy/medicines/search';
-
+// ================== LIST PAGE ==================
 export function PharmacyRequestsPage() {
     const session = useProviderSession('pharmacy');
     const token = session?.token || '';
@@ -82,30 +89,19 @@ export function PharmacyRequestsPage() {
     const [status, setStatus] = useState('all');
 
     useEffect(() => {
-        if (token) {
-            fetchRequests();
-        }
+        if (token) fetchRequests();
     }, [status, token]);
 
     const fetchRequests = async () => {
         setLoading(true);
         try {
             const url = new URL(BASE_URL);
-            if (status !== 'all') {
-                url.searchParams.append('status', status);
-            }
-
+            if (status !== 'all') url.searchParams.append('status', status);
             const response = await fetch(url.toString(), {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-
-            if (data.status === 'success') {
-                setRequests(data.data || []);
-            }
+            if (data.status === 'success') setRequests(data.data || []);
         } catch (error) {
             console.error('Error fetching requests:', error);
         } finally {
@@ -114,7 +110,7 @@ export function PharmacyRequestsPage() {
     };
 
     const filtered = useMemo(() => {
-        return requests.filter((r) => {
+        return requests.filter(r => {
             const q = search.trim();
             if (!q) return true;
             return r.user_name?.includes(q) || r.user_mobile?.includes(q) || r.id.toString().includes(q);
@@ -124,12 +120,10 @@ export function PharmacyRequestsPage() {
     return (
         <div className="space-y-6">
             <PageHeader title="درخواست‌های داروخانه" />
-
             <div className="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <SearchInput value={search} onChange={setSearch} placeholder="جستجوی نام، موبایل یا کد..." />
                 <FilterSelect label="وضعیت" value={status} onChange={setStatus} options={statusOptions} />
             </div>
-
             {loading ? (
                 <div className="text-center p-4">در حال بارگذاری...</div>
             ) : filtered.length === 0 ? (
@@ -148,7 +142,7 @@ export function PharmacyRequestsPage() {
                         </tr>
                         </thead>
                         <tbody>
-                        {filtered.map((r) => {
+                        {filtered.map(r => {
                             const isFree = r.pharmacy_id === null;
                             return (
                                 <tr key={r.id} className="border-t border-slate-100">
@@ -160,13 +154,11 @@ export function PharmacyRequestsPage() {
                                     <td className="px-4 py-3">
                                         {isFree ? (
                                             <span className="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700">
-                                                <Unlock className="w-3 h-3" />
-                                                آزاد (منتظر پذیرش)
+                                                <Unlock className="w-3 h-3" /> آزاد (منتظر پذیرش)
                                             </span>
                                         ) : (
                                             <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                                                <Lock className="w-3 h-3" />
-                                                اختصاصی
+                                                <Lock className="w-3 h-3" /> اختصاصی
                                             </span>
                                         )}
                                     </td>
@@ -182,8 +174,7 @@ export function PharmacyRequestsPage() {
                                             to={providerPath('pharmacy', `requests/${r.id}`)}
                                             className="inline-flex items-center gap-1 text-teal-600 hover:underline"
                                         >
-                                            <Eye className="h-4 w-4" />
-                                            بررسی
+                                            <Eye className="h-4 w-4" /> بررسی
                                         </Link>
                                     </td>
                                 </tr>
@@ -197,6 +188,7 @@ export function PharmacyRequestsPage() {
     );
 }
 
+// ================== DETAIL PAGE ==================
 export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) {
     const session = useProviderSession('pharmacy');
     const token = session?.token || '';
@@ -215,21 +207,15 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
     const [isAdding, setIsAdding] = useState(false);
 
     useEffect(() => {
-        if (token) {
-            fetchRequestDetail();
-        }
+        if (token) fetchRequestDetail();
     }, [requestId, token]);
 
     const fetchRequestDetail = async () => {
         try {
             const response = await fetch(`${BASE_URL}/${requestId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
             });
             const result = await response.json();
-
             if (result.status === 'success' && result.data) {
                 setRequest(result.data.request);
                 setItems(result.data.items || []);
@@ -241,95 +227,145 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
         }
     };
 
+    // ---------- عملیات تغییر وضعیت ----------
     const handleAcceptRequest = async () => {
         setUpdating(true);
         try {
-            const response = await fetch(`${BASE_URL}/${requestId}/accept`, {
+            const res = await fetch(`${BASE_URL}/${requestId}/accept`, {
                 method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
             });
-            const data = await response.json();
-            if (data.status === 'success') {
-                fetchRequestDetail();
-            } else {
-                alert(data.message || 'خطا در پذیرش درخواست');
-            }
-        } finally {
-            setUpdating(false);
-        }
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
     };
 
     const handleReleaseRequest = async () => {
-        if (!confirm('آیا مطمئن هستید؟ با این کار تمام داروهایی که اضافه کرده‌اید حذف شده و درخواست به استخر آزاد برمی‌گردد.')) return;
+        if (!confirm('داروهای اضافه‌شده حذف و درخواست به لیست آزاد بازمی‌گردد. ادامه می‌دهید؟')) return;
         setUpdating(true);
         try {
-            const response = await fetch(`${BASE_URL}/${requestId}/release`, {
+            const res = await fetch(`${BASE_URL}/${requestId}/release`, {
                 method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
             });
-            const data = await response.json();
-            if (data.status === 'success') {
-                fetchRequestDetail();
-            } else {
-                alert(data.message || 'خطا در آزادسازی درخواست');
-            }
-        } finally {
-            setUpdating(false);
-        }
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
     };
 
-    const handleUpdateStatus = async (newStatus: number) => {
+    // تأیید نهایی و رفتن به «در انتظار پرداخت» (از ۰ به ۱)
+    const handleApproveToPayment = async () => {
         setUpdating(true);
         try {
-            const response = await fetch(`${BASE_URL}/${requestId}/status`, {
+            const res = await fetch(`${BASE_URL}/${requestId}/status`, {
                 method: 'PATCH',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: newStatus })
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ status: 1 })
             });
-            const data = await response.json();
-            if (data.status === 'success') {
-                fetchRequestDetail();
-            } else {
-                alert(data.message || 'خطا در تغییر وضعیت');
-            }
-        } finally {
-            setUpdating(false);
-        }
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
     };
 
+    // شروع آماده‌سازی (از ۱ به ۲) – اختیاری
+    const handleMarkAsPreparing = async () => {
+        setUpdating(true);
+        try {
+            const res = await fetch(`${BASE_URL}/${requestId}/mark-preparing`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
+    };
+
+    const handleMarkAsReady = async () => {
+        setUpdating(true);
+        try {
+            const res = await fetch(`${BASE_URL}/${requestId}/mark-ready`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
+    };
+
+    const handleMarkAsDelivering = async () => {
+        setUpdating(true);
+        try {
+            const res = await fetch(`${BASE_URL}/${requestId}/mark-delivering`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
+    };
+
+    const handleMarkAsDelivered = async () => {
+        setUpdating(true);
+        try {
+            const res = await fetch(`${BASE_URL}/${requestId}/mark-delivered`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
+    };
+
+    const handleMarkAsCompleted = async () => {
+        setUpdating(true);
+        try {
+            const res = await fetch(`${BASE_URL}/${requestId}/mark-completed`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
+    };
+
+    const handleCancelRequest = async () => {
+        if (!confirm('درخواست لغو شود؟')) return;
+        setUpdating(true);
+        try {
+            const res = await fetch(`${BASE_URL}/${requestId}/cancel`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
+        } finally { setUpdating(false); }
+    };
+
+    // ---------- عملیات داروها ----------
     const handleSearchMedicine = async () => {
         if (!searchQuery.trim()) return;
         setIsSearching(true);
         try {
-            const response = await fetch(`${SEARCH_URL}?q=${searchQuery}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
+            const res = await fetch(`${SEARCH_URL}?q=${searchQuery}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
             });
-            const data = await response.json();
-            if (data.status === 'success') {
-                setSearchResults(data.data || []);
-            }
-        } finally {
-            setIsSearching(false);
-        }
+            const data = await res.json();
+            if (data.status === 'success') setSearchResults(data.data || []);
+        } finally { setIsSearching(false); }
     };
 
     const handleSelectMedicine = (med: MedicineSearchResult) => {
         setSelectedMedicine(med);
-        const defaultPrice = med.pharmacy_price ? Number(med.pharmacy_price) : Number(med.base_price);
-        setAddPrice(defaultPrice || '');
+        setAddPrice(Number(med.pharmacy_price) || Number(med.base_price) || '');
         setAddQuantity(1);
         setSearchResults([]);
         setSearchQuery('');
@@ -339,12 +375,12 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
         if (!selectedMedicine || !addQuantity || !addPrice) return;
         setIsAdding(true);
         try {
-            const response = await fetch(`${BASE_URL}/${requestId}/items`, {
+            const res = await fetch(`${BASE_URL}/${requestId}/items`, {
                 method: 'POST',
                 headers: {
+                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     medicine_id: selectedMedicine.id,
@@ -352,36 +388,28 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                     price: addPrice
                 })
             });
-            const data = await response.json();
+            const data = await res.json();
             if (data.status === 'success') {
                 setSelectedMedicine(null);
                 setAddQuantity('');
                 setAddPrice('');
                 fetchRequestDetail();
             } else {
-                alert(data.message || 'خطا در افزودن دارو');
+                alert(data.message);
             }
-        } finally {
-            setIsAdding(false);
-        }
+        } finally { setIsAdding(false); }
     };
 
     const handleRemoveItem = async (itemId: number) => {
         if (!confirm('آیا از حذف این مورد اطمینان دارید؟')) return;
         try {
-            const response = await fetch(`${BASE_URL}/${requestId}/items/${itemId}`, {
+            const res = await fetch(`${BASE_URL}/${requestId}/items/${itemId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
             });
-            const data = await response.json();
-            if (data.status === 'success') {
-                fetchRequestDetail();
-            } else {
-                alert(data.message || 'خطا در حذف دارو');
-            }
+            const data = await res.json();
+            if (data.status === 'success') fetchRequestDetail();
+            else alert(data.message);
         } catch (error) {
             console.error('Error removing item:', error);
         }
@@ -390,8 +418,8 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
     if (loading) return <div className="p-6 text-center">در حال بارگذاری اطلاعات...</div>;
     if (!request) return <EmptyState message="درخواست یافت نشد." />;
 
-    const isPending = request.status === 0;
-    const isFreeRequest = request.pharmacy_id === null;
+    const isFreeRequest = request.pharmacy_id === null;   // هنوز رزرو نشده
+    const isPending = request.status === 0;               // وضعیت ویرایش دارو
 
     return (
         <div className="space-y-6">
@@ -413,11 +441,9 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                         {request.user_national_code && <Row label="کد ملی" value={request.user_national_code} />}
                     </Card>
 
-                    {/* کارت جزئیات نسخه (جدید) */}
+                    {/* نسخه */}
                     <Card title="جزئیات نسخه">
-                        {request.prescription_type_name && (
-                            <Row label="نوع نسخه" value={request.prescription_type_name} />
-                        )}
+                        {request.prescription_type_name && <Row label="نوع نسخه" value={request.prescription_type_name} />}
                         {request.prescription_status !== undefined && (
                             <Row label="وضعیت نسخه" value={request.prescription_status === 1 ? 'فعال' : 'غیرفعال'} />
                         )}
@@ -430,22 +456,17 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                 return (
                                     <>
                                         {details.code && <Row label="کد دیجیتال" value={details.code} />}
-                                        {details.medicines && (
+                                        {details.medicines && <Row label="داروهای درخواستی" value={details.medicines} />}
+                                        {details.files?.length > 0 && (
                                             <div className="flex justify-between py-2 text-sm">
-                                                <span className="text-slate-500">داروهای درخواستی</span>
-                                                <span className="font-medium">{details.medicines}</span>
-                                            </div>
-                                        )}
-                                        {details.files && details.files.length > 0 && (
-                                            <div className="flex justify-between py-2 text-sm">
-                                                <span className="text-slate-500">فایل‌های آپلود شده</span>
+                                                <span className="text-slate-500">فایل‌ها</span>
                                                 <span className="font-medium">
                                                     {details.files.map((f: string) => (
                                                         <a
                                                             key={f}
                                                             href={`http://185.222.163.113:7000/storage/${f}`}
                                                             target="_blank"
-                                                            rel="noopener noreferrer"
+                                                            rel="noreferrer"
                                                             className="block text-xs text-teal-600 hover:underline"
                                                         >
                                                             {f.split('/').pop()}
@@ -461,21 +482,16 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                         {details.delivery_type !== undefined && (
                                             <Row label="نوع تحویل" value={details.delivery_type === '1' ? 'ارسال به درب' : 'حضوری'} />
                                         )}
-                                        {details.user_address_id && (
-                                            <Row label="شناسه آدرس" value={String(details.user_address_id)} />
-                                        )}
                                     </>
                                 );
-                            } catch (e) {
+                            } catch {
                                 return <Row label="جزئیات" value={request.prescription_details || '-'} />;
                             }
                         })()}
-                        {!request.prescription_details && (
-                            <p className="text-sm text-slate-500">اطلاعات نسخه موجود نیست</p>
-                        )}
+                        {!request.prescription_details && <p className="text-sm text-slate-500">اطلاعات نسخه موجود نیست</p>}
                     </Card>
 
-                    {/* کارت داروها */}
+                    {/* داروها */}
                     <Card title="داروها">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -484,7 +500,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                     <th className="pb-2 text-right">نام دارو</th>
                                     <th className="pb-2 text-right">نوع/واحد</th>
                                     <th className="pb-2 text-right">تعداد</th>
-                                    <th className="pb-2 text-right">قیمت (واحد)</th>
+                                    <th className="pb-2 text-right">قیمت واحد</th>
                                     {isPending && !isFreeRequest && <th className="pb-2 text-center">عملیات</th>}
                                 </tr>
                                 </thead>
@@ -492,8 +508,8 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                 {items.length === 0 ? (
                                     <tr><td colSpan={isPending && !isFreeRequest ? 5 : 4} className="py-4 text-center">دارویی ثبت نشده است</td></tr>
                                 ) : (
-                                    items.map((item, i) => (
-                                        <tr key={i} className="border-b border-slate-50 last:border-0">
+                                    items.map((item) => (
+                                        <tr key={item.id} className="border-b border-slate-50 last:border-0">
                                             <td className="py-3">{item.medicine_name}</td>
                                             <td className="py-3">{item.medicine_type_name} / {item.unit}</td>
                                             <td className="py-3">{item.quantity}</td>
@@ -503,7 +519,6 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                                     <button
                                                         onClick={() => handleRemoveItem(item.id)}
                                                         className="text-red-500 hover:text-red-700 p-1"
-                                                        title="حذف دارو"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
@@ -517,12 +532,12 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                         </div>
                     </Card>
 
-                    {/* بخش افزودن دارو */}
+                    {/* فرم افزودن دارو (فقط وقتی رزرو شده و وضعیت ۰ باشد) */}
                     {isFreeRequest ? (
                         <div className="rounded-2xl border border-purple-200 bg-purple-50 p-6 text-center">
                             <Unlock className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-                            <h3 className="text-lg font-medium text-purple-800 mb-2">این درخواست آزاد است</h3>
-                            <p className="text-sm text-purple-600">برای مشاهده جزئیات بیشتر و افزودن دارو، ابتدا باید این درخواست را رزرو کنید.</p>
+                            <h3 className="text-lg font-medium text-purple-800 mb-2">درخواست آزاد است</h3>
+                            <p className="text-sm text-purple-600">برای افزودن دارو ابتدا درخواست را رزرو کنید.</p>
                         </div>
                     ) : isPending ? (
                         <Card title="افزودن دارو به نسخه">
@@ -532,8 +547,8 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                         <input
                                             type="text"
                                             value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSearchMedicine()}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && handleSearchMedicine()}
                                             placeholder="جستجوی نام دارو..."
                                             className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
                                         />
@@ -545,7 +560,6 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                             <Search className="h-4 w-4" />
                                         </button>
                                     </div>
-
                                     {searchResults.length > 0 && (
                                         <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
                                             {searchResults.map(med => (
@@ -583,23 +597,13 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                     <div className="flex gap-3">
                                         <div className="flex-1">
                                             <label className="text-xs text-slate-500 mb-1 block">تعداد</label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={addQuantity}
-                                                onChange={(e) => setAddQuantity(Number(e.target.value))}
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
-                                            />
+                                            <input type="number" min="1" value={addQuantity} onChange={e => setAddQuantity(Number(e.target.value))}
+                                                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none" />
                                         </div>
                                         <div className="flex-1">
                                             <label className="text-xs text-slate-500 mb-1 block">قیمت واحد (تومان)</label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                value={addPrice}
-                                                onChange={(e) => setAddPrice(Number(e.target.value))}
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
-                                            />
+                                            <input type="number" min="0" value={addPrice} onChange={e => setAddPrice(Number(e.target.value))}
+                                                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none" />
                                         </div>
                                     </div>
                                     <button
@@ -616,7 +620,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                     ) : null}
                 </div>
 
-                {/* ستون راست */}
+                {/* ستون راست – دکمه‌های گردش کار */}
                 <div className="space-y-4">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                         <StatusBadge
@@ -626,53 +630,81 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                         <p className="mt-3 text-sm font-bold text-slate-700">جمع: {formatPrice(request.total_price || 0)}</p>
 
                         <div className="mt-4 flex flex-col gap-2">
-                            {isFreeRequest ? (
-                                <button
-                                    onClick={handleAcceptRequest}
-                                    disabled={updating}
-                                    className="rounded-xl border border-purple-200 bg-purple-600 py-2.5 text-sm font-medium text-white hover:bg-purple-700 shadow-sm"
-                                >
+                            {/* درخواست آزاد */}
+                            {isFreeRequest && (
+                                <button onClick={handleAcceptRequest} disabled={updating}
+                                        className="rounded-xl border border-purple-200 bg-purple-600 py-2.5 text-sm font-medium text-white hover:bg-purple-700 shadow-sm">
                                     {updating ? 'کمی صبر کنید...' : 'رزرو و پذیرش درخواست'}
                                 </button>
-                            ) : request.status === 0 ? (
+                            )}
+
+                            {/* وضعیت ۰: در انتظار تأیید داروخانه */}
+                            {!isFreeRequest && request.status === 0 && (
                                 <>
-                                    <button
-                                        onClick={() => handleUpdateStatus(1)}
-                                        disabled={updating}
-                                        className="rounded-xl border border-blue-200 bg-blue-50 py-2 text-sm text-blue-700 hover:bg-blue-100"
-                                    >
+                                    <button onClick={handleApproveToPayment} disabled={updating}
+                                            className="rounded-xl border border-blue-200 bg-blue-50 py-2 text-sm text-blue-700 hover:bg-blue-100">
                                         {updating ? 'کمی صبر کنید...' : 'تایید نهایی نسخه و ارسال به بیمار'}
                                     </button>
-
                                     <div className="h-px bg-slate-100 my-2"></div>
-
-                                    <button
-                                        onClick={handleReleaseRequest}
-                                        disabled={updating}
-                                        className="rounded-xl border border-amber-200 py-2 text-sm text-amber-600 hover:bg-amber-50"
-                                    >
+                                    <button onClick={handleReleaseRequest} disabled={updating}
+                                            className="rounded-xl border border-amber-200 py-2 text-sm text-amber-600 hover:bg-amber-50">
                                         رهاسازی (بازگشت به درخواست‌های آزاد)
                                     </button>
-
-                                    <button
-                                        onClick={() => handleUpdateStatus(2)}
-                                        disabled={updating}
-                                        className="rounded-xl border border-red-200 py-2 text-sm text-red-600 hover:bg-red-50"
-                                    >
-                                        رد کامل درخواست
+                                    <button onClick={handleCancelRequest} disabled={updating}
+                                            className="rounded-xl border border-red-200 py-2 text-sm text-red-600 hover:bg-red-50">
+                                        لغو درخواست
                                     </button>
                                 </>
-                            ) : null}
+                            )}
 
-                            {request.status === 1 && (
-                                <button
-                                    onClick={() => handleUpdateStatus(3)}
-                                    disabled={updating}
-                                    className="rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-sm text-emerald-700 hover:bg-emerald-100"
-                                >
-                                    {updating ? 'کمی صبر کنید...' : 'تکمیل و تحویل'}
+                            {/* وضعیت ۱: در انتظار پرداخت */}
+                            {!isFreeRequest && request.status === 1 && (
+                                <>
+                                    {/* دکمه شروع آماده‌سازی (اختیاری) */}
+                                    <button onClick={handleMarkAsPreparing} disabled={updating}
+                                            className="rounded-xl border border-purple-200 bg-purple-50 py-2 text-sm text-purple-700 hover:bg-purple-100">
+                                        {updating ? 'کمی صبر کنید...' : 'شروع آماده‌سازی'}
+                                    </button>
+                                    <button onClick={handleCancelRequest} disabled={updating}
+                                            className="rounded-xl border border-red-200 py-2 text-sm text-red-600 hover:bg-red-50">
+                                        لغو درخواست
+                                    </button>
+                                </>
+                            )}
+
+                            {/* وضعیت ۲: در حال آماده‌سازی */}
+                            {!isFreeRequest && request.status === 2 && (
+                                <button onClick={handleMarkAsReady} disabled={updating}
+                                        className="rounded-xl border border-indigo-200 bg-indigo-50 py-2 text-sm text-indigo-700 hover:bg-indigo-100">
+                                    {updating ? 'کمی صبر کنید...' : 'آماده برای ارسال'}
                                 </button>
                             )}
+
+                            {/* وضعیت ۳: آماده ارسال */}
+                            {!isFreeRequest && request.status === 3 && (
+                                <button onClick={handleMarkAsDelivering} disabled={updating}
+                                        className="rounded-xl border border-cyan-200 bg-cyan-50 py-2 text-sm text-cyan-700 hover:bg-cyan-100">
+                                    {updating ? 'کمی صبر کنید...' : 'شروع ارسال'}
+                                </button>
+                            )}
+
+                            {/* وضعیت ۴: در حال ارسال */}
+                            {!isFreeRequest && request.status === 4 && (
+                                <button onClick={handleMarkAsDelivered} disabled={updating}
+                                        className="rounded-xl border border-green-200 bg-green-50 py-2 text-sm text-green-700 hover:bg-green-100">
+                                    {updating ? 'کمی صبر کنید...' : 'تأیید تحویل'}
+                                </button>
+                            )}
+
+                            {/* وضعیت ۵: تحویل شده */}
+                            {!isFreeRequest && request.status === 5 && (
+                                <button onClick={handleMarkAsCompleted} disabled={updating}
+                                        className="rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-sm text-emerald-700 hover:bg-emerald-100">
+                                    {updating ? 'کمی صبر کنید...' : 'تکمیل سفارش'}
+                                </button>
+                            )}
+
+                            {/* وضعیت‌های ۶ و ۷: دکمه‌ای ندارند */}
                         </div>
                     </div>
                 </div>
@@ -681,6 +713,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
     );
 }
 
+// ================== COMPONENTS HELPERS ==================
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="rounded-2xl border border-slate-200 bg-white p-4">

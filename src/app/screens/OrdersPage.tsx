@@ -13,6 +13,8 @@ import {
     Building2,
     PackageOpen,
     Loader2,
+    CreditCard,
+    ShoppingBag,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
@@ -32,13 +34,9 @@ import {
     type UserRequestOrder,
     type UserRequestServiceType,
     type UserRequestStatusGroup,
-} from '../data/userOrdersMockData'; // انواع پایه از اینجا وارد می‌شوند
+} from '../data/userOrdersMockData';
 
-// ==================== نگاشت‌های مورد نیاز ====================
-
-/**
- * نگاشت type دریافتی از API (doctor, lab, pharmacy, nurse) به نوع سرویس رابط کاربری
- */
+/* ───────────────────── نگاشت‌های مورد نیاز ───────────────────── */
 const serviceTypeMap: Record<string, UserRequestServiceType> = {
     doctor: 'consultation',
     lab: 'lab',
@@ -46,15 +44,12 @@ const serviceTypeMap: Record<string, UserRequestServiceType> = {
     nurse: 'nurse',
 };
 
-/**
- * تعیین گروه وضعیت (active / completed / cancelled) براساس نوع سرویس و وضعیت خام
- */
 const mapToStatusGroup = (type: string, rawStatus: string | number): UserRequestStatusGroup => {
     const s = typeof rawStatus === 'string' ? rawStatus : Number(rawStatus);
     switch (type) {
         case 'doctor':
             if (s === 'cancelled') return 'cancelled';
-            return 'active'; // available و booked را فعال در نظر می‌گیریم
+            return 'active';
         case 'lab':
             if (s === 4 || s === 5) return 'completed';
             if (s === 6) return 'cancelled';
@@ -72,25 +67,15 @@ const mapToStatusGroup = (type: string, rawStatus: string | number): UserRequest
     }
 };
 
-/**
- * کلاس‌های Tailwind برای هر گروه وضعیت
- */
 const getStatusClass = (group: UserRequestStatusGroup): string => {
     switch (group) {
-        case 'active':
-            return 'bg-blue-50 text-blue-600 ring-blue-200';
-        case 'completed':
-            return 'bg-emerald-50 text-emerald-600 ring-emerald-200';
-        case 'cancelled':
-            return 'bg-red-50 text-red-600 ring-red-200';
-        default:
-            return 'bg-gray-50 text-gray-600 ring-gray-200';
+        case 'active': return 'bg-blue-50 text-blue-600 ring-blue-200';
+        case 'completed': return 'bg-emerald-50 text-emerald-600 ring-emerald-200';
+        case 'cancelled': return 'bg-red-50 text-red-600 ring-red-200';
+        default: return 'bg-gray-50 text-gray-600 ring-gray-200';
     }
 };
 
-/**
- * تبدیل تاریخ ISO به تاریخ جلالی نسبی
- */
 const toJalaliDate = (iso: string): string => {
     try {
         return new Date(iso).toLocaleDateString('fa-IR', {
@@ -103,8 +88,7 @@ const toJalaliDate = (iso: string): string => {
     }
 };
 
-// ==================== اینترفیس پاسخ API ====================
-
+/* ───────────────────── اینترفیس‌ها ───────────────────── */
 interface ApiOrder {
     id: number;
     status: string | number;
@@ -127,8 +111,25 @@ interface ApiOrdersResponse {
     };
 }
 
-// ==================== ثابت‌های صفحه ====================
+/** ساختار جزئیات درخواست داروخانه (دریافت از API) */
+interface PharmacyRequestDetail {
+    id: number;
+    status: number;
+    status_label: string;
+    total_price: number;
+    created_at: string;
+    pharmacy_name: string;
+    medicines: {
+        id: number;
+        medicine_name: string;
+        quantity: number;
+        unit_price: number;
+        total_price: number;
+        unit: string;
+    }[];
+}
 
+/* ───────────────────── ثابت‌ها ───────────────────── */
 const pageClass =
     'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
 
@@ -143,12 +144,7 @@ const serviceFilters: { key: ServiceFilter; label: string }[] = [
     { key: 'nurse', label: 'پرستاری' },
 ];
 
-const statusGroups: UserRequestStatusGroup[] = [
-    'all',
-    'active',
-    'completed',
-    'cancelled',
-];
+const statusGroups: UserRequestStatusGroup[] = ['all', 'active', 'completed', 'cancelled'];
 
 const serviceIcons: Record<UserRequestServiceType, LucideIcon> = {
     consultation: Stethoscope,
@@ -166,8 +162,7 @@ const serviceIconStyles: Record<UserRequestServiceType, string> = {
     nurse: 'bg-rose-50 text-rose-600',
 };
 
-// ==================== کامپوننت اصلی ====================
-
+/* ───────────────────── صفحه اصلی ───────────────────── */
 export function OrdersPage() {
     const navigate = useNavigate();
     const { accessToken } = useAuthStore();
@@ -176,20 +171,17 @@ export function OrdersPage() {
     const [statusGroup, setStatusGroup] = useState<UserRequestStatusGroup>('all');
     const [selected, setSelected] = useState<UserRequestOrder | null>(null);
 
-    // داده‌های دریافتی از API
     const [orders, setOrders] = useState<UserRequestOrder[]>([]);
     const [counts, setCounts] = useState({ doctor: 0, lab: 0, pharmacy: 0, nurse: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // دریافت سفارش‌ها از سرور
     useEffect(() => {
         if (!accessToken) {
             setLoading(false);
             setError('توکن احراز هویت موجود نیست.');
             return;
         }
-
         const fetchOrders = async () => {
             setLoading(true);
             setError(null);
@@ -200,13 +192,9 @@ export function OrdersPage() {
                         Accept: 'application/json',
                     },
                 });
-                if (!res.ok) {
-                    throw new Error('خطا در دریافت داده‌ها. ممکن است توکن منقضی شده باشد.');
-                }
+                if (!res.ok) throw new Error('خطا در دریافت داده‌ها. ممکن است توکن منقضی شده باشد.');
                 const json: ApiOrdersResponse = await res.json();
-                if (!json.success) {
-                    throw new Error('پاسخ API نامعتبر است.');
-                }
+                if (!json.success) throw new Error('پاسخ API نامعتبر است.');
 
                 const mapped: UserRequestOrder[] = json.data.orders.map((item) => {
                     const serviceType = serviceTypeMap[item.type] ?? 'lab';
@@ -214,11 +202,12 @@ export function OrdersPage() {
                     return {
                         id: item.id,
                         serviceType,
-                        status: group,                // گروه وضعیت برای فیلتر
-                        status_label: item.status_label, // برچسب فارسی
-                        title: serviceType !== 'consultation'
-                            ? serviceTypeLabels[serviceType]
-                            : `نوبت دکتر ${item.detail}`,
+                        status: group,
+                        status_label: item.status_label,
+                        title:
+                            serviceType !== 'consultation'
+                                ? serviceTypeLabels[serviceType]
+                                : `نوبت دکتر ${item.detail}`,
                         providerName: item.name,
                         summary: item.detail !== '-' ? item.detail : '',
                         amount: item.price,
@@ -244,26 +233,19 @@ export function OrdersPage() {
                 setLoading(false);
             }
         };
-
         fetchOrders();
     }, [accessToken]);
 
-    // فیلتر کردن
     const filtered = useMemo(() => {
-        return orders.filter((order) => {
-            const typeOk = serviceFilter === 'all' || order.serviceType === serviceFilter;
-            const statusOk = statusGroup === 'all' || order.status === statusGroup;
+        return orders.filter((o) => {
+            const typeOk = serviceFilter === 'all' || o.serviceType === serviceFilter;
+            const statusOk = statusGroup === 'all' || o.status === statusGroup;
             return typeOk && statusOk;
         });
     }, [orders, serviceFilter, statusGroup]);
 
-    // تعداد درخواست‌های فعال
-    const activeCount = useMemo(
-        () => orders.filter((o) => o.status === 'active').length,
-        [orders]
-    );
+    const activeCount = useMemo(() => orders.filter((o) => o.status === 'active').length, [orders]);
 
-    // ==================== حالت بارگذاری ====================
     if (loading) {
         return (
             <div className={pageClass}>
@@ -276,7 +258,6 @@ export function OrdersPage() {
         );
     }
 
-    // ==================== حالت خطا ====================
     if (error) {
         return (
             <div className={pageClass}>
@@ -296,7 +277,6 @@ export function OrdersPage() {
         );
     }
 
-    // ==================== UI اصلی ====================
     return (
         <div className={pageClass}>
             <AppBar backTo="/home" />
@@ -317,9 +297,9 @@ export function OrdersPage() {
 
                     {activeCount > 0 && (
                         <div className="mt-3 rounded-2xl bg-white px-3 py-2.5 text-xs text-gray-600 shadow-sm ring-1 ring-gray-100">
-              <span className="font-semibold text-blue-600">
-                {activeCount.toLocaleString('fa-IR')}
-              </span>{' '}
+                            <span className="font-semibold text-blue-600">
+                                {activeCount.toLocaleString('fa-IR')}
+                            </span>{' '}
                             درخواست فعال در حال پیگیری دارید
                         </div>
                     )}
@@ -393,15 +373,8 @@ export function OrdersPage() {
     );
 }
 
-// ==================== کارت سفارش ====================
-
-function OrderCard({
-                       order,
-                       onOpen,
-                   }: {
-    order: UserRequestOrder;
-    onOpen: () => void;
-}) {
+/* ───────────────────── کارت سفارش ───────────────────── */
+function OrderCard({ order, onOpen }: { order: UserRequestOrder; onOpen: () => void }) {
     const Icon = serviceIcons[order.serviceType];
     const statusClass = getStatusClass(order.status);
 
@@ -420,14 +393,14 @@ function OrderCard({
 
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                {serviceTypeLabels[order.serviceType]}
-              </span>
+                            <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                                {serviceTypeLabels[order.serviceType]}
+                            </span>
                             <span
                                 className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusClass}`}
                             >
-                {order.status_label}
-              </span>
+                                {order.status_label}
+                            </span>
                         </div>
 
                         <h3 className="mt-2 text-sm font-bold leading-snug text-gray-900">
@@ -458,9 +431,9 @@ function OrderCard({
                     <span>کد: {order.code}</span>
                     {order.scheduledAt ? (
                         <span className="inline-flex items-center gap-1">
-              <CalendarClock className="h-3 w-3" />
+                            <CalendarClock className="h-3 w-3" />
                             {order.scheduledAt}
-            </span>
+                        </span>
                     ) : (
                         <span>{order.createdAt}</span>
                     )}
@@ -470,8 +443,7 @@ function OrderCard({
     );
 }
 
-// ==================== شیت جزئیات ====================
-
+/* ───────────────────── شیت جزئیات (با پشتیبانی از داروخانه) ───────────────────── */
 function OrderDetailSheet({
                               order,
                               open,
@@ -481,10 +453,85 @@ function OrderDetailSheet({
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
+    const { accessToken } = useAuthStore();
+
+    // وضعیت‌های مربوط به دریافت فاکتور داروخانه
+    const [detailData, setDetailData] = useState<PharmacyRequestDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState<string | null>(null);
+    const [paying, setPaying] = useState(false);
+
+    // هر بار که order تغییر کند و نوع آن pharmacy باشد، فاکتور را دریافت می‌کنیم
+    useEffect(() => {
+        if (!order || order.serviceType !== 'pharmacy') {
+            setDetailData(null);
+            return;
+        }
+
+        const fetchPharmacyDetail = async () => {
+            setDetailLoading(true);
+            setDetailError(null);
+            try {
+                const res = await fetch(
+                    `http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            Accept: 'application/json',
+                        },
+                    }
+                );
+                if (!res.ok) throw new Error('خطا در دریافت فاکتور');
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message || 'پاسخ نامعتبر');
+                setDetailData(json.data);
+            } catch (err: any) {
+                setDetailError(err.message);
+            } finally {
+                setDetailLoading(false);
+            }
+        };
+
+        fetchPharmacyDetail();
+    }, [order?.id, order?.serviceType]);
+
     if (!order) return null;
 
     const Icon = serviceIcons[order.serviceType];
     const statusClass = getStatusClass(order.status);
+    const isPharmacyAwaitingPayment =
+        order.serviceType === 'pharmacy' && order.status_label === 'در انتظار پرداخت';
+
+    // عملیات پرداخت
+    const handlePay = async () => {
+        if (!order || paying) return;
+        if (!confirm('آیا از پرداخت اطمینان دارید؟')) return;
+        setPaying(true);
+        try {
+            const res = await fetch(
+                `http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}/pay`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+            const json = await res.json();
+            if (json.success) {
+                // ریفرش صفحه برای به‌روزرسانی وضعیت (در پروژه‌های واقعی بهتر است وضعیت لیست را به‌روز کنید)
+                window.location.reload();
+            } else {
+                alert(json.message || 'خطا در پرداخت');
+            }
+        } catch (err: any) {
+            alert('خطا در برقراری ارتباط');
+        } finally {
+            setPaying(false);
+        }
+    };
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -503,14 +550,14 @@ function OrderDetailSheet({
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                  {serviceTypeLabels[order.serviceType]}
-                </span>
+                                <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                                    {serviceTypeLabels[order.serviceType]}
+                                </span>
                                 <span
                                     className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusClass}`}
                                 >
-                  {order.status_label}
-                </span>
+                                    {order.status_label}
+                                </span>
                             </div>
                             <SheetTitle className="mt-2 text-base font-bold text-gray-900">
                                 {order.title}
@@ -523,17 +570,82 @@ function OrderDetailSheet({
                 </SheetHeader>
 
                 <div className="mt-5 space-y-3">
-                    {order.summary && (
-                        <DetailRow label="خلاصه درخواست" value={order.summary} />
-                    )}
+                    {/* اطلاعات عمومی */}
+                    {order.summary && <DetailRow label="خلاصه درخواست" value={order.summary} />}
                     <DetailRow label="کد پیگیری" value={order.code} />
                     <DetailRow label="تاریخ ثبت" value={order.createdAt} />
-                    {order.scheduledAt && (
-                        <DetailRow label="زمان برنامه‌ریزی‌شده" value={order.scheduledAt} />
+
+                    {/* بخش اختصاصی داروخانه */}
+                    {order.serviceType === 'pharmacy' && (
+                        <>
+                            {/* حالت بارگذاری فاکتور */}
+                            {detailLoading && (
+                                <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
+                                </div>
+                            )}
+                            {/* خطا در دریافت فاکتور */}
+                            {detailError && (
+                                <div className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">
+                                    {detailError}
+                                </div>
+                            )}
+                            {/* نمایش فاکتور و دکمه پرداخت */}
+                            {detailData && !detailLoading && (
+                                <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm">
+                                    <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-800">
+                                        <ShoppingBag className="h-4 w-4 text-emerald-600" />
+                                        فاکتور داروها
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {detailData.medicines.map((item) => (
+                                            <div
+                                                key={item.id}
+                                                className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
+                                            >
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-gray-700">
+                                                        {item.medicine_name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">
+                                                        {item.quantity} × {formatOrderPrice(item.unit_price)} تومان
+                                                    </p>
+                                                </div>
+                                                <p className="text-sm font-bold text-gray-800">
+                                                    {formatOrderPrice(item.total_price)} ت
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                                        <span className="font-semibold text-gray-700">مبلغ کل</span>
+                                        <span className="font-bold text-emerald-600">
+                                            {formatOrderPrice(detailData.total_price)} تومان
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* دکمه پرداخت (فقط در وضعیت "در انتظار پرداخت") */}
+                            {isPharmacyAwaitingPayment && (
+                                <button
+                                    onClick={handlePay}
+                                    disabled={paying}
+                                    className="w-full mt-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 px-4 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                                >
+                                    {paying ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        <CreditCard className="h-5 w-5" />
+                                    )}
+                                    {paying ? 'در حال پرداخت...' : 'پرداخت'}
+                                </button>
+                            )}
+                        </>
                     )}
-                    {order.updatedAt && (
-                        <DetailRow label="آخرین به‌روزرسانی" value={order.updatedAt} />
-                    )}
+
+                    {/* سایر جزئیات (در صورت وجود) */}
                     {order.address && (
                         <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
                             <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-gray-500">
@@ -550,8 +662,8 @@ function OrderDetailSheet({
                         <div className="flex items-center justify-between rounded-2xl bg-blue-50 px-3 py-3">
                             <span className="text-xs font-medium text-blue-700">مبلغ</span>
                             <span className="text-sm font-bold text-blue-800">
-                {formatOrderPrice(order.amount)} تومان
-              </span>
+                                {formatOrderPrice(order.amount)} تومان
+                            </span>
                         </div>
                     )}
                 </div>
@@ -560,21 +672,17 @@ function OrderDetailSheet({
     );
 }
 
-// ==================== ردیف جزئیات ====================
-
+/* ───────────────────── ردیف جزئیات ───────────────────── */
 function DetailRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex items-start justify-between gap-3 rounded-2xl bg-gray-50 px-3 py-2.5">
-      <span className="shrink-0 text-[11px] font-medium text-gray-500">
-        {label}
-      </span>
+            <span className="shrink-0 text-[11px] font-medium text-gray-500">{label}</span>
             <span className="text-left text-sm text-gray-800">{value}</span>
         </div>
     );
 }
 
-// ==================== حالت خالی ====================
-
+/* ───────────────────── حالت خالی ───────────────────── */
 function EmptyOrders({ onBrowse }: { onBrowse: () => void }) {
     return (
         <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-200 bg-white px-6 py-14 text-center">
