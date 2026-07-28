@@ -1,10 +1,11 @@
+import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { ChevronLeft, Sparkles, LogOut } from 'lucide-react';
 import { Sheet, SheetContent } from './ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { sidebarNavItems } from '../config/navItems';
 import { useAuthStore } from '../store/authStore';
-import {useUserStore} from "../store/useUserStore";
+import { useUserStore } from '../store/useUserStore';
 
 const SAMPLE_PROFILE = {
   firstName: 'علی',
@@ -23,9 +24,21 @@ interface AppSidebarProps {
 export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+
   const logout = useAuthStore((s) => s.logout);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
   const user = useUserStore((s) => s.user);
-console.log('user',user)
+  const isLoading = useUserStore((s) => s.isLoading);
+  const fetchProfile = useUserStore((s) => s.fetchProfile);
+  const clearUser = useUserStore((s) => s.clearUser);
+
+  useEffect(() => {
+    if (accessToken && !user && !isLoading) {
+      fetchProfile();
+    }
+  }, [accessToken, user, isLoading, fetchProfile]);
+
   const handleNavigate = (path: string) => {
     onOpenChange(false);
     navigate(path);
@@ -33,11 +46,26 @@ console.log('user',user)
 
   const handleLogout = () => {
     logout();
+    clearUser();
     onOpenChange(false);
     navigate('/login');
   };
 
-  const displayName = `${SAMPLE_PROFILE.firstName} ${SAMPLE_PROFILE.lastName}`;
+  const displayName = user?.name || `${SAMPLE_PROFILE.firstName} ${SAMPLE_PROFILE.lastName}`;
+  const displayPhone = user?.phone || user?.mobile || SAMPLE_PROFILE.mobile;
+  const avatarAlt = displayName || 'کاربر';
+
+  const getInitials = () => {
+    if (!displayName || displayName === '-') return 'ک';
+
+    const parts = displayName.trim().split(' ').filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`;
+    }
+
+    return displayName.slice(0, 2);
+  };
 
   return (
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -47,7 +75,6 @@ console.log('user',user)
             className="flex flex-col w-[300px] sm:max-w-[300px] p-0 border-0 gap-0 overflow-hidden bg-gray-50"
             dir="rtl"
         >
-          {/* Profile header */}
           <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 px-5 pt-8 pb-6">
             <div
                 className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-white/10"
@@ -60,28 +87,28 @@ console.log('user',user)
 
             <div className="relative flex items-center gap-4">
               <Avatar className="size-16 ring-4 ring-white/30 shadow-lg">
-                <AvatarImage src={SAMPLE_PROFILE.avatarUrl} alt={displayName} />
+                <AvatarImage src={SAMPLE_PROFILE.avatarUrl} alt={avatarAlt} />
                 <AvatarFallback className="bg-white/20 text-white text-xl font-bold backdrop-blur-sm">
-                  {SAMPLE_PROFILE.initials}
+                  {getInitials()}
                 </AvatarFallback>
               </Avatar>
 
               <div className="min-w-0 flex-1 text-white">
                 <p className="text-lg font-bold leading-tight truncate">
-                  {user.name}
+                  {isLoading && !user ? 'در حال دریافت...' : displayName}
                 </p>
                 <p className="mt-1 text-sm text-white/80 truncate" dir="ltr">
-                  {user.phone}
+                  {displayPhone || '-'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <p className="px-3 mb-2 text-xs font-medium text-gray-400 tracking-wide">
               دسترسی سریع
             </p>
+
             <ul className="space-y-1">
               {sidebarNavItems.map((item) => {
                 const Icon = item.icon;
@@ -107,6 +134,7 @@ console.log('user',user)
                     >
                       <Icon className="size-5" strokeWidth={2} />
                     </span>
+
                         <span
                             className={`flex-1 text-sm ${
                                 active ? 'font-semibold' : 'font-medium'
@@ -114,6 +142,7 @@ console.log('user',user)
                         >
                       {item.label}
                     </span>
+
                         <ChevronLeft
                             className={`size-4 shrink-0 transition-opacity ${
                                 active
@@ -128,7 +157,6 @@ console.log('user',user)
             </ul>
           </nav>
 
-          {/* Logout button */}
           <div className="px-3 pb-3">
             <button
                 type="button"
@@ -138,12 +166,13 @@ console.log('user',user)
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors bg-red-50 text-red-500 group-hover:bg-red-100">
               <LogOut className="size-5" strokeWidth={2} />
             </span>
+
               <span className="flex-1 text-sm font-medium">خروج از حساب</span>
+
               <ChevronLeft className="size-4 shrink-0 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           </div>
 
-          {/* Footer accent */}
           <div className="px-5 py-4 border-t border-gray-200/80 bg-white">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <Sparkles className="size-3.5 text-blue-400" />
