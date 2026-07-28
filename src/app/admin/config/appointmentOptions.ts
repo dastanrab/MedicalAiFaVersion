@@ -5,7 +5,7 @@ export const appointmentStatusLabels: Record<AppointmentStatus, string> = {
     done: 'انجام شده',
     canceled: 'لغو شده',
     'no-show': 'عدم حضور',
-    'available': 'آزاد',
+    available: 'آزاد',
 };
 
 export const appointmentStatusStyles: Record<AppointmentStatus, string> = {

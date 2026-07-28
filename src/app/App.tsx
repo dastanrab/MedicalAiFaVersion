@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router';
 import { useEffect, useState } from 'react';
 import { Login } from './screens/Login';
 import { OTPVerification } from './screens/OTPVerification';
@@ -26,7 +26,6 @@ import MapPage from "./screens/MapPage";
 import FoodExtractor from "./screens/FoodExtractor";
 import {MedicalServices} from "./screens/MedicalServices";
 import {LabsFlow} from "./screens/LabsFlow";
-import { PharmacyFlow } from "./screens/PharmacyFlow";
 import { RadiologyFlow } from "./screens/RadiologyFlow";
 import { NurseHomeFlow } from "./screens/NurseHomeFlow";
 import { PricingPlans } from './screens/PricingPlans';
@@ -83,6 +82,38 @@ import MedicalChatV1 from "./screens/MedicalChatV1";
 import {DiagnosisResultV1} from "./screens/DiagnosisResultV1";
 import MainWorkoutPage from "./screens/MainWorkoutPage";
 import {useUserStore} from "./store/useUserStore";
+// import HealthPage from "./screens/HealthPage";
+// import CoachesPage from "./screens/CoachesPage";
+ import {PharmacyFlow} from "./screens/PharmacyFlow";
+import PartnerJoin from "./screens/PartnerJoin";
+
+// کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
+function PartnerInviteHandler() {
+    const { code } = useParams<{ code: string }>();
+    const navigate = useNavigate();
+    const accessToken = useAuthStore((state) => state.accessToken);
+
+    useEffect(() => {
+        if (code) {
+            // ذخیره موقت کد دعوت در localStorage
+            localStorage.setItem('pending_partner_invite_code', code);
+        }
+
+        if (accessToken) {
+            // اگر کاربر از قبل لاگین است، مستقیماً به صفحهٔ عضویت پارتنر برود
+            navigate('/partner/join', { replace: true });
+        } else {
+            // در غیر این صورت به صفحه لاگین هدایت شود
+            navigate('/login', { replace: true });
+        }
+    }, [code, accessToken, navigate]);
+
+    return (
+        <div className="flex h-screen items-center justify-center bg-[#F6F8FC]">
+            <Spinner />
+        </div>
+    );
+}
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -131,18 +162,22 @@ function VerifiedRoute({ children }) {
     return children;
 }
 
-// Public route wrapper (redirect to home if already authenticated)
+// Public route wrapper (redirect to home or partner join if already authenticated)
 function PublicRoute({ children }) {
     const accessToken = useAuthStore((state) => state.accessToken);
 
     if (accessToken) {
+        const pendingInvite = localStorage.getItem('pending_partner_invite_code');
+        if (pendingInvite) {
+            return <Navigate to="/partner/join" replace />;
+        }
         return <Navigate to="/home" replace />;
     }
 
     return children;
 }
 
-// Admin auth gate — layout همیشه visible است؛ فقط محتوا اسکلتون می‌شود
+// Admin auth gate
 function AdminAuthGate() {
     const token = useAdminAuthStore((state) => state.token);
     const logout = useAdminAuthStore((state) => state.logout);
@@ -179,9 +214,7 @@ function AdminAuthGate() {
     return <AdminLayout authLoading={isLoading} />;
 }
 
-
-
-// Admin public route wrapper (redirect to dashboard if already authenticated)
+// Admin public route wrapper
 function AdminPublicRoute({ children }) {
     const token = useAdminAuthStore((state) => state.token);
 
@@ -198,6 +231,9 @@ function App() {
             <Routes>
                 {/* Redirect root to login */}
                 <Route path="/" element={<Navigate to="/login" replace />} />
+
+                {/* مسیر مدیریت دعوت‌نامه‌ها بدون نیاز به لاگین قبلی */}
+                <Route path="/invite/:code" element={<PartnerInviteHandler />} />
 
                 {/* Admin routes */}
                 <Route
@@ -286,16 +322,6 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
-                {/*<Route*/}
-                {/*    path="/doctor-calender"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*          /!*<AppContainer showNavbar>*!/*/}
-                {/*                <DoctorCalendar />*/}
-                {/*            /!*</AppContainer>*!/*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
                 <Route
                     path="/chats"
                     element={
@@ -330,7 +356,6 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
-                {/* صفحه پروفایل فقط با ProtectedRoute (نه VerifiedRoute) */}
                 <Route
                     path="/profile"
                     element={
@@ -501,14 +526,6 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
-                {/*<Route*/}
-                {/*    path="/fit"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <ExerciseExtractor />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
                 <Route
                     path="/food"
                     element={
@@ -563,6 +580,16 @@ function App() {
                         <VerifiedRoute>
                             <AppContainer showNavbar>
                                 <NurseHomeFlow />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/partner/join"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <PartnerJoin />
                             </AppContainer>
                         </VerifiedRoute>
                     }
@@ -650,10 +677,10 @@ function App() {
                 {/*    }*/}
                 {/*/>*/}
                 {/*<Route*/}
-                {/*    path="/food"*/}
+                {/*    path="/coaches"*/}
                 {/*    element={*/}
                 {/*        <VerifiedRoute>*/}
-                {/*            <FoodExtractor />*/}
+                {/*            <CoachesPage />*/}
                 {/*        </VerifiedRoute>*/}
                 {/*    }*/}
                 {/*/>*/}
@@ -726,6 +753,14 @@ function App() {
                 {/*    element={*/}
                 {/*        <VerifiedRoute>*/}
                 {/*            <MainWorkoutPage />*/}
+                {/*        </VerifiedRoute>*/}
+                {/*    }*/}
+                {/*/>*/}
+                {/*<Route*/}
+                {/*    path="/fit-health"*/}
+                {/*    element={*/}
+                {/*        <VerifiedRoute>*/}
+                {/*            <HealthPage />*/}
                 {/*        </VerifiedRoute>*/}
                 {/*    }*/}
                 {/*/>*/}

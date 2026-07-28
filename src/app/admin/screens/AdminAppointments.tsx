@@ -39,11 +39,11 @@ import {useAdminAuthStore} from "../store/adminAuthStore";
 // تبدیل وضعیت از API به وضعیت داخلی
 const mapApiStatusToInternal = (statusText: string): AppointmentStatus => {
     const statusMap: Record<string, AppointmentStatus> = {
-        'رزرو شده': 'booked',
-        'انجام شده': 'done',
-        'لغو شده': 'canceled',
-        'عدم حضور': 'no-show',
-        'آزاد': 'available',
+        'booked': 'booked',
+        'done': 'done',
+        'canceled': 'canceled',
+        'no-show': 'no-show',
+        'available': 'available',
     };
     return statusMap[statusText] || 'booked';
 };
@@ -86,20 +86,32 @@ const mapApiToAppointmentRow = (apiAppointment: ApiAppointment): AdminAppointmen
     };
 };
 
+// تابع تبدیل تاریخ میلادی به هجری شمسی
+// تابع تبدیل تاریخ میلادی به هجری شمسی
 function formatDateTime(iso: string) {
     if (!iso) return '—';
+
+    const date = new Date(iso);
+
+    // بررسی معتبر بودن تاریخ برای جلوگیری از خطا
+    if (isNaN(date.getTime())) {
+        return iso;
+    }
+
     try {
-        return new Intl.DateTimeFormat('fa-IR', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
+        const datePart = date.toLocaleDateString('fa-IR');
+        const timePart = date.toLocaleTimeString('fa-IR', {
             hour: '2-digit',
-            minute: '2-digit',
-        }).format(new Date(iso));
+            minute: '2-digit'
+        });
+
+        return `${datePart} - ${timePart}`;
     } catch {
         return iso;
     }
 }
+
+
 
 function downloadAppointmentsExcel(rows: AdminAppointmentRow[]) {
     const header = [
@@ -149,6 +161,7 @@ function downloadAppointmentsExcel(rows: AdminAppointmentRow[]) {
     const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
+    // تولید نام فایل بر اساس تاریخ روز
     link.href = url;
     link.download = `appointments-${new Date().toISOString().slice(0, 10)}.xls`;
     link.click();
@@ -464,7 +477,6 @@ export function AdminAppointments() {
                             })}
                         </select>
                     </div>
-
 
                     <div>
                         <label className="mb-1.5 block text-xs text-slate-500">وضعیت</label>

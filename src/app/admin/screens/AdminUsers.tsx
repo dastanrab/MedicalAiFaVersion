@@ -28,16 +28,13 @@ import {
     type UserType,
     type UserStatus,
 } from '../config/userOptions';
-
 import {
     AdminUsersSkeleton,
     AdminUsersTableSkeleton,
 } from '../components/AdminUsersSkeleton';
 import { useAdminAuthStore } from '../store/adminAuthStore';
 import { useAdminDataStore } from '../store/adminDataStore';
-import { createAdminUser } from '../services/adminApi';
-import {AddUserModal} from "../components/AddUserModal";
-
+import { AddUserModal } from '../components/AddUserModal';
 
 const PAGE_SIZE = 8;
 const API_URL = 'http://185.222.163.113:7000/api/admin/users';
@@ -47,7 +44,7 @@ const statusMapApiToFront: Record<number, UserStatus> = {
     0: 'inactive',
 };
 
-const statusMapFrontToApi: Record<string, number> = {
+const statusMapFrontToApi: Record<UserStatus, number> = {
     active: 1,
     inactive: 0,
 };
@@ -63,7 +60,6 @@ function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
     const name = (user.name as string) || '';
     const nameParts = name.split(' ');
 
-    // @ts-ignore
     return {
         id: user.id as number,
         firstName: nameParts[0] || '',
@@ -74,7 +70,7 @@ function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
         status: statusMapApiToFront[user.status as number] || 'inactive',
         type: (user.role as UserType) || 'patient',
         isVerified: Boolean(user.is_verify || user.isVerified),
-        avatar: user.avatar as string || null,
+        avatar: (user.avatar as string) || null,
         details: (user.details as Record<string, string>) || {},
         created_at: user.created_at as string,
         updated_at: user.updated_at as string,
@@ -173,33 +169,29 @@ export function AdminUsers() {
         }
 
         try {
-            // تبدیل داده‌ها به فرمت مورد انتظار سرور
+            const cleanedDetails = Object.fromEntries(
+                Object.entries(data.details || {}).filter(([, value]) => {
+                    return value !== undefined && value !== null && String(value).trim() !== '';
+                })
+            );
+
             const payload = {
-                firstName: `${data.firstName}`.trim() ,
-                lastName: `${data.lastName}`.trim(),
-                phone: data.phone,
+                firstName: data.firstName.trim(),
+                lastName: data.lastName.trim(),
+                phone: data.phone.trim(),
                 type: data.type,
                 province: data.province,
                 city: data.city,
-                status: data.status === 'active' ? 'active' : 'inactive', // تبدیل به عدد
-                details: data.details || {},
+                status: data.status,
+                details: cleanedDetails,
             };
 
-            // اضافه کردن فیلدهای اختصاصی به payload
-            if (data.details) {
-                Object.keys(data.details).forEach(key => {
-                    if (data.details[key]) {
-                        payload[key] = data.details[key];
-                    }
-                });
-            }
-             console.log(data.details)
-            const response = await fetch('http://185.222.163.113:7000/api/admin/users', {
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
             });
@@ -211,35 +203,27 @@ export function AdminUsers() {
                     type: 'user',
                     message: `افزودن کاربر ${data.firstName} ${data.lastName}`,
                 });
+
                 setIsAddOpen(false);
                 setPage(1);
                 await fetchUsers();
-
-                // نمایش پیام موفقیت
                 alert('کاربر با موفقیت اضافه شد.');
-            } else {
-                // نمایش خطاهای سرور
-                let errorMessage = result.message || 'خطا در ثبت اطلاعات.';
-
-                // اگر خطاهای اعتبارسنجی وجود دارد
-                if (result.errors) {
-                    if (typeof result.errors === 'object') {
-                        const errorMessages = Object.values(result.errors).flat();
-                        errorMessage = errorMessages.join('\n');
-                    } else {
-                        errorMessage = result.errors;
-                    }
-                }
-
-                alert(errorMessage);
-                console.error('Server Errors:', result);
+                return;
             }
-        } catch (error) {
-            console.error('Fetch error:', error);
+
+            let errorMessage = result.message || 'خطا در ثبت اطلاعات.';
+            if (result.errors && typeof result.errors === 'object') {
+                const errorMessages = Object.values(result.errors).flat();
+                errorMessage = errorMessages.join('\n');
+            }
+
+            alert(errorMessage);
+            console.error('Create user failed:', result);
+        } catch (err) {
+            console.error('Create user error:', err);
             alert('خطا در ارتباط با سرور. لطفاً مجدداً تلاش کنید.');
         }
     };
-
 
     const cities = province === 'all' ? [] : iranCitiesByProvince[province] ?? [];
 
@@ -248,12 +232,14 @@ export function AdminUsers() {
             page: String(pageNum),
             per_page: String(perPage),
         };
+
         if (name.trim()) params.name = name.trim();
         if (phone.trim()) params.phone = phone.trim();
         if (type !== 'all') params.type = type;
         if (status !== 'all') params.status = String(statusMapFrontToApi[status]);
         if (province !== 'all') params.province = province;
         if (city !== 'all') params.city = city;
+
         return params;
     };
 
@@ -264,12 +250,15 @@ export function AdminUsers() {
             setLoading(false);
             return;
         }
+
         setLoading(true);
         setError(null);
+
         try {
             const queryString = new URLSearchParams(
                 buildFilterParams(page, PAGE_SIZE)
             ).toString();
+
             const response = await fetch(`${API_URL}?${queryString}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -328,36 +317,45 @@ export function AdminUsers() {
 
     const handleExportExcel = async () => {
         if (!token) return;
+
         const exportCount = Math.max(usersData.total, paged.length, 1);
         setExporting(true);
+
         try {
             const queryString = new URLSearchParams(
                 buildFilterParams(1, exportCount)
             ).toString();
+
             const response = await fetch(`${API_URL}?${queryString}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
             });
-            if (!response.ok) throw new Error('خطا در دریافت لیست کاربران');
+
+            if (!response.ok) {
+                throw new Error('خطا در دریافت لیست کاربران');
+            }
+
             const result = await response.json();
             const rows: AdminUserRow[] = result.data.data.map((user: Record<string, unknown>) =>
                 normalizeUserFromApi(user)
             );
+
             if (rows.length === 0) return;
             downloadUsersExcel(rows);
         } catch (err) {
             console.error('Export users error:', err);
-            if (paged.length > 0) downloadUsersExcel(paged);
+            if (paged.length > 0) {
+                downloadUsersExcel(paged);
+            }
         } finally {
             setExporting(false);
         }
     };
 
     const pageIds = paged.map((u) => u.id);
-    const allPageSelected =
-        pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+    const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
     const toggleSelectAll = () => {
         setSelected((prev) => {
@@ -383,6 +381,7 @@ export function AdminUsers() {
 
     const setStatusFor = async (ids: number[], newStatus: UserStatus) => {
         if (!token) return;
+
         try {
             const response = await fetch(`${API_URL}/bulk-status`, {
                 method: 'POST',
@@ -392,7 +391,11 @@ export function AdminUsers() {
                 },
                 body: JSON.stringify({ ids, status: statusMapFrontToApi[newStatus] }),
             });
-            if (!response.ok) throw new Error('خطا در تغییر وضعیت');
+
+            if (!response.ok) {
+                throw new Error('خطا در تغییر وضعیت');
+            }
+
             await fetchUsers();
             setSelected(new Set());
             setOpenMenuId(null);
@@ -404,6 +407,7 @@ export function AdminUsers() {
 
     const deleteUsers = async (ids: number[]) => {
         if (!token) return;
+
         try {
             const response = await fetch(`${API_URL}/bulk-delete`, {
                 method: 'POST',
@@ -413,7 +417,11 @@ export function AdminUsers() {
                 },
                 body: JSON.stringify({ ids }),
             });
-            if (!response.ok) throw new Error('خطا در حذف کاربران');
+
+            if (!response.ok) {
+                throw new Error('خطا در حذف کاربران');
+            }
+
             await fetchUsers();
             setSelected(new Set());
             setOpenMenuId(null);
@@ -424,7 +432,7 @@ export function AdminUsers() {
     };
 
     const selectedIds = Array.from(selected);
-     console.log('here','paged',paged,selectedIds)
+
     const selectClass =
         'h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15';
 
@@ -446,7 +454,7 @@ export function AdminUsers() {
                     </button>
                 </div>
             )}
-            {/* هدر */}
+
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
@@ -472,6 +480,7 @@ export function AdminUsers() {
                         )}
                         دانلود اکسل
                     </button>
+
                     <button
                         type="button"
                         onClick={() => setIsAddOpen(true)}
@@ -483,7 +492,6 @@ export function AdminUsers() {
                 </div>
             </div>
 
-            {/* فیلترها */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -499,6 +507,7 @@ export function AdminUsers() {
                         پاک کردن فیلترها
                     </button>
                 </div>
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                         <label className="mb-1.5 block text-xs text-slate-500">نام و نام خانوادگی</label>
@@ -506,7 +515,10 @@ export function AdminUsers() {
                             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 value={name}
-                                onChange={(e) => { setName(e.target.value); resetPage(); }}
+                                onChange={(e) => {
+                                    setName(e.target.value);
+                                    resetPage();
+                                }}
                                 placeholder="جستجوی نام..."
                                 className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
                             />
@@ -517,12 +529,17 @@ export function AdminUsers() {
                         <label className="mb-1.5 block text-xs text-slate-500">نوع کاربری</label>
                         <select
                             value={type}
-                            onChange={(e) => { setType(e.target.value as UserType | 'all'); resetPage(); }}
+                            onChange={(e) => {
+                                setType(e.target.value as UserType | 'all');
+                                resetPage();
+                            }}
                             className={selectClass}
                         >
                             <option value="all">همه</option>
                             {Object.entries(userTypeLabels).map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
                             ))}
                         </select>
                     </div>
@@ -533,7 +550,10 @@ export function AdminUsers() {
                             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 value={phone}
-                                onChange={(e) => { setPhone(e.target.value); resetPage(); }}
+                                onChange={(e) => {
+                                    setPhone(e.target.value);
+                                    resetPage();
+                                }}
                                 placeholder="09..."
                                 dir="ltr"
                                 className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-right text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
@@ -547,7 +567,7 @@ export function AdminUsers() {
                             value={province}
                             onChange={(e) => {
                                 setProvince(e.target.value);
-                                setCity('all'); // با تغییر استان، شهر باید ریست شود
+                                setCity('all');
                                 resetPage();
                             }}
                             className={selectClass}
@@ -566,12 +586,14 @@ export function AdminUsers() {
                         </select>
                     </div>
 
-
                     <div>
                         <label className="mb-1.5 block text-xs text-slate-500">شهر</label>
                         <select
                             value={city}
-                            onChange={(e) => { setCity(e.target.value); resetPage(); }}
+                            onChange={(e) => {
+                                setCity(e.target.value);
+                                resetPage();
+                            }}
                             disabled={province === 'all'}
                             className={`${selectClass} disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400`}
                         >
@@ -593,24 +615,26 @@ export function AdminUsers() {
                         <label className="mb-1.5 block text-xs text-slate-500">وضعیت</label>
                         <select
                             value={status}
-                            onChange={(e) => { setStatus(e.target.value as UserStatus | 'all'); resetPage(); }}
+                            onChange={(e) => {
+                                setStatus(e.target.value as UserStatus | 'all');
+                                resetPage();
+                            }}
                             className={selectClass}
                         >
                             <option value="all">همه</option>
                             {Object.entries(userStatusLabels).map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
                             ))}
                         </select>
                     </div>
                 </div>
             </div>
 
-            {/* نوار عملیات گروهی */}
             {selectedIds.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-5 py-3">
-                    <span className="text-sm text-indigo-700">
-                        {selectedIds.length} کاربر انتخاب شده
-                    </span>
+                    <span className="text-sm text-indigo-700">{selectedIds.length} کاربر انتخاب شده</span>
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
@@ -620,6 +644,7 @@ export function AdminUsers() {
                             <ShieldCheck className="h-4 w-4" />
                             فعال‌سازی
                         </button>
+
                         <button
                             type="button"
                             onClick={() => setStatusFor(selectedIds, 'inactive')}
@@ -628,6 +653,7 @@ export function AdminUsers() {
                             <ShieldBan className="h-4 w-4" />
                             مسدودسازی
                         </button>
+
                         <button
                             type="button"
                             onClick={() => deleteUsers(selectedIds)}
@@ -636,6 +662,7 @@ export function AdminUsers() {
                             <Trash2 className="h-4 w-4" />
                             حذف
                         </button>
+
                         <button
                             type="button"
                             onClick={clearSelection}
@@ -647,7 +674,6 @@ export function AdminUsers() {
                 </div>
             )}
 
-            {/* جدول */}
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 <div className="overflow-x-auto">
                     <table className="w-full text-right text-sm">
@@ -685,6 +711,7 @@ export function AdminUsers() {
                                 const initials = `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`;
                                 const rowNumber = (currentPage - 1) * PAGE_SIZE + index + 1;
                                 const isSelected = selected.has(u.id);
+
                                 return (
                                     <tr
                                         key={u.id}
@@ -700,7 +727,9 @@ export function AdminUsers() {
                                                 className="h-4 w-4 cursor-pointer rounded border-slate-300 text-indigo-600 accent-indigo-600"
                                             />
                                         </td>
+
                                         <td className="px-4 py-3 text-slate-500">{rowNumber}</td>
+
                                         <td className="px-4 py-3">
                                             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-semibold text-white">
                                                 {u.avatar ? (
@@ -714,6 +743,7 @@ export function AdminUsers() {
                                                 )}
                                             </div>
                                         </td>
+
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1.5">
                                                 <span className="font-medium text-slate-800">{fullName}</span>
@@ -728,19 +758,27 @@ export function AdminUsers() {
                                                     {u.province} - {u.city}
                                                 </span>
                                         </td>
+
                                         <td className="px-4 py-3">
-                                                <span className={`inline-flex w-24 justify-center rounded-lg px-2.5 py-1 text-xs font-medium ${userTypeStyles[u.type]}`}>
+                                                <span
+                                                    className={`inline-flex w-24 justify-center rounded-lg px-2.5 py-1 text-xs font-medium ${userTypeStyles[u.type]}`}
+                                                >
                                                     {userTypeLabels[u.type]}
                                                 </span>
                                         </td>
+
                                         <td className="px-4 py-3 text-slate-600" dir="ltr">
                                             <span className="block text-right">{u.phone}</span>
                                         </td>
+
                                         <td className="px-4 py-3">
-                                                <span className={`inline-flex w-20 justify-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${userStatusStyles[u.status]}`}>
+                                                <span
+                                                    className={`inline-flex w-20 justify-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${userStatusStyles[u.status]}`}
+                                                >
                                                     {userStatusLabels[u.status]}
                                                 </span>
                                         </td>
+
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1">
                                                 <button
@@ -782,6 +820,7 @@ export function AdminUsers() {
                                                                     <Pencil className="h-4 w-4" />
                                                                     ویرایش
                                                                 </button>
+
                                                                 {u.status === 'active' ? (
                                                                     <button
                                                                         type="button"
@@ -807,6 +846,7 @@ export function AdminUsers() {
                                                                         فعال‌سازی
                                                                     </button>
                                                                 )}
+
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => deleteUsers([u.id])}
@@ -829,11 +869,11 @@ export function AdminUsers() {
                     </table>
                 </div>
 
-                {/* صفحه‌بندی */}
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
                     <span>
                         نمایش {paged.length} از {usersData.total} کاربر
                     </span>
+
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
@@ -843,6 +883,7 @@ export function AdminUsers() {
                         >
                             <ChevronRight className="h-4 w-4" />
                         </button>
+
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                             <button
                                 key={p}
@@ -857,6 +898,7 @@ export function AdminUsers() {
                                 {p}
                             </button>
                         ))}
+
                         <button
                             type="button"
                             disabled={currentPage >= totalPages}
@@ -870,7 +912,7 @@ export function AdminUsers() {
             </div>
 
             {isAddOpen && (
-                <AddUserModal  onClose={() => setIsAddOpen(false)} onSubmit={addUser} />
+                <AddUserModal onClose={() => setIsAddOpen(false)} onSubmit={addUser} />
             )}
         </div>
     );

@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ProviderModal, ProviderFormField, inputClass } from './ProviderModal';
-import type { NursePersonnel } from '../data/mockData';
-import type { NursePersonnelInput } from '../store/nurseStore';
-import { isNonEmpty, isValidIranPhone, isValidNationalCode } from '../utils/validation';
+import type { NursePersonnel } from '../services/nurseApi';
+import type { NursePersonnelInput } from '../services/nurseApi';
 
 interface AddPersonnelModalProps {
     open: boolean;
@@ -12,23 +11,89 @@ interface AddPersonnelModalProps {
     initial?: NursePersonnel | null;
 }
 
+// تبدیل نام کامل به نام و نام خانوادگی جداگانه
+function splitName(fullName: string): { firstName: string; lastName: string } {
+    if (!fullName || typeof fullName !== 'string') {
+        return { firstName: '', lastName: '' };
+    }
+
+    const trimmed = fullName.trim();
+    if (!trimmed) {
+        return { firstName: '', lastName: '' };
+    }
+
+    const parts = trimmed.split(/\s+/);
+    if (parts.length === 1) {
+        return { firstName: parts[0], lastName: parts[0] };
+    }
+    if (parts.length >= 2) {
+        return {
+            firstName: parts[0],
+            lastName: parts.slice(1).join(' '),
+        };
+    }
+    return { firstName: '', lastName: '' };
+}
+
+
 export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPersonnelModalProps) {
-    const [firstName, setFirstName] = useState(initial?.firstName ?? '');
-    const [lastName, setLastName] = useState(initial?.lastName ?? '');
-    const [phone, setPhone] = useState(initial?.phone ?? '');
-    const [nationalCode, setNationalCode] = useState(initial?.nationalCode ?? '');
-    const [gender, setGender] = useState<'male' | 'female'>(initial?.gender ?? 'female');
-    const [active, setActive] = useState(initial?.active ?? true);
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [nationalCode, setNationalCode] = useState('');
+    const [gender, setGender] = useState<'male' | 'female'>('female');
+    const [active, setActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitError, setSubmitError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // مقداردهی اولیه فرم از روی داده اولیه
+    useEffect(() => {
+        if (initial) {
+            const { firstName: fn, lastName: ln } = splitName(initial.name || '');
+            setFirstName(fn || '');
+            setLastName(ln || '');
+            setPhone(initial.mobile || '');
+            setNationalCode(initial.national_code || '');
+            setGender(initial.gender || 'female');
+            setActive(initial.status === 1);
+        } else {
+            // ریست فرم برای ایجاد جدید
+            setFirstName('');
+            setLastName('');
+            setPhone('');
+            setNationalCode('');
+            setGender('female');
+            setActive(true);
+        }
+        setErrors({});
+        setSubmitError('');
+    }, [initial, open]);
+
+
     const validate = () => {
         const next: Record<string, string> = {};
-        if (!isNonEmpty(firstName)) next.firstName = 'نام الزامی است';
-        if (!isNonEmpty(lastName)) next.lastName = 'نام خانوادگی الزامی است';
-        if (!isValidIranPhone(phone)) next.phone = 'شماره موبایل معتبر نیست (۰۹xxxxxxxxx)';
-        if (!isValidNationalCode(nationalCode)) next.nationalCode = 'کد ملی معتبر نیست';
+
+        if (!firstName.trim()) next.firstName = 'نام الزامی است';
+        if (!lastName.trim()) next.lastName = 'نام خانوادگی الزامی است';
+
+        // اعتبارسنجی شماره موبایل (شکل ایرانی)
+        const phoneRegex = /^09\d{9}$/;
+        const cleanedPhone = phone.replace(/\D/g, '');
+        if (!cleanedPhone) {
+            next.phone = 'شماره موبایل الزامی است';
+        } else if (!phoneRegex.test(cleanedPhone)) {
+            next.phone = 'شماره موبایل معتبر نیست (۰۹xxxxxxxxx)';
+        }
+
+        // اعتبارسنجی کد ملی (الزامی و دقیقا ۱۰ رقم)
+        const cleanedNationalCode = nationalCode.replace(/\D/g, '');
+        if (!cleanedNationalCode) {
+            next.nationalCode = 'کد ملی الزامی است';
+        } else if (cleanedNationalCode.length !== 10) {
+            next.nationalCode = 'کد ملی باید ۱۰ رقم باشد';
+        }
+
         setErrors(next);
         return Object.keys(next).length === 0;
     };
@@ -39,19 +104,57 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
 
         setLoading(true);
         try {
-            await onSubmit({
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                phone: phone.replace(/\D/g, ''),
-                nationalCode: nationalCode.replace(/\D/g, ''),
+            // اطمینان از وجود مقادیر
+            const cleanedFirstName = (firstName || '').trim();
+            const cleanedLastName = (lastName || '').trim();
+            const cleanedPhone = (phone || '').replace(/\D/g, '');
+            const cleanedNationalCode = (nationalCode || '').replace(/\D/g, '');
+
+            const apiInput: NursePersonnelInput = {
+                name: `${cleanedFirstName} ${cleanedLastName}`.trim(),
+                mobile: cleanedPhone,
+                national_code: cleanedNationalCode,
                 gender,
-                active,
-            });
+                status: active ? 1 : 0,
+            };
+
+            console.log('ارسال داده به API:', apiInput); // برای دیباگ
+
+            await onSubmit(apiInput);
             onClose();
         } catch (e) {
-            setSubmitError(e instanceof Error ? e.message : 'خطا در ذخیره اطلاعات');
+            const errorMessage = e instanceof Error
+                ? e.message
+                : 'خطا در ذخیره اطلاعات';
+            setSubmitError(errorMessage);
+            console.error('خطا در ارسال فرم:', e);
         } finally {
             setLoading(false);
+        }
+    };
+
+
+    const handlePhoneChange = (value: string) => {
+        // فقط اعداد
+        const cleaned = value.replace(/\D/g, '');
+        // محدود کردن به ۱۱ رقم
+        const limited = cleaned.slice(0, 11);
+        setPhone(limited);
+        // پاک کردن خطای قبلی
+        if (errors.phone) {
+            setErrors(prev => ({ ...prev, phone: '' }));
+        }
+    };
+
+    const handleNationalCodeChange = (value: string) => {
+        // فقط اعداد
+        const cleaned = value.replace(/\D/g, '');
+        // محدود کردن به ۱۰ رقم
+        const limited = cleaned.slice(0, 10);
+        setNationalCode(limited);
+        // پاک کردن خطای قبلی
+        if (errors.nationalCode) {
+            setErrors(prev => ({ ...prev, nationalCode: '' }));
         }
     };
 
@@ -79,6 +182,8 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
                         className={inputClass}
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="نام"
+                        disabled={loading}
                     />
                 </ProviderFormField>
                 <ProviderFormField label="نام خانوادگی" required error={errors.lastName}>
@@ -86,25 +191,31 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
                         className={inputClass}
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
+                        placeholder="نام خانوادگی"
+                        disabled={loading}
                     />
                 </ProviderFormField>
                 <ProviderFormField label="شماره موبایل" required error={errors.phone}>
                     <input
                         className={`${inputClass} dir-ltr text-left`}
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
                         placeholder="09123456789"
                         dir="ltr"
+                        disabled={loading}
+                        inputMode="numeric"
                     />
                 </ProviderFormField>
                 <ProviderFormField label="کد ملی" required error={errors.nationalCode}>
                     <input
                         className={`${inputClass} dir-ltr text-left`}
                         value={nationalCode}
-                        onChange={(e) => setNationalCode(e.target.value)}
+                        onChange={(e) => handleNationalCodeChange(e.target.value)}
                         placeholder="1234567890"
                         maxLength={10}
                         dir="ltr"
+                        disabled={loading}
+                        inputMode="numeric"
                     />
                 </ProviderFormField>
                 <ProviderFormField label="جنسیت">
@@ -113,23 +224,22 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
                         role="group"
                         aria-label="انتخاب جنسیت"
                     >
-                        {(
-                            [
-                                { value: 'male' as const, label: 'مرد' },
-                                { value: 'female' as const, label: 'زن' },
-                            ] as const
-                        ).map((option) => {
+                        {[
+                            { value: 'male' as const, label: 'مرد' },
+                            { value: 'female' as const, label: 'زن' },
+                        ].map((option) => {
                             const selected = gender === option.value;
                             return (
                                 <button
                                     key={option.value}
                                     type="button"
                                     onClick={() => setGender(option.value)}
+                                    disabled={loading}
                                     className={`flex-1 rounded-full py-2 text-sm font-medium transition-all duration-200 ${
                                         selected
                                             ? 'bg-slate-600 text-white shadow-sm shadow-slate-600/30'
                                             : 'text-slate-500 hover:text-slate-700'
-                                    }`}
+                                    } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {option.label}
                                 </button>
@@ -142,6 +252,7 @@ export function AddPersonnelModal({ open, onClose, onSubmit, initial }: AddPerso
                         className={inputClass}
                         value={active ? 'active' : 'inactive'}
                         onChange={(e) => setActive(e.target.value === 'active')}
+                        disabled={loading}
                     >
                         <option value="active">فعال</option>
                         <option value="inactive">غیرفعال</option>

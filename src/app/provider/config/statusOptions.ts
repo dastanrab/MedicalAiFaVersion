@@ -22,14 +22,6 @@ export type PharmacyRequestStatus =
     | 'delivered'
     | 'canceled';
 
-export type NurseRequestStatus =
-    | 'new'
-    | 'accepted'
-    | 'on_way'
-    | 'in_progress'
-    | 'completed'
-    | 'canceled';
-
 export const labStatusLabels: Record<LabRequestStatus, string> = {
     new: 'جدید',
     confirmed: 'تأیید شده',
@@ -70,22 +62,50 @@ export const pharmacyStatusStyles: Record<PharmacyRequestStatus, string> = {
     canceled: 'bg-red-50 text-red-700 ring-red-600/20',
 };
 
-export const nurseStatusLabels: Record<NurseRequestStatus, string> = {
+// تایپ وضعیت‌ها بر اساس خروجی واقعی بک‌اند و فرآیند‌های سیستم
+export type NurseRequestStatus =
+    | 'pending_payment'
+    | 'pending_nurse'
+    | 'pending_visit'
+    | 'visited'
+    | 'completed'
+    | 'canceled'
+    // fallback برای سازگاری با کدهای قدیمی‌تر (در صورت نیاز)
+    | 'new'
+    | 'accepted'
+    | 'on_way'
+    | 'in_progress';
+
+export const nurseStatusLabels: Record<string, string> = {
+    // وضعیت‌های اصلی سیستم (هماهنگ با دیتابیس و API)
+    pending_payment: 'در انتظار پرداخت',
+    pending_nurse: 'در انتظار تعیین پرستار',
+    pending_visit: 'در انتظار ویزیت / اعزام',
+    visited: 'ویزیت شده / نیازمند گزارش',
+    completed: 'تکمیل شده',
+    canceled: 'لغو شده',
+
+    // نگاشت‌های قدیمی برای جلوگیری از خطای احتمالی
     new: 'جدید',
     accepted: 'پذیرفته شده',
     on_way: 'در راه',
     in_progress: 'در حال انجام',
-    completed: 'تکمیل',
-    canceled: 'لغو شده',
 };
 
-export const nurseStatusStyles: Record<NurseRequestStatus, string> = {
+export const nurseStatusStyles: Record<string, string> = {
+    // استایل‌های وضعیت‌های اصلی
+    pending_payment: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    pending_nurse: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    pending_visit: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+    visited: 'bg-violet-50 text-violet-700 ring-violet-600/20',
+    completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    canceled: 'bg-red-50 text-red-700 ring-red-600/20',
+
+    // استایل‌های نگاشت‌های قدیمی
     new: 'bg-blue-50 text-blue-700 ring-blue-600/20',
     accepted: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
     on_way: 'bg-amber-50 text-amber-700 ring-amber-600/20',
     in_progress: 'bg-violet-50 text-violet-700 ring-violet-600/20',
-    completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-    canceled: 'bg-red-50 text-red-700 ring-red-600/20',
 };
 
 export type DoctorAppointmentStatus = 'available' | 'booked' | 'blocked' | 'done';

@@ -63,8 +63,8 @@ export const nurseNavItems: ProviderNavItem[] = [
     { label: 'تقویم درخواست‌ها', segment: 'calendar', icon: CalendarDays },
     { label: 'لیست درخواست‌ها', segment: 'requests', icon: ClipboardList },
     { label: 'محدوده خدمت‌رسانی', segment: 'coverage', icon: Map },
-    { label: 'پرسنل', segment: 'personnel', icon: Users, nurseAccountTypes: ['company'] },
-    { label: 'خدمات درمانی', segment: 'services', icon: Stethoscope, nurseAccountTypes: ['company'] },
+    { label: 'پرسنل', segment: 'personnel', icon: Users },
+    { label: 'خدمات درمانی', segment: 'services', icon: Stethoscope},
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات پروفایل', segment: 'settings', icon: Settings },
@@ -72,9 +72,7 @@ export const nurseNavItems: ProviderNavItem[] = [
 ];
 
 export function getNurseNavItems(accountType: NurseAccountType): ProviderNavItem[] {
-    return nurseNavItems.filter(
-        (item) => !item.nurseAccountTypes || item.nurseAccountTypes.includes(accountType)
-    );
+    return nurseNavItems
 }
 
 export const providerNavByRole: Record<ProviderRole, ProviderNavItem[]> = {

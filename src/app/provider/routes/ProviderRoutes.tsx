@@ -153,8 +153,8 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Route path="requests/:id" element={<NurseRequestDetailRoute />} />
             <Route path="schedule" element={<NurseSchedulePage />} />
             <Route path="coverage" element={<NurseCoveragePage />} />
-            <Route path="personnel" element={<NurseRoleGate allowed={['company']}><NursePersonnelPage /></NurseRoleGate>} />
-            <Route path="services" element={<NurseRoleGate allowed={['company']}><NurseServicesPage /></NurseRoleGate>} />
+            <Route path="personnel" element={<NursePersonnelPage />} />
+            <Route path="services" element={<NurseServicesPage />} />
             <Route path="finance" element={<SharedFinance role="nurse" />} />
             <Route path="reviews" element={<ProviderReviewsPage />} />
             <Route path="settings" element={<SharedSettings role="nurse" />} />

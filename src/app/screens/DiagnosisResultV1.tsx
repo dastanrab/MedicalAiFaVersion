@@ -541,14 +541,24 @@ export function DiagnosisResultV1() {
                                                 <div
                                                     key={doctor.id}
                                                     className="flex-none w-28 bg-white rounded-xl p-3 text-center shadow-sm border border-gray-50 transition-all hover:shadow-md cursor-pointer"
-                                                    onClick={() =>
-                                                        navigate(`/doctor/${doctor.id}`, {
-                                                            state: {
-                                                                sessionId,
-                                                                source: 'diagnosis',
-                                                            },
-                                                        })
-                                                    }
+                                                    onClick={() => {
+                                                        // ذخیره اطلاعات در استوریج
+                                                        sessionStorage.setItem('diagnosis_doctor_context', JSON.stringify({
+                                                            sessionId: sessionId,
+                                                            source: 'diagnosis'
+                                                        }));
+
+                                                        // باز کردن تب جدید
+                                                        window.open(`/doctor/${doctor.id}`, '_blank');
+                                                    }}
+                                                    // onClick={() =>
+                                                    //     // navigate(`/doctor/${doctor.id}`, {
+                                                    //     //     state: {
+                                                    //     //         sessionId,
+                                                    //     //         source: 'diagnosis',
+                                                    //     //     },
+                                                    //     // })
+                                                    // }
                                                 >
                                                     <div className="relative inline-block mb-2">
                                                         <img src={doctor.image_url} alt={doctor.name} className="w-16 h-16 rounded-full object-cover mx-auto ring-1 ring-gray-100" />

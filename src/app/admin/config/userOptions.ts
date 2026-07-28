@@ -1,4 +1,4 @@
-export type UserType = 'patient' | 'doctor' | 'pharmacy' | 'lab' | 'nurse';
+export type UserType = 'patient' | 'doctor' | 'pharmacy' | 'lab' | 'nurse' | 'medical_center';
 export type UserStatus = 'active' | 'inactive' ;
 
 export const userTypeLabels: Record<UserType, string> = {
@@ -7,6 +7,7 @@ export const userTypeLabels: Record<UserType, string> = {
     pharmacy: 'داروخانه',
     lab: 'آزمایشگاه',
     nurse: 'پرستار در منزل',
+    medical_center:' مرکز درمانی'
 };
 
 export const userStatusLabels: Record<UserStatus, string> = {
@@ -25,6 +26,7 @@ export const userTypeStyles: Record<UserType, string> = {
     pharmacy: 'bg-teal-50 text-teal-700',
     lab: 'bg-amber-50 text-amber-700',
     nurse: 'bg-rose-50 text-rose-700',
+    medical_center:'bg-rose-50 text-rose-700',
 };
 
 export interface AdminUserRow {
@@ -133,6 +135,33 @@ export const userTypeFields: Record<UserType, UserField[]> = {
         { name: 'address', label: 'آدرس', type: 'textarea', fullWidth: true },
     ],
     nurse: [
+        { name: 'nursingCode', label: 'شماره نظام پرستاری', type: 'text', ltr: true, required: true },
+        { name: 'gender', label: 'جنسیت', type: 'select', options: genderOptions },
+        {
+            name: 'services',
+            label: 'خدمات قابل ارائه',
+            type: 'select',
+            required: true,
+            options: [
+                { value: 'injection', label: 'تزریقات و سرم‌تراپی' },
+                { value: 'wound', label: 'پانسمان و مراقبت از زخم' },
+                { value: 'elderly', label: 'مراقبت از سالمند' },
+                { value: 'baby', label: 'مراقبت از نوزاد' },
+                { value: 'physio', label: 'فیزیوتراپی' },
+                { value: 'general', label: 'مراقبت عمومی' },
+            ],
+        },
+        { name: 'experience', label: 'سابقه کار (سال)', type: 'number', ltr: true },
+        { name: 'serviceFee', label: 'تعرفه هر مراجعه (تومان)', type: 'number', ltr: true },
+        {
+            name: 'coverage',
+            label: 'محدوده خدمت‌رسانی',
+            type: 'text',
+            placeholder: 'مثال: مناطق شمالی تهران',
+            fullWidth: true,
+        },
+    ],
+    medical_center: [
         { name: 'nursingCode', label: 'شماره نظام پرستاری', type: 'text', ltr: true, required: true },
         { name: 'gender', label: 'جنسیت', type: 'select', options: genderOptions },
         {

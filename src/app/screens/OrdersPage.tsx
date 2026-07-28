@@ -15,6 +15,8 @@ import {
     Loader2,
     CreditCard,
     ShoppingBag,
+    FileText,
+    Download,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
@@ -111,7 +113,27 @@ interface ApiOrdersResponse {
     };
 }
 
-/** ساختار جزئیات درخواست داروخانه (دریافت از API) */
+interface NurseRequestDetail {
+    id: number;
+    status: number;
+    total_price: number;
+    center_name: string;
+    staff: { name: string; mobile: string } | null;
+    services: { service_name: string; price: number }[];
+    extra_info: {
+        condition?: string;
+        is_urgent?: boolean;
+        custom_address?: string;
+        report?: {
+            duration_minutes: number;
+            services_performed: string;
+            patient_condition: string;
+            recommendations: string;
+            needs_followup: boolean;
+        }
+    };
+}
+
 interface PharmacyRequestDetail {
     id: number;
     status: number;
@@ -126,6 +148,25 @@ interface PharmacyRequestDetail {
         unit_price: number;
         total_price: number;
         unit: string;
+    }[];
+}
+
+// ساختار جزئیات درخواست آزمایشگاه (بر اساس API اصلاح‌شده)
+interface LabRequestDetail {
+    id: number;
+    status: number;
+    status_label: string;
+    total_price: number;
+    visit_type: number; // 0 = در منزل، 1 = حضوری
+    visit_type_label: string;
+    request_date: string;
+    lab_name: string;
+    address: string | null; // آدرس در صورت وجود
+    tests: {
+        id: number;
+        test_name: string;
+        price: number;
+        result_file: string | null; // URL کامل فایل نتیجه
     }[];
 }
 
@@ -176,63 +217,65 @@ export function OrdersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    // تابع بازخوانی لیست سفارش‌ها
+    const fetchOrders = async () => {
         if (!accessToken) {
             setLoading(false);
             setError('توکن احراز هویت موجود نیست.');
             return;
         }
-        const fetchOrders = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const res = await fetch('http://185.222.163.113:7000/api/user/orders', {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        Accept: 'application/json',
-                    },
-                });
-                if (!res.ok) throw new Error('خطا در دریافت داده‌ها. ممکن است توکن منقضی شده باشد.');
-                const json: ApiOrdersResponse = await res.json();
-                if (!json.success) throw new Error('پاسخ API نامعتبر است.');
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch('http://185.222.163.113:7000/api/user/orders', {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/json',
+                },
+            });
+            if (!res.ok) throw new Error('خطا در دریافت داده‌ها. ممکن است توکن منقضی شده باشد.');
+            const json: ApiOrdersResponse = await res.json();
+            if (!json.success) throw new Error('پاسخ API نامعتبر است.');
 
-                const mapped: UserRequestOrder[] = json.data.orders.map((item) => {
-                    const serviceType = serviceTypeMap[item.type] ?? 'lab';
-                    const group = mapToStatusGroup(item.type, item.status);
-                    return {
-                        id: item.id,
-                        serviceType,
-                        status: group,
-                        status_label: item.status_label,
-                        title:
-                            serviceType !== 'consultation'
-                                ? serviceTypeLabels[serviceType]
-                                : `نوبت دکتر ${item.detail}`,
-                        providerName: item.name,
-                        summary: item.detail !== '-' ? item.detail : '',
-                        amount: item.price,
-                        code: `#ORD-${item.id}`,
-                        scheduledAt: null,
-                        createdAt: toJalaliDate(item.created_at),
-                        updatedAt: null,
-                        address: null,
-                        details: [],
-                    };
-                });
+            const mapped: UserRequestOrder[] = json.data.orders.map((item) => {
+                const serviceType = serviceTypeMap[item.type] ?? 'lab';
+                const group = mapToStatusGroup(item.type, item.status);
+                return {
+                    id: item.id,
+                    serviceType,
+                    status: group,
+                    status_label: item.status_label,
+                    title:
+                        serviceType !== 'consultation'
+                            ? serviceTypeLabels[serviceType]
+                            : `نوبت دکتر ${item.detail}`,
+                    providerName: item.name,
+                    summary: item.detail !== '-' ? item.detail : '',
+                    amount: item.price,
+                    code: `#ORD-${item.id}`,
+                    scheduledAt: null,
+                    createdAt: toJalaliDate(item.created_at),
+                    updatedAt: null,
+                    address: null,
+                    details: [],
+                };
+            });
 
-                setOrders(mapped);
-                setCounts({
-                    doctor: json.data.count_doctor,
-                    lab: json.data.count_lab,
-                    pharmacy: json.data.count_pharmacy,
-                    nurse: json.data.count_nurse,
-                });
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
+            setOrders(mapped);
+            setCounts({
+                doctor: json.data.count_doctor,
+                lab: json.data.count_lab,
+                pharmacy: json.data.count_pharmacy,
+                nurse: json.data.count_nurse,
+            });
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchOrders();
     }, [accessToken]);
 
@@ -368,6 +411,13 @@ export function OrdersPage() {
                 onOpenChange={(open) => {
                     if (!open) setSelected(null);
                 }}
+                onOrderUpdate={(updatedOrder) => {
+                    // به‌روزرسانی سفارش در لیست
+                    setOrders((prev) =>
+                        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
+                    );
+                }}
+                refreshOrders={fetchOrders}
             />
         </div>
     );
@@ -443,48 +493,65 @@ function OrderCard({ order, onOpen }: { order: UserRequestOrder; onOpen: () => v
     );
 }
 
-/* ───────────────────── شیت جزئیات (با پشتیبانی از داروخانه) ───────────────────── */
+/* ───────────────────── شیت جزئیات (با پشتیبانی از آزمایشگاه) ───────────────────── */
 function OrderDetailSheet({
                               order,
                               open,
                               onOpenChange,
+                              onOrderUpdate,
+                              refreshOrders,
                           }: {
     order: UserRequestOrder | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onOrderUpdate?: (updated: UserRequestOrder) => void;
+    refreshOrders?: () => void;
 }) {
     const { accessToken } = useAuthStore();
 
-    // وضعیت‌های مربوط به دریافت فاکتور داروخانه
+    // وضعیت‌های داروخانه، پرستاری، آزمایشگاه
     const [detailData, setDetailData] = useState<PharmacyRequestDetail | null>(null);
+    const [nurseData, setNurseData] = useState<NurseRequestDetail | null>(null);
+    const [labData, setLabData] = useState<LabRequestDetail | null>(null);
+
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState<string | null>(null);
     const [paying, setPaying] = useState(false);
 
-    // هر بار که order تغییر کند و نوع آن pharmacy باشد، فاکتور را دریافت می‌کنیم
     useEffect(() => {
-        if (!order || order.serviceType !== 'pharmacy') {
-            setDetailData(null);
-            return;
-        }
+        if (!order) return;
 
-        const fetchPharmacyDetail = async () => {
+        const fetchData = async () => {
             setDetailLoading(true);
             setDetailError(null);
             try {
-                const res = await fetch(
-                    `http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                            Accept: 'application/json',
-                        },
-                    }
-                );
-                if (!res.ok) throw new Error('خطا در دریافت فاکتور');
+                let url = '';
+                if (order.serviceType === 'pharmacy') {
+                    url = `http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}`;
+                } else if (order.serviceType === 'nurse') {
+                    url = `http://185.222.163.113:7000/api/user/medical-requests/${order.id}`;
+                } else if (order.serviceType === 'lab') {
+                    url = `http://185.222.163.113:7000/api/user/labs-requests/${order.id}`;
+                } else {
+                    setDetailLoading(false);
+                    return;
+                }
+
+                const res = await fetch(url, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        Accept: 'application/json',
+                    },
+                });
+
+                if (!res.ok) throw new Error('خطا در دریافت اطلاعات فاکتور');
                 const json = await res.json();
                 if (!json.success) throw new Error(json.message || 'پاسخ نامعتبر');
-                setDetailData(json.data);
+
+                if (order.serviceType === 'pharmacy') setDetailData(json.data);
+                if (order.serviceType === 'nurse') setNurseData(json.data);
+                if (order.serviceType === 'lab') setLabData(json.data);
+
             } catch (err: any) {
                 setDetailError(err.message);
             } finally {
@@ -492,46 +559,58 @@ function OrderDetailSheet({
             }
         };
 
-        fetchPharmacyDetail();
-    }, [order?.id, order?.serviceType]);
+        // ریست کردن استیت‌ها
+        setDetailData(null);
+        setNurseData(null);
+        setLabData(null);
+        fetchData();
+    }, [order?.id, order?.serviceType, accessToken]);
+
+    // پرداخت برای آزمایشگاه
+    const handleLabPay = async () => {
+        if (!order || !labData) return;
+        setPaying(true);
+        try {
+            const res = await fetch(`http://185.222.163.113:7000/api/user/labs-requests/${order.id}/pay`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/json',
+                },
+            });
+            const json = await res.json();
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || 'پرداخت ناموفق بود');
+            }
+
+            // به‌روزرسانی وضعیت محلی
+            const updatedOrder: UserRequestOrder = {
+                ...order,
+                status: 'active',
+                status_label: 'در انتظار نمونه‌گیری',
+            };
+            if (onOrderUpdate) onOrderUpdate(updatedOrder);
+
+            // به‌روزرسانی labData
+            setLabData((prev) => prev ? { ...prev, status: 2, status_label: 'در انتظار نمونه‌گیری' } : null);
+
+            // بازخوانی لیست سفارش‌ها (اختیاری)
+            if (refreshOrders) refreshOrders();
+
+        } catch (err: any) {
+            setDetailError(err.message);
+        } finally {
+            setPaying(false);
+        }
+    };
 
     if (!order) return null;
 
     const Icon = serviceIcons[order.serviceType];
     const statusClass = getStatusClass(order.status);
-    const isPharmacyAwaitingPayment =
-        order.serviceType === 'pharmacy' && order.status_label === 'در انتظار پرداخت';
 
-    // عملیات پرداخت
-    const handlePay = async () => {
-        if (!order || paying) return;
-        if (!confirm('آیا از پرداخت اطمینان دارید؟')) return;
-        setPaying(true);
-        try {
-            const res = await fetch(
-                `http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}/pay`,
-                {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-            const json = await res.json();
-            if (json.success) {
-                // ریفرش صفحه برای به‌روزرسانی وضعیت (در پروژه‌های واقعی بهتر است وضعیت لیست را به‌روز کنید)
-                window.location.reload();
-            } else {
-                alert(json.message || 'خطا در پرداخت');
-            }
-        } catch (err: any) {
-            alert('خطا در برقراری ارتباط');
-        } finally {
-            setPaying(false);
-        }
-    };
+    // آیا باید دکمه پرداخت نمایش داده شود؟
+    const showPayButton = order.serviceType === 'lab' && labData && labData.status === 1;
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -543,9 +622,7 @@ function OrderDetailSheet({
                 <SheetHeader className="text-right">
                     <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200" />
                     <div className="flex items-start gap-3">
-                        <div
-                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${serviceIconStyles[order.serviceType]}`}
-                        >
+                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${serviceIconStyles[order.serviceType]}`}>
                             <Icon className="h-6 w-6" />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -553,118 +630,154 @@ function OrderDetailSheet({
                                 <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
                                     {serviceTypeLabels[order.serviceType]}
                                 </span>
-                                <span
-                                    className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusClass}`}
-                                >
+                                <span className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusClass}`}>
                                     {order.status_label}
                                 </span>
                             </div>
-                            <SheetTitle className="mt-2 text-base font-bold text-gray-900">
-                                {order.title}
-                            </SheetTitle>
-                            <SheetDescription className="mt-1 text-xs text-gray-500">
-                                {order.providerName}
-                            </SheetDescription>
+                            <SheetTitle className="mt-2 text-base font-bold text-gray-900">{order.title}</SheetTitle>
+                            <SheetDescription className="mt-1 text-xs text-gray-500">{order.providerName}</SheetDescription>
                         </div>
                     </div>
                 </SheetHeader>
 
                 <div className="mt-5 space-y-3">
-                    {/* اطلاعات عمومی */}
+                    {/* لودینگ و خطا عمومی */}
+                    {detailLoading && (
+                        <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                        </div>
+                    )}
+                    {detailError && (
+                        <div className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">
+                            {detailError}
+                        </div>
+                    )}
+
                     {order.summary && <DetailRow label="خلاصه درخواست" value={order.summary} />}
                     <DetailRow label="کد پیگیری" value={order.code} />
                     <DetailRow label="تاریخ ثبت" value={order.createdAt} />
 
-                    {/* بخش اختصاصی داروخانه */}
-                    {order.serviceType === 'pharmacy' && (
+                    {/* === بخش اختصاصی پرستاری === */}
+                    {order.serviceType === 'nurse' && nurseData && !detailLoading && (
                         <>
-                            {/* حالت بارگذاری فاکتور */}
-                            {detailLoading && (
-                                <div className="flex items-center justify-center py-4">
-                                    <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
-                                </div>
-                            )}
-                            {/* خطا در دریافت فاکتور */}
-                            {detailError && (
-                                <div className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">
-                                    {detailError}
-                                </div>
-                            )}
-                            {/* نمایش فاکتور و دکمه پرداخت */}
-                            {detailData && !detailLoading && (
-                                <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm">
-                                    <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-800">
-                                        <ShoppingBag className="h-4 w-4 text-emerald-600" />
-                                        فاکتور داروها
-                                    </h4>
-                                    <div className="space-y-2">
-                                        {detailData.medicines.map((item) => (
-                                            <div
-                                                key={item.id}
-                                                className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
-                                            >
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-gray-700">
-                                                        {item.medicine_name}
-                                                    </p>
-                                                    <p className="text-xs text-gray-400">
-                                                        {item.quantity} × {formatOrderPrice(item.unit_price)} تومان
-                                                    </p>
-                                                </div>
-                                                <p className="text-sm font-bold text-gray-800">
-                                                    {formatOrderPrice(item.total_price)} ت
-                                                </p>
-                                            </div>
-                                        ))}
+                            <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2">
+                                <h4 className="mb-2 font-semibold text-gray-800">جزئیات خدمات پرستاری</h4>
+                                {nurseData.services.map((svc, idx) => (
+                                    <div key={idx} className="flex justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                        <span className="text-gray-700">{svc.service_name}</span>
+                                        <span className="text-gray-900 font-medium">{formatOrderPrice(svc.price)} ت</span>
                                     </div>
+                                ))}
+                            </div>
 
-                                    <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                                        <span className="font-semibold text-gray-700">مبلغ کل</span>
-                                        <span className="font-bold text-emerald-600">
-                                            {formatOrderPrice(detailData.total_price)} تومان
-                                        </span>
-                                    </div>
+                            {nurseData.staff && (
+                                <div className="rounded-2xl bg-blue-50/50 p-3 text-sm border border-blue-100">
+                                    <p className="text-xs font-semibold text-blue-800 mb-1">پرستار اعزامی:</p>
+                                    <p className="text-gray-800">{nurseData.staff.name} - {nurseData.staff.mobile}</p>
                                 </div>
                             )}
 
-                            {/* دکمه پرداخت (فقط در وضعیت "در انتظار پرداخت") */}
-                            {isPharmacyAwaitingPayment && (
-                                <button
-                                    onClick={handlePay}
-                                    disabled={paying}
-                                    className="w-full mt-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 px-4 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                                >
-                                    {paying ? (
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                    ) : (
-                                        <CreditCard className="h-5 w-5" />
+                            {nurseData.extra_info?.report && (
+                                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm space-y-2">
+                                    <p className="font-semibold text-emerald-800 border-b border-emerald-100 pb-2">گزارش ویزیت پرستار</p>
+                                    <p className="text-gray-700"><span className="text-xs font-semibold">اقدامات:</span> {nurseData.extra_info.report.services_performed}</p>
+                                    <p className="text-gray-700"><span className="text-xs font-semibold">وضعیت بیمار:</span> {nurseData.extra_info.report.patient_condition}</p>
+                                    {nurseData.extra_info.report.recommendations && (
+                                        <p className="text-gray-700"><span className="text-xs font-semibold">توصیه ها:</span> {nurseData.extra_info.report.recommendations}</p>
                                     )}
-                                    {paying ? 'در حال پرداخت...' : 'پرداخت'}
-                                </button>
+                                </div>
                             )}
                         </>
                     )}
 
-                    {/* سایر جزئیات (در صورت وجود) */}
-                    {order.address && (
-                        <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
-                            <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-gray-500">
-                                <MapPin className="h-3.5 w-3.5" />
-                                آدرس
-                            </p>
-                            <p className="text-sm text-gray-800">{order.address}</p>
-                        </div>
+                    {/* === بخش اختصاصی داروخانه === */}
+                    {order.serviceType === 'pharmacy' && detailData && !detailLoading && (
+                        <>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2">
+                                <h4 className="mb-2 font-semibold text-gray-800">داروهای سفارش‌داده‌شده</h4>
+                                {detailData.medicines.map((med) => (
+                                    <div key={med.id} className="flex justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                        <span className="text-gray-700">{med.medicine_name} ({med.quantity} {med.unit})</span>
+                                        <span className="text-gray-900 font-medium">{formatOrderPrice(med.total_price)} ت</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <DetailRow label="داروخانه" value={detailData.pharmacy_name} />
+                        </>
                     )}
-                    {order.details?.map((item) => (
-                        <DetailRow key={item.label} label={item.label} value={item.value} />
-                    ))}
-                    {order.amount != null && (
-                        <div className="flex items-center justify-between rounded-2xl bg-blue-50 px-3 py-3">
-                            <span className="text-xs font-medium text-blue-700">مبلغ</span>
+
+                    {/* === بخش اختصاصی آزمایشگاه (بر اساس ساختار جدید) === */}
+                    {order.serviceType === 'lab' && labData && !detailLoading && (
+                        <>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2">
+                                <h4 className="mb-2 font-semibold text-gray-800">آزمایش‌های درخواستی</h4>
+                                {labData.tests.map((test) => (
+                                    <div key={test.id} className="flex flex-col gap-1 bg-gray-50 px-3 py-2 rounded-lg">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-700">{test.test_name}</span>
+                                            <span className="text-gray-900 font-medium">{formatOrderPrice(test.price)} ت</span>
+                                        </div>
+                                        {test.result_file && (
+                                            <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
+                                                <FileText className="h-4 w-4" />
+                                                <span>نتیجه: </span>
+                                                <a
+                                                    href={test.result_file}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="underline hover:text-blue-800 flex items-center gap-1"
+                                                >
+                                                    <Download className="h-3 w-3" /> دانلود
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            <DetailRow label="آزمایشگاه" value={labData.lab_name} />
+                            {labData.address && <DetailRow label="آدرس" value={labData.address} />}
+                            <DetailRow label="نوع مراجعه" value={labData.visit_type_label} />
+                            <DetailRow label="تاریخ درخواست" value={toJalaliDate(labData.request_date)} />
+                        </>
+                    )}
+
+                    {/* مبلغ کل (عمومی) */}
+                    {order.amount != null && !detailLoading && (
+                        <div className="flex items-center justify-between rounded-2xl bg-blue-50 px-3 py-3 mt-4">
+                            <span className="text-xs font-medium text-blue-700">مبلغ نهایی</span>
                             <span className="text-sm font-bold text-blue-800">
-                                {formatOrderPrice(order.amount)} تومان
+                                {formatOrderPrice(
+                                    order.serviceType === 'pharmacy' && detailData
+                                        ? detailData.total_price
+                                        : order.serviceType === 'nurse' && nurseData
+                                            ? nurseData.total_price
+                                            : order.serviceType === 'lab' && labData
+                                                ? labData.total_price
+                                                : order.amount
+                                )} تومان
                             </span>
                         </div>
+                    )}
+
+                    {/* دکمه پرداخت برای آزمایشگاه */}
+                    {showPayButton && (
+                        <button
+                            onClick={handleLabPay}
+                            disabled={paying}
+                            className="mt-4 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2"
+                        >
+                            {paying ? (
+                                <>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    در حال پرداخت…
+                                </>
+                            ) : (
+                                <>
+                                    <CreditCard className="h-5 w-5" />
+                                    پرداخت فاکتور
+                                </>
+                            )}
+                        </button>
                     )}
                 </div>
             </SheetContent>

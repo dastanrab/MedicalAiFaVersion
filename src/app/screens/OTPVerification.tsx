@@ -48,7 +48,16 @@ export function OTPVerification() {
 
       if (data.success && data.data?.access_token) {
         setTokens(data.data.access_token);
-        navigate('/home');
+        const pendingInviteCode = localStorage.getItem('pending_partner_invite_code');
+
+        if (pendingInviteCode) {
+          navigate('/partner/join', {
+            replace: true,
+            state: { partnerCode: pendingInviteCode },
+          });
+        } else {
+          navigate('/home', { replace: true });
+        }
       } else {
         setError(data.message || 'کد تأیید نادرست است');
       }

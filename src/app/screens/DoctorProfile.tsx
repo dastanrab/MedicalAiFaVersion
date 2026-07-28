@@ -91,9 +91,32 @@ export function DoctorProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const sessionId = location.state?.sessionId || null;
+
+  // تغییر به State برای مدیریت سشن
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 1. بررسی state مربوط به react-router (تب فعلی)
+    let currentSessionId = location.state?.sessionId || null;
+
+    // 2. بررسی sessionStorage (تب جدید)
+    if (!currentSessionId) {
+      const contextData = sessionStorage.getItem('diagnosis_doctor_context');
+      if (contextData) {
+        try {
+          const parsedData = JSON.parse(contextData);
+          currentSessionId = parsedData.sessionId;
+        } catch (e) {
+          console.error("Error parsing session context", e);
+        }
+      }
+    }
+
+    setSessionId(currentSessionId);
+  }, [location.state]);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
+
 
   // استیت‌های مربوط به سیستم پیشنهاد همکار
   const [recommenders, setRecommenders] = useState<any[]>([]);
