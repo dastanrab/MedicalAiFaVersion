@@ -1,440 +1,337 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import {
-  ChevronLeft,
-  MapPin,
-  Star,
-  HeartPulse,
   ArrowLeft,
+  ChevronLeft,
+  HeartPulse,
+  Loader2,
+  MapPin,
   Pill,
+  Star,
   TestTube,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { AppBar } from '../components/AppBar';
-import { Card } from '../components/ui/card';
+  Stethoscope,
+  Building
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { AppBar } from "../components/AppBar";
+import { useAuthStore } from "../store/authStore";
 import {
   ProviderDetailsDialog,
   type ProviderDetails,
 } from '../components/ProviderDetailsDialog';
-import { servicesCatalog } from '../config/servicesCatalog';
-import { useSettingsStore } from '../admin/store/settingsStore';
-import type { ServiceModuleId } from '../admin/config/settingsOptions';
 
-const topLabs: (ProviderDetails & { city: string; meta: string })[] = [
-  {
-    name: 'آزمایشگاه پاتوبیولوژی سینا',
-    city: 'مشهد',
-    meta: '۲۴۰ نظر',
-    address: 'بلوار وکیل‌آباد، نبش وکیل‌آباد ۲۲',
-    rating: 4.9,
-    reviews: 240,
-    hours: '۶:۳۰ صبح تا ۱۰ شب',
-    phone: '۰۵۱-۳۷۶۶ ۱۱۲۲',
-    lat: 36.3178,
-    lng: 59.5172,
-    description:
-      'آزمایشگاه مجهز با امکان نمونه‌گیری در محل، ارائه پکیج‌های چکاپ کامل و ارسال آنلاین نتایج آزمایش.',
-    services: [
-      { name: 'چکاپ کامل', price: 1850000 },
-      { name: 'آزمایش تیروئید', price: 420000 },
-      { name: 'قند و چربی خون', price: 280000 },
-    ],
-    recentReviews: [
-      {
-        name: 'مریم احمدی',
-        date: '۱۲ تیر ۱۴۰۵',
-        rating: 5,
-        comment: 'نمونه‌گیری در محل خیلی مرتب و سریع انجام شد.',
-      },
-      {
-        name: 'علی رضایی',
-        date: '۲۸ خرداد ۱۴۰۵',
-        rating: 4,
-        comment: 'نتایج به‌موقع آماده شد و پشتیبانی خوبی داشتند.',
-      },
-    ],
-  },
-  {
-    name: 'آزمایشگاه تخصصی نیکان',
-    city: 'تهران',
-    meta: '۱۸۵ نظر',
-    address: 'خیابان ولیعصر، نبش پارک وی',
-    rating: 4.8,
-    reviews: 185,
-    hours: '۷ صبح تا ۹ شب',
-    phone: '۰۲۱-۸۸۷۷ ۲۲۳۳',
-    lat: 35.7575,
-    lng: 51.41,
-    description:
-      'مرکز تشخیصی با تجهیزات به‌روز، پرسنل مجرب و پوشش گسترده آزمایش‌های تخصصی و عمومی.',
-    services: [
-      { name: 'آزمایش خون تخصصی', price: 650000 },
-      { name: 'هورمون‌شناسی', price: 780000 },
-      { name: 'ویتامین D', price: 310000 },
-    ],
-    recentReviews: [
-      {
-        name: 'زهرا کریمی',
-        date: '۹ تیر ۱۴۰۵',
-        rating: 5,
-        comment: 'پرسنل حرفه‌ای بودند و هماهنگی نمونه‌گیری عالی بود.',
-      },
-      {
-        name: 'رضا محمدی',
-        date: '۲۰ خرداد ۱۴۰۵',
-        rating: 5,
-        comment: 'از کیفیت خدمات و سرعت پاسخ‌دهی راضی بودم.',
-      },
-    ],
-  },
-  {
-    name: 'آزمایشگاه رازی',
-    city: 'اصفهان',
-    meta: '۱۵۶ نظر',
-    address: 'خیابان چهارباغ بالا، پلاک ۱۲۰',
-    rating: 4.7,
-    reviews: 156,
-    hours: '۷ صبح تا ۸ شب',
-    phone: '۰۳۱-۳۶۲۲ ۴۴۵۵',
-    lat: 32.6442,
-    lng: 51.6675,
-    description:
-      'آزمایشگاه همکار بیمه با پذیرش نسخه الکترونیک، پاسخ‌گویی سریع و امکان پیگیری آنلاین نتایج.',
-    services: [
-      { name: 'آزمایش ادرار', price: 180000 },
-      { name: 'کبد چربی', price: 350000 },
-      { name: 'آهن و فریتین', price: 290000 },
-    ],
-    recentReviews: [
-      {
-        name: 'سارا حسینی',
-        date: '۵ تیر ۱۴۰۵',
-        rating: 4,
-        comment: 'همه آزمایش‌ها پوشش داده شد و هزینه شفاف بود.',
-      },
-      {
-        name: 'امیر جعفری',
-        date: '۱۶ خرداد ۱۴۰۵',
-        rating: 4,
-        comment: 'خدمات خوب بود، فقط کمی در هماهنگی تأخیر داشت.',
-      },
-    ],
-  },
-];
-
-const pharmacies: (ProviderDetails & { city: string; meta: string })[] = [
-  {
-    name: 'داروخانه شبانه‌روزی مرکزی',
-    city: 'مشهد',
-    meta: '۲۴ ساعته',
-    address: 'بلوار وکیل‌آباد، نبش وکیل‌آباد ۱۰',
-    rating: 4.8,
-    reviews: 268,
-    hours: 'شبانه‌روزی',
-    phone: '۰۵۱-۳۸۸۸ ۲۴۲۴',
-    lat: 36.3186,
-    lng: 59.5168,
-    description:
-      'داروخانه شبانه‌روزی با امکان تهیه داروهای نسخه‌ای، مکمل‌های غذایی و محصولات بهداشتی. سفارش‌ها پیش از ارسال توسط داروساز بررسی می‌شوند.',
-    services: [
-      { name: 'استامینوفن ۵۰۰', price: 48000 },
-      { name: 'قرص سرماخوردگی بزرگسالان', price: 72000 },
-      { name: 'ویتامین D3', price: 115000 },
-    ],
-    recentReviews: [
-      {
-        name: 'مریم احمدی',
-        date: '۱۲ تیر ۱۴۰۵',
-        rating: 5,
-        comment: 'سفارش سریع آماده شد و برخورد داروساز بسیار خوب بود.',
-      },
-      {
-        name: 'علی رضایی',
-        date: '۲۸ خرداد ۱۴۰۵',
-        rating: 4,
-        comment: 'تنوع دارو مناسب بود و بسته‌بندی تمیزی داشت.',
-      },
-    ],
-  },
-  {
-    name: 'داروخانه دکتر عبیدی',
-    city: 'تهران',
-    meta: '۸ تا ۲۲',
-    address: 'خیابان احمدآباد، پلاک ۸۸',
-    rating: 4.9,
-    reviews: 197,
-    hours: '۸ صبح تا ۱۲ شب',
-    phone: '۰۵۱-۳۸۴۲ ۱۰۱۰',
-    lat: 36.2981,
-    lng: 59.5782,
-    description:
-      'مرکز عرضه داروهای تخصصی، مکمل و تجهیزات پزشکی با حضور داروساز و امکان مشاوره درباره نحوه مصرف دارو.',
-    services: [
-      { name: 'ایبوپروفن ۴۰۰', price: 64000 },
-      { name: 'شربت دیفن‌هیدرامین', price: 86000 },
-      { name: 'زینک پلاس', price: 198000 },
-    ],
-    recentReviews: [
-      {
-        name: 'زهرا کریمی',
-        date: '۹ تیر ۱۴۰۵',
-        rating: 5,
-        comment: 'پاسخ‌گویی دقیق و توضیحات کامل درباره نحوه مصرف دارو.',
-      },
-      {
-        name: 'رضا محمدی',
-        date: '۲۰ خرداد ۱۴۰۵',
-        rating: 5,
-        comment: 'داروها کامل موجود بود و زمان انتظار کوتاه بود.',
-      },
-    ],
-  },
-  {
-    name: 'داروخانه بزرگ اصفهان',
-    city: 'اصفهان',
-    meta: '۸ تا ۲۱',
-    address: 'خیابان چهارباغ پایین، ابتدای آمادگاه',
-    rating: 4.6,
-    reviews: 143,
-    hours: '۸ صبح تا ۹ شب',
-    phone: '۰۳۱-۳۲۲۲ ۳۳۳۰',
-    lat: 32.6526,
-    lng: 51.6746,
-    description:
-      'ارائه‌دهنده داروهای عمومی و تخصصی، محصولات مادر و کودک و اقلام مراقبت پوستی با امکان ارسال در محدوده.',
-    services: [
-      { name: 'لوراتادین ۱۰', price: 57000 },
-      { name: 'امپرازول ۲۰', price: 93000 },
-      { name: 'مولتی‌ویتامین مینرال', price: 245000 },
-    ],
-    recentReviews: [
-      {
-        name: 'سارا حسینی',
-        date: '۵ تیر ۱۴۰۵',
-        rating: 5,
-        comment: 'ارسال به‌موقع بود و همه اقلام نسخه را داشتند.',
-      },
-      {
-        name: 'امیر جعفری',
-        date: '۱۶ خرداد ۱۴۰۵',
-        rating: 4,
-        comment: 'کیفیت خدمات خوب بود، فقط کمی شلوغ بود.',
-      },
-    ],
-  },
-];
+// فقط ۴ سرویسی که در فرانت پیاده‌سازی شده‌اند
+const SUPPORTED_SERVICES_MAP: Record<string, { icon: LucideIcon; gradient: string; path: string }> = {
+  laboratory: { icon: TestTube, gradient: 'from-sky-500 to-blue-600', path: '/services/labs' },
+  pharmacy: { icon: Pill, gradient: 'from-emerald-500 to-teal-600', path: '/services/pharmacy' },
+  clinic: { icon: Stethoscope, gradient: 'from-violet-500 to-indigo-600', path: '/services/nurse-home' },
+  imaging_center: { icon: Building, gradient: 'from-rose-500 to-pink-600', path: '/services/labs' },
+};
 
 export function MedicalServices() {
   const navigate = useNavigate();
-  const enabledServices = useSettingsStore((s) => s.services);
-  const services = servicesCatalog.filter((s) => enabledServices[s.id as ServiceModuleId]);
+  const { accessToken } = useAuthStore();
+
+  const [activeServices, setActiveServices] = useState<any[]>([]);
   const [details, setDetails] = useState<ProviderDetails | null>(null);
   const [detailsType, setDetailsType] = useState<'lab' | 'pharmacy' | null>(null);
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
 
-  const openLabDetails = (lab: ProviderDetails) => {
-    setDetailsType('lab');
-    setDetails(lab);
+  const [labsList, setLabsList] = useState<(ProviderDetails & { city: string; meta: string })[]>([]);
+  const [pharmaciesList, setPharmaciesList] = useState<(ProviderDetails & { city: string; meta: string })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // دریافت لیست سرویس‌های فعال و مراکز
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const headers = {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+
+        // ۱. دریافت سرویس‌ها
+        const servicesRes = await fetch('http://185.222.163.113:7000/api/user/services', { headers });
+        const servicesJson = await servicesRes.json();
+        if (servicesJson.status === 'success') {
+          setActiveServices(servicesJson.data);
+        }
+
+        // ۲. دریافت لیست آزمایشگاه‌ها و داروخانه‌ها
+        const providersRes = await fetch('http://185.222.163.113:7000/api/user/providers', { headers });
+        const providersJson = await providersRes.json();
+
+        if (providersJson.status === 'success') {
+          const mapToProvider = (p: any, type: 'lab' | 'pharmacy') => ({
+            id: p.provider_id,
+            name: p.name || 'بدون نام',
+            city: p.city || 'نامشخص',
+            meta: type === 'lab' ? 'آزمایشگاه' : 'داروخانه',
+            address: p.address || 'آدرس ثبت نشده',
+            rating: Number(p.rating) || 5.0,
+            reviews: 0,
+            hours: 'نامشخص',
+            phone: 'ثبت نشده',
+            lat: 35.6892,
+            lng: 51.3890,
+            description: '',
+            services: [],
+            recentReviews: []
+          });
+
+          setLabsList((providersJson.data.labs || []).map((l: any) => mapToProvider(l, 'lab')));
+          setPharmaciesList((providersJson.data.pharmacies || []).map((ph: any) => mapToProvider(ph, 'pharmacy')));
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (accessToken) {
+      fetchData();
+    }
+  }, [accessToken]);
+
+  const fetchAndOpenDetails = async (providerId: string | number, type: 'lab' | 'pharmacy') => {
+    setIsDetailsLoading(true);
+    try {
+      const response = await fetch(`http://185.222.163.113:7000/api/user/providers/${type}/${providerId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      const json = await response.json();
+
+      if (json.status === 'success') {
+        const { provider, reviews, services } = json.data;
+
+        const mappedDetails: ProviderDetails = {
+          id: provider.provider_id,
+          name: provider.name || 'بدون نام',
+          city: provider.city || 'نامشخص',
+          meta: type === 'lab' ? 'آزمایشگاه' : 'داروخانه',
+          address: provider.address || 'آدرس ثبت نشده',
+          rating: Number.isFinite(Number(provider.rating)) ? Number(provider.rating) : 5.0,
+          reviews: reviews?.length || 0,
+          hours: provider.hours || 'ساعت کاری نامشخص',
+          phone: provider.phone || 'ثبت نشده',
+          lat: Number.isFinite(Number(provider.lat)) ? Number(provider.lat) : 35.6892,
+          lng: Number.isFinite(Number(provider.lng)) ? Number(provider.lng) : 51.3890,
+          description: provider.description || 'توضیحات تکمیلی برای این مرکز هنوز ثبت نشده است.',
+          services: services || [],
+          recentReviews: (reviews || []).map((r: any) => ({
+            author: r.author || 'کاربر سایت',
+            date: r.date ? new Date(r.date).toLocaleDateString('fa-IR') : 'نامشخص',
+            rating: Number(r.rating) || 5,
+            text: r.text || r.comment || 'بدون متن',
+          }))
+        };
+
+        setDetailsType(type);
+        setDetails(mappedDetails);
+      }
+    } catch (error) {
+      console.error('Error fetching provider details:', error);
+    } finally {
+      setIsDetailsLoading(false);
+    }
   };
 
-  const openPharmacyDetails = (pharmacy: ProviderDetails) => {
-    setDetailsType('pharmacy');
-    setDetails(pharmacy);
-  };
+  const isServiceActive = (key: string) => activeServices.some(s => s.service_key === key);
 
-  if (services.length === 0) {
+  if (!isLoading && activeServices.length === 0) {
     return (
-      <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
-        <AppBar backTo="/home" />
-        <div className="flex flex-col items-center justify-center px-6 pt-32 text-center">
-          <HeartPulse className="mb-4 h-12 w-12 text-slate-300" />
-          <p className="text-gray-600">در حال حاضر هیچ خدمتی فعال نیست.</p>
+        <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
+          <AppBar backTo="/home" />
+          <div className="flex flex-col items-center justify-center px-6 pt-32 text-center">
+            <HeartPulse className="mb-4 h-12 w-12 text-slate-300" />
+            <p className="text-gray-600">در حال حاضر هیچ خدمتی فعال نیست.</p>
+          </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
-      <AppBar backTo="/home" />
+      <div className="relative h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
+        <AppBar backTo="/home" />
 
-      <div className="px-4 pb-8 pt-24">
-        <ServicesHero />
+        {isDetailsLoading && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+              <div className="flex flex-col items-center rounded-2xl bg-white p-6 shadow-xl">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <p className="mt-4 text-sm font-semibold text-gray-700">در حال دریافت اطلاعات...</p>
+              </div>
+            </div>
+        )}
 
-        <div className="mb-10 grid grid-cols-2 gap-3">
-          {services.map((service) => {
-            const Icon = service.icon;
-            return (
-              <button
-                key={service.title}
-                type="button"
-                onClick={() => navigate(service.path)}
-                className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${service.gradient} p-4 text-right shadow-[0_6px_24px_rgba(0,0,0,0.12)] transition-all duration-300 hover:shadow-[0_10px_32px_rgba(0,0,0,0.16)] active:scale-[0.98]`}
-              >
-                <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-white/10" />
-                <div className="pointer-events-none absolute -bottom-4 -right-4 h-14 w-14 rounded-full bg-white/10" />
-                <div className="relative z-10">
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
-                    <Icon className="h-5 w-5 text-white" />
-                  </div>
-                  <p className="text-sm font-bold text-white">{service.title}</p>
-                  <p className="mt-0.5 text-[11px] text-white/80">{service.desc}</p>
-                  <div className="mt-3 flex items-center gap-0.5 text-[11px] font-medium text-white/90">
-                    <span>ورود</span>
-                    <ChevronLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="px-4 pb-8 pt-24">
+          <ServicesHero />
+
+          {isLoading ? (
+              <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
+          ) : (
+              <div className="mb-10 grid grid-cols-2 gap-3">
+                {activeServices
+                    .filter((service) => SUPPORTED_SERVICES_MAP[service.service_key])
+                    .map((service) => {
+                      const uiConfig = SUPPORTED_SERVICES_MAP[service.service_key];
+                      const Icon = uiConfig.icon;
+
+                      return (
+                          <button
+                              key={service.service_key}
+                              type="button"
+                              onClick={() => navigate(uiConfig.path)}
+                              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${uiConfig.gradient} p-4 text-right shadow-[0_6px_24px_rgba(0,0,0,0.12)] transition-all duration-300 hover:shadow-[0_10px_32px_rgba(0,0,0,0.16)] active:scale-[0.98]`}
+                          >
+                            <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-white/10" />
+                            <div className="pointer-events-none absolute -bottom-4 -right-4 h-14 w-14 rounded-full bg-white/10" />
+                            <div className="relative z-10">
+                              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                                <Icon className="h-5 w-5 text-white" />
+                              </div>
+                              <p className="text-sm font-bold text-white">{service.name}</p>
+                              <p className="mt-0.5 text-[11px] text-white/80 line-clamp-1">{service.description}</p>
+                              <div className="mt-3 flex items-center gap-0.5 text-[11px] font-medium text-white/90">
+                                <span>ورود</span>
+                                <ChevronLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+                              </div>
+                            </div>
+                          </button>
+                      );
+                    })}
+              </div>
+          )}
+
+          {isServiceActive('laboratory') && (
+              <>
+                <SectionHeader title="آزمایشگاه‌های برتر" onViewAll={() => navigate('/services/labs')} />
+                {isLoading ? (
+                    <p className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      در حال دریافت لیست...
+                    </p>
+                ) : (
+                    <HorizontalScroll>
+                      {labsList.map((lab, idx) => (
+                          <ProviderCard
+                              key={lab.id || `lab-${idx}`}
+                              name={lab.name}
+                              city={lab.city}
+                              rating={lab.rating}
+                              meta={lab.meta}
+                              icon={SUPPORTED_SERVICES_MAP['laboratory']?.icon || TestTube}
+                              iconBg="bg-sky-50 text-sky-600"
+                              accent="text-sky-600"
+                              onClick={() => fetchAndOpenDetails(lab.id, 'lab')}
+                          />
+                      ))}
+                    </HorizontalScroll>
+                )}
+              </>
+          )}
+
+          {isServiceActive('pharmacy') && (
+              <>
+                <SectionHeader
+                    title="داروخانه‌های نزدیک"
+                    className="mt-10"
+                    onViewAll={() => navigate('/services/pharmacy')}
+                />
+                {isLoading ? (
+                    <p className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      در حال دریافت لیست...
+                    </p>
+                ) : (
+                    <HorizontalScroll>
+                      {pharmaciesList.map((pharmacy, idx) => (
+                          <ProviderCard
+                              key={pharmacy.id || `pharmacy-${idx}`}
+                              name={pharmacy.name}
+                              city={pharmacy.city}
+                              rating={pharmacy.rating}
+                              meta={pharmacy.meta}
+                              icon={SUPPORTED_SERVICES_MAP['pharmacy']?.icon || Pill}
+                              iconBg="bg-emerald-50 text-emerald-600"
+                              accent="text-emerald-600"
+                              onClick={() => fetchAndOpenDetails(pharmacy.id, 'pharmacy')}
+                          />
+                      ))}
+                    </HorizontalScroll>
+                )}
+              </>
+          )}
         </div>
 
-        {enabledServices.labs && (
-          <>
-            <SectionHeader title="آزمایشگاه‌های برتر" onViewAll={() => navigate('/services/labs')} />
-            <HorizontalScroll>
-              {topLabs.map((lab) => (
-                <ProviderCard
-                  key={lab.name}
-                  name={lab.name}
-                  city={lab.city}
-                  rating={lab.rating}
-                  meta={lab.meta}
-                  icon={servicesCatalog[0].icon}
-                  iconBg="bg-sky-50 text-sky-600"
-                  accent="text-sky-600"
-                  onClick={() => openLabDetails(lab)}
-                />
-              ))}
-            </HorizontalScroll>
-          </>
-        )}
-
-        {enabledServices.pharmacy && (
-          <>
-            <SectionHeader
-              title="داروخانه‌های نزدیک"
-              className="mt-10"
-              onViewAll={() => navigate('/services/pharmacy')}
-            />
-            <HorizontalScroll>
-              {pharmacies.map((pharmacy) => (
-                <ProviderCard
-                  key={pharmacy.name}
-                  name={pharmacy.name}
-                  city={pharmacy.city}
-                  rating={pharmacy.rating}
-                  meta={pharmacy.meta}
-                  icon={servicesCatalog[1].icon}
-                  iconBg="bg-emerald-50 text-emerald-600"
-                  accent="text-emerald-600"
-                  onClick={() => openPharmacyDetails(pharmacy)}
-                />
-              ))}
-            </HorizontalScroll>
-          </>
-        )}
+        <ProviderDetailsDialog
+            key={details?.id ?? 'provider-details'}
+            open={details !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setDetails(null);
+                setDetailsType(null);
+              }
+            }}
+            details={details}
+            accent={detailsType === 'pharmacy' ? 'emerald' : 'sky'}
+            infoTitle={detailsType === 'pharmacy' ? 'اطلاعات داروخانه' : 'اطلاعات آزمایشگاه'}
+            servicesTitle={detailsType === 'pharmacy' ? 'لیست داروها' : 'خدمات آزمایشی'}
+            servicesIcon={detailsType === 'pharmacy' ? Pill : TestTube}
+        />
       </div>
-
-      <ProviderDetailsDialog
-        key={details?.name ?? 'provider-details'}
-        open={details !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDetails(null);
-            setDetailsType(null);
-          }
-        }}
-        details={details}
-        accent={detailsType === 'pharmacy' ? 'emerald' : 'sky'}
-        infoTitle={detailsType === 'pharmacy' ? 'اطلاعات داروخانه' : 'اطلاعات آزمایشگاه'}
-        servicesTitle={detailsType === 'pharmacy' ? 'لیست داروها' : 'خدمات آزمایشی'}
-        servicesIcon={detailsType === 'pharmacy' ? Pill : TestTube}
-        reviewPlaceholder={
-          detailsType === 'pharmacy'
-            ? 'نظر خود را درباره خدمات این داروخانه بنویسید'
-            : 'نظر خود را درباره خدمات این آزمایشگاه بنویسید'
-        }
-      />
-    </div>
   );
 }
 
 function ServicesHero() {
   return (
-    <div className="relative mb-6">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 px-5 py-5 shadow-[0_8px_32px_rgba(37,99,235,0.28)]">
-        <div className="pointer-events-none absolute -top-10 -left-10 h-36 w-36 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.12]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-            backgroundSize: '18px 18px',
-          }}
-        />
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
-            <HeartPulse className="h-7 w-7 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold leading-tight text-white">خدمات درمانی</h1>
-            <p className="mt-0.5 text-sm leading-snug text-blue-100">
-              دسترسی سریع به آزمایشگاه، داروخانه و مراقبت در منزل
-            </p>
-          </div>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-black text-slate-800">خدمات درمانی و پزشکی</h1>
+        <p className="mt-2 text-sm leading-relaxed text-slate-500">
+          دسترسی سریع به مراکز درمانی، آزمایشگاه‌ها و داروخانه‌های معتبر با امکان ثبت درخواست آنلاین.
+        </p>
       </div>
-    </div>
   );
 }
 
-function SectionHeader({
-  title,
-  className = '',
-  onViewAll,
-}: {
-  title: string;
-  className?: string;
-  onViewAll?: () => void;
-}) {
+function SectionHeader({ title, onViewAll, className = "" }: { title: string; onViewAll: () => void; className?: string }) {
   return (
-    <div className={`mb-4 flex items-center justify-between ${className}`}>
-      <h2 className="text-base font-bold text-gray-900">{title}</h2>
-      {onViewAll && (
-        <button
-          type="button"
-          onClick={onViewAll}
-          className="flex items-center gap-0.5 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700"
-        >
-          همه
-          <ChevronLeft className="h-3.5 w-3.5" />
+      <div className={`mb-4 flex items-center justify-between ${className}`}>
+        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+        <button onClick={onViewAll} className="flex items-center gap-1 text-xs font-semibold text-blue-600">
+          مشاهده همه
+          <ArrowLeft className="h-3.5 w-3.5" />
         </button>
-      )}
-    </div>
+      </div>
   );
 }
 
 function HorizontalScroll({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="-me-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-smooth pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {children}
-      <div className="w-4 shrink-0 snap-none" aria-hidden />
-    </div>
+      <div className="relative -mx-4">
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-6 scrollbar-hide">
+          {children}
+        </div>
+      </div>
   );
 }
 
 function ProviderCard({
-  name,
-  city,
-  rating,
-  meta,
-  icon: Icon,
-  iconBg,
-  accent,
-  onClick,
-}: {
+                        name,
+                        city,
+                        rating,
+                        meta,
+                        icon: Icon,
+                        iconBg,
+                        accent,
+                        onClick
+                      }: {
   name: string;
   city: string;
   rating: number;
@@ -445,33 +342,28 @@ function ProviderCard({
   onClick: () => void;
 }) {
   return (
-    <Card
-      onClick={onClick}
-      className="min-w-[230px] shrink-0 snap-start cursor-pointer rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)] transition-all hover:shadow-[0_6px_24px_rgba(0,0,0,0.1)] active:scale-[0.99]"
-    >
-      <div className="mb-3 flex items-start justify-between">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
-          <Icon className="h-5 w-5" />
+      <button
+          onClick={onClick}
+          className="w-[260px] flex-none snap-center rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm transition-all active:scale-[0.98]"
+      >
+        <div className="flex items-start justify-between">
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-600">
+            <Star className="h-3 w-3 fill-amber-500" />
+            <span className="text-[11px] font-bold">{rating.toFixed(1)}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5">
-          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-          <span className="text-[11px] font-bold text-amber-700">{rating}</span>
+
+        <div className="mt-4">
+          <div className={`text-[10px] font-bold ${accent}`}>{meta}</div>
+          <h3 className="mt-1 truncate text-sm font-bold text-slate-800">{name}</h3>
+          <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
+            <MapPin className="h-3.5 w-3.5" />
+            <span className="truncate">{city}</span>
+          </div>
         </div>
-      </div>
-
-      <h3 className="line-clamp-2 text-sm font-bold leading-snug text-gray-900">{name}</h3>
-
-      <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-        <MapPin className="h-3 w-3 shrink-0" />
-        <span>{city}</span>
-        <span className="text-gray-300">·</span>
-        <span>{meta}</span>
-      </div>
-
-      <span className={`mt-3 flex items-center gap-1 text-xs font-semibold ${accent}`}>
-        مشاهده
-        <ArrowLeft className="h-3 w-3" />
-      </span>
-    </Card>
+      </button>
   );
 }

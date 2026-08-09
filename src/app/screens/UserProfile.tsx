@@ -340,7 +340,12 @@ export function UserProfile() {
       if (data.success) {
         persistProfileExtras(addresses);
         await refreshUserProfile(true);
-        navigate('/home');
+        const pendingInvite = localStorage.getItem('pending_partner_invite_code');
+        if (pendingInvite) {
+          navigate('/partner/join', { replace: true });
+        } else {
+          navigate('/home', { replace: true });
+        }
       } else {
         const errorMsg = data.errors
             ? Object.values(data.errors).flat().join('\n')

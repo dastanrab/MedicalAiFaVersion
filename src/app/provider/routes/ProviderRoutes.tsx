@@ -96,7 +96,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="home-sampling" element={<LabHomeSamplingPage />} />
                 <Route path="results" element={<LabResultsPage />} />
                 <Route path="finance" element={<SharedFinance role="lab" />} />
-                <Route path="reviews" element={<ProviderReviewsPage />} />
+                <Route path="reviews" element={<ProviderReviewsPage role="lab"/>} />
                 <Route path="settings" element={<SharedSettings role="lab" />} />
                 <Route path="support" element={<ProviderSupportPage role="lab" />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
@@ -115,7 +115,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="delivery" element={<PharmacyDeliveryPage />} />
                 <Route path="map" element={<PharmacyMapPage />} />
                 <Route path="finance" element={<SharedFinance role="pharmacy" />} />
-                <Route path="reviews" element={<ProviderReviewsPage />} />
+                <Route path="reviews" element={<ProviderReviewsPage role="pharmacy"  />} />
                 <Route path="settings" element={<SharedSettings role="pharmacy" />} />
                 <Route path="support" element={<ProviderSupportPage role="pharmacy" />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
@@ -156,7 +156,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Route path="personnel" element={<NursePersonnelPage />} />
             <Route path="services" element={<NurseServicesPage />} />
             <Route path="finance" element={<SharedFinance role="nurse" />} />
-            <Route path="reviews" element={<ProviderReviewsPage />} />
+            <Route path="reviews" element={<ProviderReviewsPage role="nurse" />} />
             <Route path="settings" element={<SharedSettings role="nurse" />} />
             <Route path="support" element={<ProviderSupportPage role="nurse" />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />

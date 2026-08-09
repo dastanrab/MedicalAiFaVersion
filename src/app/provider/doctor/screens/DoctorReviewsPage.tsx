@@ -1,17 +1,74 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { PageHeader } from '../../components';
-import { mockDoctorProfile, mockDoctorReviews } from '../data/mockDoctorData';
+import { mockDoctorProfile } from '../data/mockDoctorData';
+import {useDoctorAuthStore} from "../store/doctorAuthStore";
+// فرض می‌کنیم store شما در چنین مسیری قرار دارد
+
 
 export function DoctorReviewsPage() {
-    const [reviews, setReviews] = useState(mockDoctorReviews);
-    const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+    // می‌توانید مقدار اولیه را یک آرایه خالی بدهید، اینجا فعلاً برای جلوگیری از خطا ساختار حفظ شده است
+    const [reviews, setReviews] = useState<any[]>([]);
+    const { token } = useDoctorAuthStore();
 
-    const reply = (id: number) => {
+    const avg = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+
+    // دریافت لیست نظرات از API هنگام لود صفحه
+    // دریافت لیست نظرات از API هنگام لود صفحه
+    useEffect(() => {
+        const fetchReviews = async () => {
+            try {
+                const response = await fetch('http://185.222.163.113:7000/api/user/provider/reviews', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // بررسی اینکه آیا داده مستقیماً آرایه است یا داخل فیلد data قرار دارد
+                    const reviewsArray = Array.isArray(data) ? data : (data.data || []);
+                    setReviews(reviewsArray);
+                }
+            } catch (error) {
+                console.error('Error fetching reviews:', error);
+                setReviews([]); // در صورت خطا، آرایه خالی ست شود تا صفحه کرش نکند
+            }
+        };
+
+        if (token) {
+            fetchReviews();
+        }
+    }, [token]);
+
+
+    const reply = async (id: number) => {
         const text = window.prompt('متن پاسخ:');
         if (!text) return;
-        // TODO: ارسال پاسخ به API
-        setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, replied: text } : r)));
+
+        try {
+            // ارسال پاسخ به API
+            const response = await fetch(`/api/doctor/reviews/${id}/reply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ reply: text })
+            });
+
+            if (response.ok) {
+                // آپدیت UI در صورت موفقیت
+                setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, replied: text } : r)));
+            } else {
+                alert('خطا در ثبت پاسخ');
+            }
+        } catch (error) {
+            console.error('Error sending reply:', error);
+            alert('خطا در ارتباط با سرور');
+        }
     };
 
     return (

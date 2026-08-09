@@ -17,6 +17,7 @@ import {
     ShoppingBag,
     FileText,
     Download,
+    Star, // اضافه شده برای امتیازدهی
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
@@ -46,23 +47,34 @@ const serviceTypeMap: Record<string, UserRequestServiceType> = {
     nurse: 'nurse',
 };
 
+// نگاشت معکوس برای ارسال به API ثبت نظر
+const reverseServiceTypeMap: Record<string, string> = {
+    consultation: 'doctor',
+    lab: 'lab',
+    pharmacy: 'pharmacy',
+    nurse: 'nurse',
+};
+
 const mapToStatusGroup = (type: string, rawStatus: string | number): UserRequestStatusGroup => {
-    const s = typeof rawStatus === 'string' ? rawStatus : Number(rawStatus);
+    // تبدیل امن به رشته برای جلوگیری از خطای نوع داده (Type Mismatch)
+    const s = String(rawStatus);
+
     switch (type) {
         case 'doctor':
+            if (s === 'completed' || s === '3' || s === 'done') return 'completed';
             if (s === 'cancelled') return 'cancelled';
             return 'active';
         case 'lab':
-            if (s === 4 || s === 5) return 'completed';
-            if (s === 6) return 'cancelled';
+            if (s === '4' || s === '5') return 'completed';
+            if (s === '6') return 'cancelled';
             return 'active';
         case 'pharmacy':
-            if (s === 5 || s === 6) return 'completed';
-            if (s === 7) return 'cancelled';
+            if (s === '5' || s === '6') return 'completed';
+            if (s === '7') return 'cancelled';
             return 'active';
         case 'nurse':
-            if (s === 4) return 'completed';
-            if (s === 5) return 'cancelled';
+            if (s === '4') return 'completed';
+            if (s === '5') return 'cancelled';
             return 'active';
         default:
             return 'active';
@@ -151,7 +163,6 @@ interface PharmacyRequestDetail {
     }[];
 }
 
-// ساختار جزئیات درخواست آزمایشگاه (بر اساس API اصلاح‌شده)
 interface LabRequestDetail {
     id: number;
     status: number;
@@ -161,12 +172,12 @@ interface LabRequestDetail {
     visit_type_label: string;
     request_date: string;
     lab_name: string;
-    address: string | null; // آدرس در صورت وجود
+    address: string | null;
     tests: {
         id: number;
         test_name: string;
         price: number;
-        result_file: string | null; // URL کامل فایل نتیجه
+        result_file: string | null;
     }[];
 }
 
@@ -217,7 +228,6 @@ export function OrdersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // تابع بازخوانی لیست سفارش‌ها
     const fetchOrders = async () => {
         if (!accessToken) {
             setLoading(false);
@@ -239,7 +249,9 @@ export function OrdersPage() {
 
             const mapped: UserRequestOrder[] = json.data.orders.map((item) => {
                 const serviceType = serviceTypeMap[item.type] ?? 'lab';
+                console.log(serviceType)
                 const group = mapToStatusGroup(item.type, item.status);
+                console.log(group)
                 return {
                     id: item.id,
                     serviceType,
@@ -348,7 +360,6 @@ export function OrdersPage() {
                     )}
                 </header>
 
-                {/* فیلتر نوع سرویس */}
                 <div className="mb-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {serviceFilters.map((item) => {
                         const active = serviceFilter === item.key;
@@ -369,7 +380,6 @@ export function OrdersPage() {
                     })}
                 </div>
 
-                {/* گروه وضعیت */}
                 <div className="mb-4 grid grid-cols-4 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-gray-100">
                     {statusGroups.map((group) => {
                         const active = statusGroup === group;
@@ -412,7 +422,6 @@ export function OrdersPage() {
                     if (!open) setSelected(null);
                 }}
                 onOrderUpdate={(updatedOrder) => {
-                    // به‌روزرسانی سفارش در لیست
                     setOrders((prev) =>
                         prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
                     );
@@ -493,7 +502,7 @@ function OrderCard({ order, onOpen }: { order: UserRequestOrder; onOpen: () => v
     );
 }
 
-/* ───────────────────── شیت جزئیات (با پشتیبانی از آزمایشگاه) ───────────────────── */
+/* ───────────────────── شیت جزئیات و نظرات ───────────────────── */
 function OrderDetailSheet({
                               order,
                               open,
@@ -509,7 +518,6 @@ function OrderDetailSheet({
 }) {
     const { accessToken } = useAuthStore();
 
-    // وضعیت‌های داروخانه، پرستاری، آزمایشگاه
     const [detailData, setDetailData] = useState<PharmacyRequestDetail | null>(null);
     const [nurseData, setNurseData] = useState<NurseRequestDetail | null>(null);
     const [labData, setLabData] = useState<LabRequestDetail | null>(null);
@@ -518,8 +526,19 @@ function OrderDetailSheet({
     const [detailError, setDetailError] = useState<string | null>(null);
     const [paying, setPaying] = useState(false);
 
+    // استیت‌های مربوط به ثبت نظر
+    const [rating, setRating] = useState(0);
+    const [comment, setComment] = useState('');
+    const [reviewLoading, setReviewLoading] = useState(false);
+    const [reviewMessage, setReviewMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
     useEffect(() => {
         if (!order) return;
+
+        // ریست کردن استیت نظرات
+        setRating(0);
+        setComment('');
+        setReviewMessage(null);
 
         const fetchData = async () => {
             setDetailLoading(true);
@@ -559,14 +578,12 @@ function OrderDetailSheet({
             }
         };
 
-        // ریست کردن استیت‌ها
         setDetailData(null);
         setNurseData(null);
         setLabData(null);
         fetchData();
     }, [order?.id, order?.serviceType, accessToken]);
 
-    // پرداخت برای آزمایشگاه
     const handleLabPay = async () => {
         if (!order || !labData) return;
         setPaying(true);
@@ -583,7 +600,6 @@ function OrderDetailSheet({
                 throw new Error(json.message || 'پرداخت ناموفق بود');
             }
 
-            // به‌روزرسانی وضعیت محلی
             const updatedOrder: UserRequestOrder = {
                 ...order,
                 status: 'active',
@@ -591,10 +607,8 @@ function OrderDetailSheet({
             };
             if (onOrderUpdate) onOrderUpdate(updatedOrder);
 
-            // به‌روزرسانی labData
             setLabData((prev) => prev ? { ...prev, status: 2, status_label: 'در انتظار نمونه‌گیری' } : null);
 
-            // بازخوانی لیست سفارش‌ها (اختیاری)
             if (refreshOrders) refreshOrders();
 
         } catch (err: any) {
@@ -604,14 +618,52 @@ function OrderDetailSheet({
         }
     };
 
+    // تابع ارسال نظر به سرور
+    const handleSubmitReview = async () => {
+        if (!order || rating === 0) return;
+        setReviewLoading(true);
+        setReviewMessage(null);
+
+        try {
+            const apiOrderType = reverseServiceTypeMap[order.serviceType] || order.serviceType;
+
+            const res = await fetch('http://185.222.163.113:7000/api/user/reviews', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    order_id: order.id,
+                    order_type: apiOrderType,
+                    rating,
+                    comment
+                })
+            });
+
+            const json = await res.json();
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || 'خطا در ثبت نظر');
+            }
+
+            setReviewMessage({ type: 'success', text: 'نظر شما با موفقیت ثبت شد.' });
+        } catch (err: any) {
+            setReviewMessage({ type: 'error', text: err.message });
+        } finally {
+            setReviewLoading(false);
+        }
+    };
+
     if (!order) return null;
 
     const Icon = serviceIcons[order.serviceType];
+    console.log(order)
     const statusClass = getStatusClass(order.status);
-
-    // آیا باید دکمه پرداخت نمایش داده شود؟
     const showPayButton = order.serviceType === 'lab' && labData && labData.status === 1;
-
+    console.log(order.status,'coplete status')
+    const isCompleted = order.status === 'completed'; // بررسی تکمیل بودن سفارش برای ثبت نظر
+   console.log(isCompleted,'coplete status')
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -641,7 +693,6 @@ function OrderDetailSheet({
                 </SheetHeader>
 
                 <div className="mt-5 space-y-3">
-                    {/* لودینگ و خطا عمومی */}
                     {detailLoading && (
                         <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
@@ -669,24 +720,6 @@ function OrderDetailSheet({
                                     </div>
                                 ))}
                             </div>
-
-                            {nurseData.staff && (
-                                <div className="rounded-2xl bg-blue-50/50 p-3 text-sm border border-blue-100">
-                                    <p className="text-xs font-semibold text-blue-800 mb-1">پرستار اعزامی:</p>
-                                    <p className="text-gray-800">{nurseData.staff.name} - {nurseData.staff.mobile}</p>
-                                </div>
-                            )}
-
-                            {nurseData.extra_info?.report && (
-                                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm space-y-2">
-                                    <p className="font-semibold text-emerald-800 border-b border-emerald-100 pb-2">گزارش ویزیت پرستار</p>
-                                    <p className="text-gray-700"><span className="text-xs font-semibold">اقدامات:</span> {nurseData.extra_info.report.services_performed}</p>
-                                    <p className="text-gray-700"><span className="text-xs font-semibold">وضعیت بیمار:</span> {nurseData.extra_info.report.patient_condition}</p>
-                                    {nurseData.extra_info.report.recommendations && (
-                                        <p className="text-gray-700"><span className="text-xs font-semibold">توصیه ها:</span> {nurseData.extra_info.report.recommendations}</p>
-                                    )}
-                                </div>
-                            )}
                         </>
                     )}
 
@@ -706,7 +739,7 @@ function OrderDetailSheet({
                         </>
                     )}
 
-                    {/* === بخش اختصاصی آزمایشگاه (بر اساس ساختار جدید) === */}
+                    {/* === بخش اختصاصی آزمایشگاه === */}
                     {order.serviceType === 'lab' && labData && !detailLoading && (
                         <>
                             <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2">
@@ -721,12 +754,7 @@ function OrderDetailSheet({
                                             <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
                                                 <FileText className="h-4 w-4" />
                                                 <span>نتیجه: </span>
-                                                <a
-                                                    href={test.result_file}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="underline hover:text-blue-800 flex items-center gap-1"
-                                                >
+                                                <a href={test.result_file} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-800 flex items-center gap-1">
                                                     <Download className="h-3 w-3" /> دانلود
                                                 </a>
                                             </div>
@@ -735,9 +763,6 @@ function OrderDetailSheet({
                                 ))}
                             </div>
                             <DetailRow label="آزمایشگاه" value={labData.lab_name} />
-                            {labData.address && <DetailRow label="آدرس" value={labData.address} />}
-                            <DetailRow label="نوع مراجعه" value={labData.visit_type_label} />
-                            <DetailRow label="تاریخ درخواست" value={toJalaliDate(labData.request_date)} />
                         </>
                     )}
 
@@ -779,23 +804,74 @@ function OrderDetailSheet({
                             )}
                         </button>
                     )}
+
+                    {/* === فرم ثبت نظر برای سفارشات تکمیل شده === */}
+                    {isCompleted && !detailLoading && (
+                        <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                            <h4 className="text-sm font-semibold text-gray-800 mb-3">ثبت نظر درباره این سفارش</h4>
+
+                            {reviewMessage?.type === 'success' ? (
+                                <div className="text-sm text-emerald-600 bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center">
+                                    {reviewMessage.text}
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-center gap-2 mb-2">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button
+                                                key={star}
+                                                type="button"
+                                                onClick={() => setRating(star)}
+                                                className="focus:outline-none transition-transform hover:scale-110"
+                                            >
+                                                <Star
+                                                    className={`h-7 w-7 ${
+                                                        rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                                    }`}
+                                                />
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <textarea
+                                        className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                                        rows={3}
+                                        placeholder="نظر خود را درباره نحوه خدمت رسانی بنویسید (اختیاری)..."
+                                        value={comment}
+                                        onChange={(e) => setComment(e.target.value)}
+                                        disabled={reviewLoading}
+                                    />
+                                    {reviewMessage?.type === 'error' && (
+                                        <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg text-center">
+                                            {reviewMessage.text}
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={handleSubmitReview}
+                                        disabled={rating === 0 || reviewLoading}
+                                        className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center gap-2"
+                                    >
+                                        {reviewLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                        ارسال نظر
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </SheetContent>
         </Sheet>
     );
 }
 
-/* ───────────────────── ردیف جزئیات ───────────────────── */
 function DetailRow({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex items-start justify-between gap-3 rounded-2xl bg-gray-50 px-3 py-2.5">
+        <div className="flex items-start justify-between gap-3 rounded-2xl bg-white border border-gray-100 px-3 py-2.5">
             <span className="shrink-0 text-[11px] font-medium text-gray-500">{label}</span>
-            <span className="text-left text-sm text-gray-800">{value}</span>
+            <span className="text-left text-sm text-gray-800 font-medium">{value}</span>
         </div>
     );
 }
 
-/* ───────────────────── حالت خالی ───────────────────── */
 function EmptyOrders({ onBrowse }: { onBrowse: () => void }) {
     return (
         <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-200 bg-white px-6 py-14 text-center">

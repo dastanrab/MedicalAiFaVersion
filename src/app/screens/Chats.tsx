@@ -21,6 +21,20 @@ const API_BASE = 'http://185.222.163.113:7000';
 const MAX_RECONNECT_ATTEMPTS = 10;
 const TYPING_THROTTLE_MS = 500;
 
+type Notification = {
+  id: number;
+  title: string;
+  description: string;
+  time: string;
+  isRead: boolean;
+  type: 'system' | 'alert' | 'info';
+};
+
+const MOCK_NOTIFICATIONS: Notification[] = [
+  { id: 1, title: 'پذیرش بیمار جدید', description: 'بیمار علی حسینی پذیرش شد.', time: '10:00', isRead: false, type: 'info' },
+  { id: 2, title: 'جواب آزمایش', description: 'جواب آزمایش بیمار مریم احمدی آماده است.', time: '12:30', isRead: false, type: 'alert' },
+  { id: 3, title: 'به‌روزرسانی سیستم', description: 'سیستم امشب ساعت 24 به‌روزرسانی می‌شود.', time: 'دیروز', isRead: true, type: 'system' },
+];
 type Message = {
   id: number;
   sender: 'user' | 'other';
@@ -62,7 +76,8 @@ const MOCK_USERS: User[] = [
 export function Chats() {
   const navigate = useNavigate();
   const { accessToken } = useAuthStore();
-
+  const [activeTab, setActiveTab] = useState<'messages' | 'notifications'>('messages');
+  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
   const [userId, setUserId] = useState<number | null>(null);
   const userIdRef = useRef<number | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -665,7 +680,7 @@ export function Chats() {
   return (
       <div className="flex h-screen bg-white" dir="rtl">
         <div className={`${isMobile ? 'w-full' : 'w-72'} flex-shrink-0 flex flex-col border-l border-gray-100`}>
-          <div className="px-4 py-3 border-b border-gray-100 space-y-2">
+          <div className="px-4 py-3 border-b border-gray-100 space-y-3">
             <div className="flex items-center justify-between">
               <button
                   onClick={() => navigate('/home')}
@@ -674,67 +689,99 @@ export function Chats() {
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm font-medium text-gray-800">پیام‌ها</span>
+              <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+                <button
+                    onClick={() => setActiveTab('messages')}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                        activeTab === 'messages' ? 'bg-white text-blue-600 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                  پیام‌ها
+                </button>
+                <button
+                    onClick={() => setActiveTab('notifications')}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                        activeTab === 'notifications' ? 'bg-white text-blue-600 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                  اعلان‌ها
+                </button>
+              </div>
               <div className={`w-2 h-2 rounded-full ${dot}`} title={status} />
             </div>
-            <div className="relative">
-              <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
-              <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="جستجو..."
-                  className="pr-8 text-xs h-8 bg-gray-50 border-0 focus-visible:ring-0 text-right"
-              />
-            </div>
+
+            {activeTab === 'messages' && (
+                <div className="relative">
+                  <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
+                  <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="جستجو..."
+                      className="pr-8 text-xs h-8 bg-gray-50 border-0 focus-visible:ring-0 text-right"
+                  />
+                </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {filteredUsers.map((user) => (
-                <button
-                    key={user.id}
-                    onClick={() => handleUserSelect(user.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-gray-50 border-b border-gray-50 transition-colors ${
-                        selectedUser === user.id ? 'bg-blue-50' : ''
-                    }`}
-                >
-                  <div className="relative flex-shrink-0">
-                    <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 text-xs font-medium">
-                      {user.avatar}
-                    </div>
-                    {user.isOnline && (
-                        <div className="absolute bottom-0 left-0 w-2.5 h-2.5 bg-green-400 rounded-full border border-white" />
-                    )}
-                  </div>
+            {activeTab === 'messages' ? (
+                filteredUsers.map((user) => (
+                    <button
+                        key={user.id}
+                        onClick={() => handleUserSelect(user.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-gray-50 border-b border-gray-50 transition-colors ${
+                            selectedUser === user.id ? 'bg-blue-50' : ''
+                        }`}
+                    >
+                      <div className="relative flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 text-xs font-medium">
+                          {user.avatar}
+                        </div>
+                        {user.isOnline && (
+                            <div className="absolute bottom-0 left-0 w-2.5 h-2.5 bg-green-400 rounded-full border border-white" />
+                        )}
+                      </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-gray-800 truncate">
-                    {user.name}
-                  </span>
-
-                      {user.lastMessageTime && (
-                          <span className="text-[10px] text-gray-400 flex-shrink-0">
-                      {user.lastMessageTime}
-                    </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 mt-0.5">
-                      <p className="text-xs text-gray-400 truncate">
-                        {typingUsers.has(user.id)
-                            ? 'در حال نوشتن...'
-                            : user.lastMessage}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-gray-800 truncate">
+                        {user.name}
+                      </span>
+                          {user.lastMessageTime && (
+                              <span className="text-[10px] text-gray-400 flex-shrink-0">
+                          {user.lastMessageTime}
+                        </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                          <p className="text-xs text-gray-400 truncate">
+                            {typingUsers.has(user.id) ? 'در حال نوشتن...' : user.lastMessage}
+                          </p>
+                          {user.unreadCount > 0 && (
+                              <span className="min-w-[18px] h-[18px] rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center px-1">
+                          {user.unreadCount}
+                        </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                ))
+            ) : (
+                notifications.map((notif) => (
+                    <div key={notif.id} className={`p-4 border-b border-gray-50 ${!notif.isRead ? 'bg-blue-50/50' : ''}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          {!notif.isRead && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />}
+                          <h4 className="text-sm font-medium text-gray-800">{notif.title}</h4>
+                        </div>
+                        <span className="text-[10px] text-gray-400">{notif.time}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 text-right leading-relaxed mr-3">
+                        {notif.description}
                       </p>
-
-                      {user.unreadCount > 0 && (
-                          <span className="min-w-[18px] h-[18px] rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center px-1">
-                      {user.unreadCount}
-                    </span>
-                      )}
                     </div>
-                  </div>
-                </button>
-            ))}
+                ))
+            )}
           </div>
         </div>
 
