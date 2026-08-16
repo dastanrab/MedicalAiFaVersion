@@ -54,6 +54,14 @@ const reverseServiceTypeMap: Record<string, string> = {
     pharmacy: 'pharmacy',
     nurse: 'nurse',
 };
+const doctorStatusLabelMap: Record<string, string> = {
+    booked: 'رزرو شده',
+    done: 'انجام شده',
+    canceled: 'لغو شده',
+    cancelled: 'لغو شده',
+    completed: 'تکمیل شده'
+};
+
 
 const mapToStatusGroup = (type: string, rawStatus: string | number): UserRequestStatusGroup => {
     // تبدیل امن به رشته برای جلوگیری از خطای نوع داده (Type Mismatch)
@@ -249,14 +257,20 @@ export function OrdersPage() {
 
             const mapped: UserRequestOrder[] = json.data.orders.map((item) => {
                 const serviceType = serviceTypeMap[item.type] ?? 'lab';
-                console.log(serviceType)
                 const group = mapToStatusGroup(item.type, item.status);
-                console.log(group)
+
+                // جایگزینی لیبل وضعیت برای دکتر در صورت وجود در مپ
+                let finalStatusLabel = item.status_label;
+                if (item.type === 'doctor') {
+                    const rawStatus = String(item.status).toLowerCase();
+                    finalStatusLabel = doctorStatusLabelMap[rawStatus] ?? item.status_label;
+                }
+
                 return {
                     id: item.id,
                     serviceType,
                     status: group,
-                    status_label: item.status_label,
+                    status_label: finalStatusLabel, // استفاده از لیبل ترجمه شده
                     title:
                         serviceType !== 'consultation'
                             ? serviceTypeLabels[serviceType]

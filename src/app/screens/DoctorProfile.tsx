@@ -91,34 +91,67 @@ export function DoctorProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-
-  // تغییر به State برای مدیریت سشن
+  console.log(id)
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // استیت جدید برای نگهداری زمان باقی‌مانده (TTL)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    // 1. بررسی state مربوط به react-router (تب فعلی)
     let currentSessionId = location.state?.sessionId || null;
+    let timer: NodeJS.Timeout; // تعریف تایمر
 
-    // 2. بررسی sessionStorage (تب جدید)
     if (!currentSessionId) {
-      const contextData = sessionStorage.getItem('diagnosis_doctor_context');
-      if (contextData) {
+      const contextStr = sessionStorage.getItem('diagnosis_doctor_context_'+id);
+
+      if (contextStr) {
         try {
-          const parsedData = JSON.parse(contextData);
-          currentSessionId = parsedData.sessionId;
+          const parsedData = JSON.parse(contextStr);
+          const now = new Date().getTime();
+          if (parsedData.expiry && now > parsedData.expiry) {
+            console.log("Session context expired.");
+            sessionStorage.removeItem('diagnosis_doctor_context');
+          } else {
+            currentSessionId = parsedData.sessionId;
+
+            // محاسبه و فعال‌سازی تایمر
+            if (parsedData.expiry) {
+              const initialTimeLeft = Math.floor((parsedData.expiry - now) / 1000);
+              setTimeLeft(initialTimeLeft);
+
+              timer = setInterval(() => {
+                const currentTime = new Date().getTime();
+                const remaining = Math.floor((parsedData.expiry - currentTime) / 1000);
+
+                if (remaining <= 0) {
+                  clearInterval(timer);
+                  setTimeLeft(null);
+                  setSessionId(null);
+                  sessionStorage.removeItem('diagnosis_doctor_context');
+                } else {
+                  setTimeLeft(remaining);
+                }
+              }, 1000);
+            }
+          }
         } catch (e) {
           console.error("Error parsing session context", e);
+          sessionStorage.removeItem('diagnosis_doctor_context');
         }
       }
     }
 
     setSessionId(currentSessionId);
+
+    // پاکسازی تایمر در صورت خروج از کامپوننت
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [location.state]);
+
 
   const [currentUser, setCurrentUser] = useState<any>(null);
 
 
-  // استیت‌های مربوط به سیستم پیشنهاد همکار
   const [recommenders, setRecommenders] = useState<any[]>([]);
   const [isRecommendedByMe, setIsRecommendedByMe] = useState(false);
   const [isTogglingRecommendation, setIsTogglingRecommendation] = useState(false);
@@ -161,7 +194,6 @@ export function DoctorProfile() {
     }
   }, [doctorData?.id, accessToken]);
 
-  // دریافت اطلاعات کاربر فعلی از سرور (برای اطمینان از نقش کاربر)
   const fetchUserProfile = async () => {
     try {
       const response = await fetch('http://185.222.163.113:7000/api/user/profile', {
@@ -179,8 +211,6 @@ export function DoctorProfile() {
     }
   };
 
-  // دریافت لیست پزشکان پیشنهاد دهنده
-  // دریافت لیست پزشکان پیشنهاد دهنده
   const fetchRecommendations = async () => {
     try {
       const headers: any = { 'Accept': 'application/json' };
@@ -190,7 +220,6 @@ export function DoctorProfile() {
       const response = await fetch(`http://185.222.163.113:7000/api/user/doctors/${id}/recommendations`, { headers });
       if (response.ok) {
         const result = await response.json();
-        // اصلاح مسیر خواندن دیتا
         if (result.success && result.data) {
           setRecommenders(result.data.recommenders || []);
           setIsRecommendedByMe(result.data.is_recommended_by_me || false);
@@ -201,8 +230,6 @@ export function DoctorProfile() {
     }
   };
 
-
-  // ثبت یا لغو پیشنهاد
   const handleToggleRecommendation = async () => {
     if (!accessToken) return;
     setIsTogglingRecommendation(true);
@@ -437,6 +464,13 @@ export function DoctorProfile() {
     return new Intl.DateTimeFormat('fa-IR', options).format(date);
   };
 
+  // تابع قالب‌بندی زمان باقی‌مانده (سشن)
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   async function startChat() {
     try {
       const response = await fetch('http://185.222.163.113:7000/api/user/chat/rooms', {
@@ -523,14 +557,25 @@ export function DoctorProfile() {
     }
   ];
 
-  // بررسی نقش کاربر با توجه به دیتای دریافت‌شده از سرور
   const isDoctor = currentUser?.user?.role === 'doctor' || currentUser?.role === 2;
-  console.log(isDoctor,currentUser)
 
   return (
       <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white" dir="rtl">
         <AppBar backTo="/doctors" />
         <div className="pt-24 px-6 pb-24">
+
+          {/* پاپ‌آپ زمان باقی‌مانده سشن (TTL) */}
+          {timeLeft !== null && timeLeft > 0 && (
+              <div className="fixed bottom-24 left-4 sm:bottom-4 sm:left-4 z-50 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-500" />
+                <div>
+                  <p className="font-semibold text-sm">یک سشن تشخیص فعال وجود دارد!</p>
+                  <p className="text-xs">
+                    زمان باقی‌مانده برای ارسال: <span className="font-bold text-blue-600 font-mono" dir="ltr">{formatTime(timeLeft)}</span>
+                  </p>
+                </div>
+              </div>
+          )}
 
           {/* کارت پروفایل پزشک */}
           <Card className="p-6 shadow-xl border-0 mb-6">
@@ -622,8 +667,7 @@ export function DoctorProfile() {
             )}
           </Card>
 
-          {/* کارت ثبت پیشنهاد (تنها برای پزشکان لاگین شده و غیر از صاحب پروفایل) */}
-          {/* کارت ثبت پیشنهاد (تنها برای پزشکان لاگین شده و غیر از صاحب پروفایل) */}
+          {/* کارت ثبت پیشنهاد */}
           {isDoctor && currentUser?.id !== doctorData.id && (
               <Card className="p-4 shadow-lg border-0 mb-6 bg-blue-50">
                 <div className="flex items-center justify-between">
@@ -633,7 +677,6 @@ export function DoctorProfile() {
                   </div>
                   <Button
                       onClick={handleToggleRecommendation}
-                      // اضافه کردن isRecommendedByMe به شرط غیرفعال بودن دکمه
                       disabled={isTogglingRecommendation || isRecommendedByMe}
                       variant={isRecommendedByMe ? "default" : "outline"}
                       className={isRecommendedByMe ? "bg-blue-600 opacity-100" : "border-blue-600 text-blue-600"}
@@ -644,7 +687,6 @@ export function DoctorProfile() {
                 </div>
               </Card>
           )}
-
 
           {/* بخش نقشه */}
           <Card className="overflow-hidden shadow-lg border-0 mb-6">

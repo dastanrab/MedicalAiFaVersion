@@ -542,10 +542,15 @@ export function DiagnosisResultV1() {
                                                     key={doctor.id}
                                                     className="flex-none w-28 bg-white rounded-xl p-3 text-center shadow-sm border border-gray-50 transition-all hover:shadow-md cursor-pointer"
                                                     onClick={() => {
-                                                        // ذخیره اطلاعات در استوریج
-                                                        sessionStorage.setItem('diagnosis_doctor_context', JSON.stringify({
+                                                        const ttl = 5 * 60 * 1000;
+                                                        const now = new Date().getTime();
+
+                                                        // ذخیره اطلاعات همراه با زمان انقضا
+                                                        sessionStorage.setItem('diagnosis_doctor_context_'+doctor.id, JSON.stringify({
+                                                            doctor_id:doctor.id,
                                                             sessionId: sessionId,
-                                                            source: 'diagnosis'
+                                                            source: 'diagnosis',
+                                                            expiry: now + ttl // زمان انقضا
                                                         }));
 
                                                         // باز کردن تب جدید

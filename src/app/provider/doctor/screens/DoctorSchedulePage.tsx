@@ -78,12 +78,18 @@ export function DoctorSchedulePage() {
     );
 
     const markedDates = useMemo(() => {
-        const map: Record<string, number> = {};
+        const map: Record<string, string> = {};
         for (const item of calendarSummary) {
-            map[gregorianToJalaliKey(item.slot_date)] = Number(item.total_slots);
+            // JalaliCalendar expects a string formatted as: "booked \n done \n available"
+            const booked = item.booked_slots > 0 ? toFaDigits(item.booked_slots) : '';
+            const done = item.done_slots > 0 ? toFaDigits(item.done_slots) : '';
+            const available = item.available_slots > 0 ? toFaDigits(item.available_slots) : '';
+
+            map[gregorianToJalaliKey(item.slot_date)] = `${booked}\n${done}\n${available}`;
         }
         return map;
     }, [calendarSummary]);
+
 
     const dayAppointments = useMemo(
         () => slots.filter((slot) => slot.status === 'booked' || slot.status === 'done'),
