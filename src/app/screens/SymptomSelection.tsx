@@ -210,6 +210,18 @@ export function SymptomSelection() {
           <div className="relative z-10 -mt-[1.625rem] px-1">
             <div className="flex h-12 gap-1 rounded-full bg-white px-1 pb-1 pt-[3px] shadow-[0_4px_20px_rgba(0,0,0,0.08)] ring-1 ring-gray-100">
               <button
+                  type="button"
+                  onClick={() => setMode('text')}
+                  className={`flex h-full flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all duration-200 ${
+                      mode === 'text'
+                          ? 'bg-gradient-to-l from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/30'
+                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                  }`}
+              >
+                <FileText className="h-4 w-4 shrink-0" />
+                <span>توضیح آزاد</span>
+              </button>
+              <button
                 type="button"
                 onClick={() => setMode('select')}
                 className={`flex h-full flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all duration-200 ${
@@ -221,18 +233,7 @@ export function SymptomSelection() {
                 <CheckSquare className="h-4 w-4 shrink-0" />
                 <span>انتخاب از لیست</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setMode('text')}
-                className={`flex h-full flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all duration-200 ${
-                  mode === 'text'
-                    ? 'bg-gradient-to-l from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/30'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-                }`}
-              >
-                <FileText className="h-4 w-4 shrink-0" />
-                <span>توضیح آزاد</span>
-              </button>
+
             </div>
           </div>
         </div>
@@ -431,6 +432,14 @@ export function SymptomSelection() {
                     setFreeText(e.target.value);
                     if (error) setError(null);
                   }}
+                  onKeyDown={(e) => {
+                    // اگر Enter و Shift نبود، ارسال کن
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmitFreeText();
+                    }
+                  }}
+
                   rows={5}
                   className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50/50 p-4 text-right text-sm leading-relaxed transition-colors placeholder:text-gray-400 focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="مثال: از دیروز سردرد شدید دارم و تب کرده‌ام..."

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, MapPin, Filter, Star, ChevronDown, ThumbsUp, BadgeCheck, Stethoscope, Heart, Sparkles } from 'lucide-react';
 import { Input } from '../components/ui/input';
@@ -24,7 +24,7 @@ import {
 } from '../components/ui/select';
 import { AppBar } from '../components/AppBar';
 import { PageLoader } from '../components/PageLoader';
-import {useAuthStore} from "../store/authStore";
+import { useAuthStore } from "../store/authStore";
 
 interface Doctor {
   id: number;
@@ -59,7 +59,13 @@ export function DoctorList() {
   const navigate = useNavigate();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // استیت‌های جستجو و کلمات کلیدی
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionRef = useRef<HTMLDivElement>(null);
+
   const [selectedProvince, setSelectedProvince] = useState<string>('all');
   const [selectedCity, setSelectedCity] = useState<string>('all');
   const [selectedGender, setSelectedGender] = useState<string>('all');
@@ -71,16 +77,31 @@ export function DoctorList() {
   const provinces = ['خراسان رضوی', 'تهران', 'اصفهان', 'شیراز'];
   const cities = ['مشهد', 'تهران', 'اصفهان', 'شیراز'];
   const ranks = ['پزشک', 'پزشک ارشد', 'متخصص', 'متخصص ارشد'];
+
   const { accessToken } = useAuthStore();
+
+  // بستن منوی پیشنهادات در صورت کلیک در خارج از آن
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     fetchDoctors();
   }, []);
 
-  const fetchDoctors = async () => {
+  // گرفتن لیست پزشکان با پشتیبانی از کلمه جستجو
+  const fetchDoctors = async (queryStr = '') => {
+    setLoading(true);
     try {
+      const url = `http://185.222.163.113:7000/api/user/diagnosis/doctors${queryStr ? `?query=${encodeURIComponent(queryStr)}` : ''}`;
 
-
-      const response = await fetch('http://185.222.163.113:7000/api/user/diagnosis/doctors', {
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -106,6 +127,41 @@ export function DoctorList() {
     }
   };
 
+  // دریافت کلمات کلیدی پیشنهادی
+  const fetchSuggestions = async (text: string) => {
+    if (text.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const response = await fetch(`http://185.222.163.113:7000/api/user/diagnosis/keywords/suggest?q=${encodeURIComponent(text)}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSuggestions(result.data);
+        setShowSuggestions(true);
+      }
+    } catch (error) {
+      console.error('خطا در دریافت پیشنهادات جستجو:', error);
+    }
+  };
+
+  // هندلر تغییرات اینپوت جستجو
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    fetchSuggestions(value);
+    if (value === '') fetchDoctors(''); // بازگردانی لیست کامل در صورت خالی شدن
+  };
+
+  // هندلر ارسال نهایی جستجو
+  const handleSearchSubmit = (query: string) => {
+    setSearchQuery(query);
+    setShowSuggestions(false);
+    fetchDoctors(query);
+  };
+
   const getAvailabilityText = (availability: number) => {
     return availability === 0 ? 'رزرو شده' : 'فردا';
   };
@@ -115,19 +171,15 @@ export function DoctorList() {
     aiApproved: index === 0 || (doctor.id * 7 + 3) % 5 < 3,
   }));
 
+  // فیلترهای استانی و تخصص (جستجوی متنی حذف شد چون سمت سرور است)
   const filteredDoctors = doctorsWithMeta.filter((doctor) => {
-    const matchesSearch =
-        doctor.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (doctor.lastName && doctor.lastName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        doctor.specialty.toLowerCase().includes(searchQuery.toLowerCase());
-
     const matchesProvince = selectedProvince === 'all' || doctor.province === selectedProvince;
     const matchesCity = selectedCity === 'all' || doctor.city === selectedCity;
     const matchesGender = selectedGender === 'all' || doctor.gender === selectedGender;
     const matchesSpecialty = selectedSpecialties.length === 0 || selectedSpecialties.includes(doctor.specialty);
     const matchesRank = selectedRanks.length === 0 || (doctor.rank && selectedRanks.includes(doctor.rank));
 
-    return matchesSearch && matchesProvince && matchesCity && matchesGender && matchesSpecialty && matchesRank;
+    return matchesProvince && matchesCity && matchesGender && matchesSpecialty && matchesRank;
   });
 
   const toggleSpecialty = (specialty: string) => {
@@ -193,14 +245,35 @@ export function DoctorList() {
             </div>
 
             <div className="relative z-10 -mt-9 flex gap-2.5 px-1">
-              <div className="relative flex-1">
-                <Search className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-400" />
+              <div className="relative flex-1" ref={suggestionRef}>
+                <Search
+                    className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-400 cursor-pointer"
+                    onClick={() => handleSearchSubmit(searchQuery)}
+                />
                 <Input
-                    placeholder="جستجوی پزشک..."
+                    placeholder="جستجوی پزشک، تخصص یا علائم..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={handleSearchChange}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(searchQuery)}
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                     className="h-12 rounded-full border-0 bg-white pr-11 text-right shadow-[0_4px_20px_rgba(0,0,0,0.08)] ring-1 ring-gray-100 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-300"
                 />
+
+                {/* منوی بازشوی کلمات کلیدی پیشنهادی */}
+                {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-14 w-full bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
+                      {suggestions.map((suggestion, idx) => (
+                          <div
+                              key={idx}
+                              className="px-4 py-3 text-right text-gray-700 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 flex items-center justify-between"
+                              onClick={() => handleSearchSubmit(suggestion)}
+                          >
+                            <span>{suggestion}</span>
+                            <Search className="h-3.5 w-3.5 text-gray-400" />
+                          </div>
+                      ))}
+                    </div>
+                )}
               </div>
 
               <Sheet>
@@ -222,11 +295,12 @@ export function DoctorList() {
                     <div>
                       <h3 className="text-lg mb-3 text-gray-900">جستجو بر اساس نام</h3>
                       <div className="relative">
-                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 cursor-pointer" onClick={() => handleSearchSubmit(searchQuery)} />
                         <Input
                             placeholder="نام پزشک را وارد کنید..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={handleSearchChange}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(searchQuery)}
                             className="pr-10 text-right"
                         />
                       </div>

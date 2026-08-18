@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Calendar as CalendarIcon,
     Droplets,
     Heart,
     Plus,
     ChevronLeft,
+    ChevronRight,
     X,
     MessageCircle,
     Sparkles,
@@ -13,16 +14,15 @@ import {
     CheckCircle2,
     Flame,
     Dumbbell,
-    ChevronRight,
-    Star,
-    Settings,
+    Flower,
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
 import { useAuthStore } from "../store/authStore";
-import {JalaliCalendarModal, gregorianToJalali, jalaliToGregorian, formatJalaliDate } from "../components/JalaliCalendarModal";
+import { JalaliCalendarModal, gregorianToJalali, jalaliToGregorian, formatJalaliDate } from "../components/JalaliCalendarModal";
 import { WorkoutModal } from '../components/WorkoutModal';
+import { jalaaliMonthLength } from 'jalaali-js';
 
 const API_BASE_URL = "http://185.222.163.113:7000/api/user";
 
@@ -32,8 +32,6 @@ export interface JalaliDate {
     jm: number;
     jd: number;
 }
-
-
 
 function parseGregorianString(dateStr: string): Date {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -76,15 +74,6 @@ const PHYSICAL_SYMPTOMS = [
     { id: 'acne', emoji: '🔴', label: 'جوش' },
     { id: 'back_pain', emoji: '🦴', label: 'کمر درد' },
 ];
-
-
-
-// ---------- Workout Modal Component ----------
-interface WorkoutModalProps {
-    open: boolean;
-    onClose: () => void;
-}
-
 
 // ---------- Insight Dialog Themes ----------
 interface InsightDialogTheme {
@@ -136,7 +125,6 @@ export default function PeriodTracker() {
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
     const [isSymptomsModalOpen, setIsSymptomsModalOpen] = useState(false);
     const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
-    const [isEditSettingsModalOpen, setIsEditSettingsModalOpen] = useState(false); // NEW
     const [isStartPeriodModalOpen, setIsStartPeriodModalOpen] = useState(false);
     const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
     const [activeInsight, setActiveInsight] = useState<HealthInsight | null>(null);
@@ -146,6 +134,10 @@ export default function PeriodTracker() {
 
     const [activeDateField, setActiveDateField] = useState<string | null>(null);
 
+    // Floating emojis state and refs
+    const [floatEmojis, setFloatEmojis] = useState<{ id: number; emoji: string; label: string; left: number; duration: number; size: number }[]>([]);
+    const emojiTimeoutRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
     const [setupData, setSetupData] = useState({
         last_period_start_date: getLocalDateString(new Date()),
         cycle_length: 28,
@@ -154,7 +146,9 @@ export default function PeriodTracker() {
 
     const [startPeriodData, setStartPeriodData] = useState({
         start_date: getLocalDateString(new Date()),
-        end_date: ''
+        end_date: '',
+        cycle_length: 28,
+        period_length: 5,
     });
 
     // Daily log states
@@ -170,11 +164,124 @@ export default function PeriodTracker() {
     const selectedJalali = useMemo(() => gregorianToJalali(selectedDate.getFullYear(), selectedDate.getMonth() + 1, selectedDate.getDate()), [selectedDate]);
     const selectedJalaliString = formatJalaliDate(selectedJalali);
 
+    // NEW: viewJalali state for the month strip
+    const [viewJalali, setViewJalali] = useState<JalaliDate>(() => {
+        const now = new Date();
+        return gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    });
+
+    // Sync viewJalali when selectedJalali changes (e.g., from calendar modal)
+    useEffect(() => {
+        setViewJalali(selectedJalali);
+    }, [selectedJalali]);
+
+    // Helper to shift Jalali month
+    const shiftJalaliMonth = (jalali: JalaliDate, delta: number): JalaliDate => {
+        const totalMonths = jalali.jy * 12 + (jalali.jm - 1) + delta;
+        const jy = Math.floor(totalMonths / 12);
+        const jm = (totalMonths % 12) + 1;
+        return { jy, jm, jd: 1 };
+    };
+
     useEffect(() => {
         setStartPeriodData(prev => ({ ...prev, start_date: selectedDateString }));
     }, [selectedDateString]);
 
-    // API calls
+    // تاریخ امروز به شمسی
+    const todayJalali = useMemo(
+        () => gregorianToJalali(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()),
+        []
+    );
+
+    // تاریخ هدف (تاریخ وارد شده توسط کاربر)
+    const targetJalali = useMemo(() => {
+        if (!trackerSettings?.last_period_start_date) return null;
+        const d = parseGregorianString(trackerSettings.last_period_start_date);
+        return gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    }, [trackerSettings]);
+
+    // Helper to spawn a floating emoji with label
+    const spawnFloatingEmoji = (emoji: string, label: string, left?: number) => {
+        const id = Date.now() + Math.random();
+        const leftPos = left !== undefined ? left : Math.random() * 80 + 10; // 10% to 90%
+        const duration = Math.random() * 1500 + 1500; // 1.5 to 3 seconds
+        const size = Math.random() * 10 + 26; // 26-36 px
+
+        setFloatEmojis(prev => [...prev, { id, emoji, label, left: leftPos, duration, size }]);
+
+        const removeTimeout = setTimeout(() => {
+            setFloatEmojis(prev => prev.filter(e => e.id !== id));
+        }, duration);
+        emojiTimeoutRef.current.push(removeTimeout);
+    };
+
+    // Effect to spawn floating emojis based on the selected date's daily log
+    useEffect(() => {
+        if (!dailyLog) return;
+
+        const itemsToFloat: { emoji: string; label: string }[] = [];
+
+        if (dailyLog.mood) {
+            const mood = MOODS.find(m => m.id === dailyLog.mood);
+            if (mood) itemsToFloat.push({ emoji: mood.emoji, label: mood.label });
+        }
+
+        dailyLog.symptoms?.forEach((foodId: string) => {
+            const food = FOODS.find(f => f.id === foodId);
+            if (food) itemsToFloat.push({ emoji: food.emoji, label: food.label });
+        });
+
+        dailyLog.physical_symptoms?.forEach((symptomId: string) => {
+            const symptom = PHYSICAL_SYMPTOMS.find(s => s.id === symptomId);
+            if (symptom) itemsToFloat.push({ emoji: symptom.emoji, label: symptom.label });
+        });
+
+        // Spawn each with a slight stagger
+        itemsToFloat.forEach((item, index) => {
+            const timeout = setTimeout(() => {
+                spawnFloatingEmoji(item.emoji, item.label);
+            }, index * 200); // 200ms stagger
+            emojiTimeoutRef.current.push(timeout);
+        });
+
+        // No cleanup needed for spawn timeouts; they will fire and spawn emojis.
+        // The removal timeouts will clean up the emojis later.
+        // On unmount, all timeouts are cleared in the main cleanup below.
+    }, [dailyLog]);
+
+    const handleSaveDailyLog = async () => {
+        if (!accessToken) return;
+        setLoading(true);
+        try {
+            const payload = {
+                log_date: selectedDateString,
+                mood: selectedMood || null,
+                symptoms: selectedFoods,
+                notes: symptomText || null,
+                water: selectedWater || 0,
+                calorie: selectedCalorie || 0,
+                physical_symptoms: selectedPhysicalSymptoms,
+            };
+            const res = await fetch(`${API_BASE_URL}/period-tracker/daily-log`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                setIsSymptomsModalOpen(false);
+                fetchDailyLog();
+            }
+        } catch (err) {
+            console.error("خطا در ثبت علائم:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // بارگذاری تنظیمات از سرور
     const fetchTrackerSettings = useCallback(async () => {
         if (!accessToken) return;
         try {
@@ -185,7 +292,6 @@ export default function PeriodTracker() {
                 const result = await res.json();
                 setTrackerSettings(result.data);
                 setIsSetupModalOpen(false);
-                setIsEditSettingsModalOpen(false); // NEW
             } else if (res.status === 404) {
                 setIsSetupModalOpen(true);
             }
@@ -232,6 +338,14 @@ export default function PeriodTracker() {
         fetchDailyLog();
     }, [fetchDailyLog]);
 
+    // Cleanup all timeouts on unmount
+    useEffect(() => {
+        return () => {
+            emojiTimeoutRef.current.forEach(clearTimeout);
+            emojiTimeoutRef.current = [];
+        };
+    }, []);
+
     const resetForm = () => {
         setSymptomText('');
         setSelectedMood('');
@@ -255,7 +369,6 @@ export default function PeriodTracker() {
             });
             if (res.ok) {
                 setIsSetupModalOpen(false);
-                setIsEditSettingsModalOpen(false); // NEW
                 fetchTrackerSettings();
             }
         } catch (err) {
@@ -265,78 +378,55 @@ export default function PeriodTracker() {
         }
     };
 
-    // NEW: open edit settings modal
-    const openEditSettings = () => {
-        if (trackerSettings) {
-            setSetupData({
-                last_period_start_date: trackerSettings.last_period_start_date,
-                cycle_length: trackerSettings.cycle_length,
-                period_length: trackerSettings.period_length,
-            });
-        }
-        setIsEditSettingsModalOpen(true);
-    };
-
-    const handleSaveDailyLog = async () => {
-        if (!accessToken) return;
-        setLoading(true);
-        try {
-            const payload = {
-                log_date: selectedDateString,
-                mood: selectedMood || null,
-                symptoms: selectedFoods,
-                notes: symptomText || null,
-                water: selectedWater || 0,
-                calorie: selectedCalorie || 0,
-                physical_symptoms: selectedPhysicalSymptoms,
-            };
-            const res = await fetch(`${API_BASE_URL}/period-tracker/daily-log`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                setIsSymptomsModalOpen(false);
-                fetchDailyLog();
-            }
-        } catch (err) {
-            console.error("خطا در ثبت علائم:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // ثبت شروع پریود + به‌روزرسانی تنظیمات
     const handleSaveStartPeriod = async () => {
         if (!accessToken) return;
         setLoading(true);
         try {
-            const payload: any = {
+            const periodPayload: any = {
                 start_date: startPeriodData.start_date,
             };
             if (startPeriodData.end_date) {
-                payload.end_date = startPeriodData.end_date;
+                periodPayload.end_date = startPeriodData.end_date;
             }
-            const res = await fetch(`${API_BASE_URL}/period-tracker/log`, {
+            const periodRes = await fetch(`${API_BASE_URL}/period-tracker/log`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${accessToken}`
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(periodPayload)
             });
-            const result = await res.json();
-            if (res.ok) {
-                setIsStartPeriodModalOpen(false);
-                setStartPeriodData(prev => ({ ...prev, end_date: '' }));
-                fetchTrackerSettings();
-                fetchDailyLog();
-                alert(result.message || "شروع پریود با موفقیت ثبت شد.");
-            } else {
-                alert(result.message || "خطا در ثبت شروع پریود.");
+            const periodResult = await periodRes.json();
+            if (!periodRes.ok) {
+                alert(periodResult.message || "خطا در ثبت شروع پریود.");
+                return;
             }
+
+            const settingsPayload = {
+                last_period_start_date: startPeriodData.start_date,
+                cycle_length: startPeriodData.cycle_length,
+                period_length: startPeriodData.period_length,
+            };
+            const settingsRes = await fetch(`${API_BASE_URL}/period-tracker/init`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(settingsPayload)
+            });
+            const settingsResult = await settingsRes.json();
+            if (!settingsRes.ok) {
+                alert(settingsResult.message || "خطا در به‌روزرسانی تنظیمات.");
+                return;
+            }
+
+            setIsStartPeriodModalOpen(false);
+            setStartPeriodData(prev => ({ ...prev, end_date: '' }));
+            fetchTrackerSettings();
+            fetchDailyLog();
+            alert(periodResult.message || "شروع پریود با موفقیت ثبت شد.");
         } catch (err) {
             console.error("خطا در ثبت شروع پریود:", err);
             alert("خطا در ارتباط با سرور رخ داده است.");
@@ -392,58 +482,112 @@ export default function PeriodTracker() {
         }
     };
 
-    const cycleLength = trackerSettings?.cycle_length || 28;
-    const periodLength = trackerSettings?.period_length || 5;
-
+    // محاسبه روزهای باقیمانده بدون در نظر گرفتن سیکل
     const daysUntil = useMemo(() => {
-        if (trackerSettings?.last_period_start_date) {
-            const lastStart = new Date(trackerSettings.last_period_start_date);
-            const nextStart = new Date(lastStart.getTime() + cycleLength * 24 * 60 * 60 * 1000);
-            const diffTime = nextStart.getTime() - new Date().getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays > 0 ? diffDays : 0;
-        }
-        return 0;
-    }, [trackerSettings, cycleLength]);
+        if (!trackerSettings?.last_period_start_date) return 0;
+        const targetDate = parseGregorianString(trackerSettings.last_period_start_date);
+        targetDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffTime = targetDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? diffDays : 0;
+    }, [trackerSettings]);
 
-    const cycleProgress = (cycleLength - daysUntil) / cycleLength;
     const ringRadius = 108;
     const ringCircumference = 2 * Math.PI * ringRadius;
-    const ringOffset = ringCircumference * (1 - (isNaN(cycleProgress) ? 0.7 : cycleProgress));
 
-    // Compute marked dates for calendar
+    // علامت‌گذاری روزهای گذشته از تاریخ شروع تا امروز (برای مودال تقویم)
     const markedDates = useMemo(() => {
         const result: Record<string, string> = {};
         if (trackerSettings?.last_period_start_date) {
             const lastStart = parseGregorianString(trackerSettings.last_period_start_date);
-            const end = trackerSettings.last_period_end_date
-                ? parseGregorianString(trackerSettings.last_period_end_date)
-                : new Date(lastStart.getTime() + (periodLength - 1) * 24 * 60 * 60 * 1000);
-            for (let d = new Date(lastStart); d <= end; d.setDate(d.getDate() + 1)) {
-                result[dateToJalaliKey(d)] = 'period';
+            lastStart.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (lastStart <= today) {
+                for (let d = new Date(lastStart); d <= today; d.setDate(d.getDate() + 1)) {
+                    result[dateToJalaliKey(d)] = 'period';
+                }
             }
-            const nextStart = new Date(lastStart.getTime() + cycleLength * 24 * 60 * 60 * 1000);
-            result[dateToJalaliKey(nextStart)] = 'next_period';
         }
         return result;
-    }, [trackerSettings, cycleLength, periodLength]);
+    }, [trackerSettings]);
 
-    // NEW: convert last period dates for display
-    const lastPeriodStartJalali = trackerSettings?.last_period_start_date
-        ? formatJalaliDate(gregorianToJalali(
-            parseGregorianString(trackerSettings.last_period_start_date).getFullYear(),
-            parseGregorianString(trackerSettings.last_period_start_date).getMonth() + 1,
-            parseGregorianString(trackerSettings.last_period_start_date).getDate()
-        ))
-        : null;
+    // تولید روزهای ماه جاری (شمسی) برای نوار روزها — بر اساس viewJalali
+    const monthDays = useMemo(() => {
+        const days: JalaliDate[] = [];
+        const daysInMonth = jalaaliMonthLength(viewJalali.jy, viewJalali.jm);
+        for (let d = 1; d <= daysInMonth; d++) {
+            days.push({ jy: viewJalali.jy, jm: viewJalali.jm, jd: d });
+        }
+        return days;
+    }, [viewJalali]);
 
-    const lastPeriodEndJalali = trackerSettings?.last_period_end_date
-        ? formatJalaliDate(gregorianToJalali(
-            parseGregorianString(trackerSettings.last_period_end_date).getFullYear(),
-            parseGregorianString(trackerSettings.last_period_end_date).getMonth() + 1,
-            parseGregorianString(trackerSettings.last_period_end_date).getDate()
-        ))
-        : null;
+    // تابع انتخاب روز از نوار
+    const handleDaySelect = (day: JalaliDate) => {
+        const greg = jalaliToGregorian(day.jy, day.jm, day.jd);
+        const gregDate = new Date(greg.gy, greg.gm - 1, greg.gd);
+        setSelectedDate(gregDate);
+    };
+
+    // بررسی وجود لاگ علائم برای روز انتخاب‌شده
+    const hasSymptomLog = useMemo(() => {
+        if (!dailyLog) return false;
+        return Boolean(
+            dailyLog.mood ||
+            (dailyLog.symptoms && dailyLog.symptoms.length > 0) ||
+            (dailyLog.physical_symptoms && dailyLog.physical_symptoms.length > 0) ||
+            dailyLog.notes ||
+            (dailyLog.water && dailyLog.water > 0) ||
+            (dailyLog.calorie && dailyLog.calorie > 0)
+        );
+    }, [dailyLog]);
+
+    // ========== NEW: محاسبه فازهای سیکل برای تقویم خطی ==========
+    const cyclePhases = useMemo(() => {
+        const periodDates = new Set<string>();
+        const fertileDates = new Set<string>();
+        const ovulationDates = new Set<string>();
+        if (!trackerSettings?.last_period_start_date || !trackerSettings?.cycle_length || !trackerSettings?.period_length) {
+            return { periodDates, fertileDates, ovulationDates };
+        }
+
+        const lastStart = parseGregorianString(trackerSettings.last_period_start_date);
+        const cycleLen = trackerSettings.cycle_length;
+        const periodLen = trackerSettings.period_length;
+        const lutealPhase = 14; // فاز لوتئال استاندارد
+
+        // تولید سیکل‌ها از ۱۲ ماه قبل تا ۱۲ ماه بعد
+        for (let i = -12; i <= 12; i++) {
+            const periodStart = new Date(lastStart);
+            periodStart.setDate(periodStart.getDate() + i * cycleLen);
+
+            // روزهای پریود
+            for (let d = 0; d < periodLen; d++) {
+                const pd = new Date(periodStart);
+                pd.setDate(pd.getDate() + d);
+                periodDates.add(getLocalDateString(pd));
+            }
+
+            // روز تخمک‌گذاری (حدود ۱۴ روز قبل از پریود بعدی)
+            const ovulationDate = new Date(periodStart);
+            ovulationDate.setDate(ovulationDate.getDate() + cycleLen - lutealPhase);
+            ovulationDates.add(getLocalDateString(ovulationDate));
+
+            // پنجره باروری (۵ روز قبل از تخمک‌گذاری + خود روز تخمک‌گذاری)
+            const fertileStart = new Date(ovulationDate);
+            fertileStart.setDate(fertileStart.getDate() - 5);
+            for (let d = 0; d <= 5; d++) {
+                const fd = new Date(fertileStart);
+                fd.setDate(fd.getDate() + d);
+                fertileDates.add(getLocalDateString(fd));
+            }
+        }
+        return { periodDates, fertileDates, ovulationDates };
+    }, [trackerSettings]);
+    // ============================================================
 
     const insights: HealthInsight[] = [
         {
@@ -529,7 +673,6 @@ export default function PeriodTracker() {
         setIsCalendarModalOpen(true);
     };
 
-    // Water cups row component
     const waterCups = () => {
         return (
             <div className="flex flex-wrap gap-2">
@@ -565,536 +708,665 @@ export default function PeriodTracker() {
     };
 
     return (
-        <div className="h-full overflow-y-auto bg-gradient-to-b from-pink-50 to-[#FFF9FA] pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
-            <AppBar backTo="/home" />
+        <>
+            <style>{`
+                @keyframes softPulse {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.7);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 8px rgba(244, 114, 182, 0);
+                    }
+                }
+                .animate-soft-pulse {
+                    animation: softPulse 1.8s ease-in-out infinite;
+                }
 
-            <div className="px-6 pt-24">
-                {/* Header */}
-                <div className="relative mb-6">
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500 px-5 pt-5 pb-5 shadow-[0_8px_32px_rgba(236,72,153,0.28)]">
-                        <div className="pointer-events-none absolute -top-10 -left-10 h-36 w-36 rounded-full bg-white/10" />
-                        <div className="pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-                        <div className="pointer-events-none absolute inset-0 opacity-[0.12]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-                        <div className="relative z-10 flex items-center gap-4" dir="rtl">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
-                                <CalendarIcon className="h-7 w-7 text-white" />
+                @keyframes emojiFloatUp {
+                    0% { transform: translateY(40px) scale(0.6); opacity: 0; }
+                    20% { opacity: 1; }
+                    100% { transform: translateY(-250px) scale(1.3); opacity: 0; }
+                }
+            `}</style>
+
+            <div className="h-full overflow-y-auto bg-gradient-to-b from-pink-50 to-[#FFF9FA] pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
+                <AppBar backTo="/home" />
+
+                <div className="px-6 pt-24">
+                    {!trackerSettings && !isSetupModalOpen ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="animate-pulse bg-pink-100 h-20 w-20 rounded-full mb-4 flex items-center justify-center">
+                                <Sparkles className="h-10 w-10 text-pink-500" />
                             </div>
-                            <div className="min-w-0 flex-1 text-right">
-                                <h1 className="text-xl font-bold leading-tight text-white">تقویم قاعدگی</h1>
-                                <p className="mt-0.5 text-sm leading-snug text-pink-100">
-                                    روز انتخابی شما: {selectedJalaliString}
-                                </p>
-                                {/* NEW: display period start/end */}
-                                {lastPeriodStartJalali && (
-                                    <p className="mt-1 text-xs leading-snug text-pink-200">
-                                        آخرین پریود: {lastPeriodStartJalali}
-                                        {lastPeriodEndJalali && ` تا ${lastPeriodEndJalali}`}
-                                    </p>
-                                )}
-                            </div>
+                            <p className="text-gray-400">در حال دریافت تنظیمات شما...</p>
                         </div>
-                    </div>
-                </div>
-
-                {!trackerSettings && !isSetupModalOpen ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="animate-pulse bg-pink-100 h-20 w-20 rounded-full mb-4 flex items-center justify-center">
-                            <Sparkles className="h-10 w-10 text-pink-500" />
-                        </div>
-                        <p className="text-gray-400">در حال دریافت تنظیمات شما...</p>
-                    </div>
-                ) : !trackerSettings && isSetupModalOpen ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-3xl p-6 shadow-sm ring-1 ring-pink-50">
-                        <div className="mb-4 rounded-full bg-pink-50 p-6">
-                            <CalendarIcon className="h-12 w-12 text-pink-400" />
-                        </div>
-                        <h2 className="text-lg font-bold text-gray-800">سیکل شما هنوز ثبت نشده است</h2>
-                        <p className="mt-2 text-sm text-gray-400 px-6 leading-relaxed">
-                            برای شروع پیگیری وضعیت، پیش‌بینی روزهای آینده و دریافت توصیه‌های مربوطه، لطفاً اطلاعات سیکل خود را وارد کنید.
-                        </p>
-                        <Button onClick={() => setIsSetupModalOpen(true)} className="mt-6 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white px-8 py-3 font-bold shadow-md shadow-pink-200">
-                            ثبت اطلاعات اولیه
-                        </Button>
-                    </div>
-                ) : (
-                    <main className="space-y-6">
-                        {/* Cycle Ring */}
-                        <section className="flex flex-col items-center">
-                            <div className="relative">
-                                <svg className="-rotate-90" width="248" height="248" viewBox="0 0 248 248" aria-hidden>
-                                    <circle cx="124" cy="124" r={ringRadius} fill="none" stroke="#fce7f3" strokeWidth="10" />
-                                    <circle
-                                        cx="124" cy="124" r={ringRadius} fill="none"
-                                        stroke="url(#cycleGradient)" strokeWidth="10" strokeLinecap="round"
-                                        strokeDasharray={ringCircumference}
-                                        strokeDashoffset={ringOffset}
-                                        className="transition-all duration-700 ease-out"
-                                    />
-                                    <defs>
-                                        <linearGradient id="cycleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" stopColor="#f472b6" />
-                                            <stop offset="100%" stopColor="#fb7185" />
-                                        </linearGradient>
-                                    </defs>
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className="mb-1 rounded-full bg-pink-50 px-3 py-1 text-[11px] font-medium text-pink-500">فاز لوتئال</span>
-                                    <span className="text-xs text-gray-400">پریود در</span>
-                                    <span className="bg-gradient-to-b from-pink-500 to-rose-500 bg-clip-text text-6xl font-light leading-none text-transparent">{daysUntil}</span>
-                                    <span className="text-sm text-gray-500">روز دیگر</span>
-                                </div>
+                    ) : !trackerSettings && isSetupModalOpen ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-3xl p-6 shadow-sm ring-1 ring-pink-50">
+                            <div className="mb-4 rounded-full bg-pink-50 p-6">
+                                <CalendarIcon className="h-12 w-12 text-pink-400" />
                             </div>
-                        </section>
-
-                        {/* Stats */}
-                        <section className="grid grid-cols-4 gap-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-pink-50">
-                            <div className="text-center">
-                                <p className="text-[10px] text-gray-400">طول سیکل</p>
-                                <p className="mt-1 text-sm font-semibold text-gray-800">{cycleLength} <span className="text-[8px] font-normal text-gray-400">روز</span></p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-[10px] text-gray-400">مدت پریود</p>
-                                <p className="mt-1 text-sm font-semibold text-gray-800">{periodLength} <span className="text-[8px] font-normal text-gray-400">روز</span></p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-[10px] text-gray-400">💧 آب امروز</p>
-                                <p className="mt-1 text-sm font-semibold text-gray-800">{dailyLog?.water || 0} <span className="text-[8px] font-normal text-gray-400">لیوان</span></p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-[10px] text-gray-400">🔥 کالری امروز</p>
-                                <p className="mt-1 text-sm font-semibold text-gray-800">{dailyLog?.calorie || 0} <span className="text-[8px] font-normal text-gray-400">kcal</span></p>
-                            </div>
-                        </section>
-
-                        {/* Edit Settings Button */}
-                        <div className="flex justify-center">
-                            <button
-                                onClick={openEditSettings}
-                                className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-pink-600 shadow-sm ring-1 ring-pink-100 hover:bg-pink-50 transition-colors"
-                            >
-                                <Settings className="h-4 w-4" />
-                                ویرایش تنظیمات
-                            </button>
-                        </div>
-
-                        {/* Actions */}
-                        <section className="flex gap-3">
-                            <Button onClick={() => setIsSymptomsModalOpen(true)} className="h-12 flex-1 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200/60 transition-all active:scale-[0.98] hover:from-pink-600 hover:to-rose-600">
-                                <Plus className="ml-2 h-4 w-4" />
-                                {dailyLog ? 'ویرایش علائم' : 'ثبت علائم روزانه'}
-                            </Button>
-                            <Button onClick={() => setIsStartPeriodModalOpen(true)} variant="outline" className="h-12 flex-1 rounded-2xl border-pink-200 bg-white text-pink-600 hover:bg-pink-50">
-                                شروع پریود
-                            </Button>
-                        </section>
-
-                        {/* Workout */}
-                        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-pink-50">
-                            <div className="mb-4 flex items-center gap-2">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
-                                    <Dumbbell className="h-3.5 w-3.5 text-pink-500" />
-                                </div>
-                                <h2 className="text-base font-bold text-gray-800">تمرین‌های مناسب پریود</h2>
-                            </div>
-                            <p className="mb-4 text-xs text-gray-500 leading-relaxed">
-                                ورزش‌های سبک می‌توانند درد و خستگی را کاهش دهند. یک برنامه مناسب انتخاب کنید و قدم به قدم پیش بروید.
+                            <h2 className="text-lg font-bold text-gray-800">سیکل شما هنوز ثبت نشده است</h2>
+                            <p className="mt-2 text-sm text-gray-400 px-6 leading-relaxed">
+                                برای شروع پیگیری وضعیت، پیش‌بینی روزهای آینده و دریافت توصیه‌های مربوطه، لطفاً اطلاعات سیکل خود را وارد کنید.
                             </p>
-                            <Button onClick={() => setIsWorkoutModalOpen(true)} className="w-full h-11 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white text-sm font-bold hover:from-pink-600 hover:to-rose-600">
-                                مشاهده تمرین‌ها
+                            <Button onClick={() => setIsSetupModalOpen(true)} className="mt-6 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white px-8 py-3 font-bold shadow-md shadow-pink-200">
+                                ثبت اطلاعات اولیه
                             </Button>
-                        </section>
+                        </div>
+                    ) : (
+                        <main className="space-y-6">
+                            {/* Cycle Ring - نمایش روزهای باقیمانده + ایموجی‌های شناور علائم */}
+                            <section className="flex flex-col items-center">
+                                <div className="relative" style={{ width: '320px', height: '320px' }}>
+                                    {/* ایموجی‌های شناور (فقط علائم موجود) */}
+                                    {floatEmojis.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="pointer-events-none absolute flex flex-col items-center"
+                                            style={{
+                                                bottom: 0,
+                                                left: `${item.left}%`,
+                                                zIndex: 30,
+                                                animation: `emojiFloatUp ${item.duration}ms ease-out forwards`,
+                                            }}
+                                        >
+                                            <span style={{ fontSize: `${item.size}px` }}>{item.emoji}</span>
+                                            <span className="text-[10px] font-medium text-gray-600 bg-white/70 rounded-full px-1.5 py-0.5 mt-0.5 shadow-sm">
+                                                {item.label}
+                                            </span>
+                                        </div>
+                                    ))}
 
-                        {/* Partner Sync */}
-                        {trackerSettings?.partner_code && (
+                                    <svg
+                                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90"
+                                        width="248"
+                                        height="248"
+                                        viewBox="0 0 248 248"
+                                        aria-hidden
+                                    >
+                                        <circle cx="124" cy="124" r={ringRadius} fill="none" stroke="#fce7f3" strokeWidth="10" />
+                                        <circle
+                                            cx="124" cy="124" r={ringRadius}
+                                            fill="none"
+                                            stroke="#f472b6"
+                                            strokeWidth="10"
+                                            strokeDasharray={ringCircumference}
+                                            strokeDashoffset="0"
+                                        />
+                                    </svg>
+
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center text-center" style={{ width: '200px' }}>
+                                        <span className="mb-1 rounded-full bg-pink-50 px-3 py-1 text-[11px] font-medium text-pink-500">روزهای باقیمانده</span>
+                                        <span className="text-xs text-gray-400">تا تاریخ وارد شده</span>
+                                        <span className="bg-gradient-to-b from-pink-500 to-rose-500 bg-clip-text text-6xl font-light leading-none text-transparent">{daysUntil}</span>
+                                        <span className="text-sm text-gray-500">روز</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Stats */}
+                            <section className="grid grid-cols-4 gap-2 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-pink-50">
+                                <div className="text-center">
+                                    <p className="text-[10px] text-gray-400">طول سیکل</p>
+                                    <p className="mt-1 text-sm font-semibold text-gray-800">{trackerSettings?.cycle_length || 28} <span className="text-[8px] font-normal text-gray-400">روز</span></p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] text-gray-400">مدت پریود</p>
+                                    <p className="mt-1 text-sm font-semibold text-gray-800">{trackerSettings?.period_length || 5} <span className="text-[8px] font-normal text-gray-400">روز</span></p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] text-gray-400">💧 آب امروز</p>
+                                    <p className="mt-1 text-sm font-semibold text-gray-800">{dailyLog?.water || 0} <span className="text-[8px] font-normal text-gray-400">لیوان</span></p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] text-gray-400">🔥 کالری امروز</p>
+                                    <p className="mt-1 text-sm font-semibold text-gray-800">{dailyLog?.calorie || 0} <span className="text-[8px] font-normal text-gray-400">kcal</span></p>
+                                </div>
+                            </section>
+
+                            {/* نوار فانتزی روزهای ماه */}
+                            <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-pink-50">
+                                <div className="mb-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setViewJalali(prev => shiftJalaliMonth(prev, -1))}
+                                            className="p-1 rounded-lg hover:bg-pink-50 text-gray-500 transition-colors"
+                                            aria-label="ماه قبل"
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </button>
+
+                                        <h2 className="text-sm font-bold text-gray-800">
+                                            {viewJalali.jy}/{String(viewJalali.jm).padStart(2, '0')}
+                                        </h2>
+
+                                        <button
+                                            onClick={() => setViewJalali(prev => shiftJalaliMonth(prev, 1))}
+                                            className="p-1 rounded-lg hover:bg-pink-50 text-gray-500 transition-colors"
+                                            aria-label="ماه بعد"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </button>
+                                    </div>
+
+                                    <span className="text-xs text-gray-400">{selectedJalaliString}</span>
+                                </div>
+
+                                <div className="flex flex-wrap gap-1.5" dir="rtl">
+                                    {monthDays.map((day) => {
+                                        const key = formatJalaliDate(day);
+                                        const isSelected =
+                                            day.jy === selectedJalali.jy &&
+                                            day.jm === selectedJalali.jm &&
+                                            day.jd === selectedJalali.jd;
+
+                                        const isToday =
+                                            day.jy === todayJalali.jy &&
+                                            day.jm === todayJalali.jm &&
+                                            day.jd === todayJalali.jd;
+
+                                        const isPast =
+                                            day.jy < todayJalali.jy ||
+                                            (day.jy === todayJalali.jy && day.jm < todayJalali.jm) ||
+                                            (day.jy === todayJalali.jy && day.jm === todayJalali.jm && day.jd < todayJalali.jd);
+
+                                        const isTarget =
+                                            targetJalali &&
+                                            day.jy === targetJalali.jy &&
+                                            day.jm === targetJalali.jm &&
+                                            day.jd === targetJalali.jd;
+
+                                        // تبدیل روز شمسی به میلادی برای بررسی فازها
+                                        const greg = jalaliToGregorian(day.jy, day.jm, day.jd);
+                                        const gregDate = new Date(greg.gy, greg.gm - 1, greg.gd);
+                                        const gregStr = getLocalDateString(gregDate);
+
+                                        const isPeriodDay = cyclePhases.periodDates.has(gregStr);
+                                        const isFertileDay = cyclePhases.fertileDates.has(gregStr);
+                                        const isOvulationDay = cyclePhases.ovulationDates.has(gregStr);
+                                        const isIntimateDay = !isPeriodDay && !isFertileDay && !isOvulationDay;
+
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => handleDaySelect(day)}
+                                                className={`relative flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
+                                                    isSelected
+                                                        ? hasSymptomLog
+                                                            ? 'bg-gradient-to-b from-pink-500 to-rose-500 text-white shadow-md scale-105 animate-soft-pulse'
+                                                            : 'bg-gradient-to-b from-pink-500 to-rose-500 text-white shadow-md scale-105'
+                                                        : isTarget
+                                                            ? 'bg-white text-pink-600 ring-2 ring-pink-400'
+                                                            : isPast
+                                                                ? 'bg-pink-100/50 text-pink-400'
+                                                                : isToday
+                                                                    ? 'bg-pink-50 text-pink-700 ring-1 ring-pink-200'
+                                                                    : 'bg-gray-50 text-gray-600 hover:bg-pink-50'
+                                                }`}
+                                            >
+                                                <span>{day.jd}</span>
+
+                                                {/* نشانگر پریود: گل به جای ستاره */}
+                                                {isPeriodDay && (
+                                                    <Flower className="absolute -top-1 -left-1 h-3 w-3 text-rose-500" />
+                                                )}
+
+                                                {/* نشانگر تخمک‌گذاری */}
+                                                {isOvulationDay && (
+                                                    <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-purple-500" />
+                                                )}
+
+                                                {/* نشانگر باروری */}
+                                                {isFertileDay && (
+                                                    <Droplets className="absolute -bottom-1 -left-1 h-3 w-3 text-sky-500" />
+                                                )}
+
+                                                {/* نشانگر صمیمی (روزهای غیر از پریود، باروری، تخمک‌گذاری) */}
+                                                {isIntimateDay && (
+                                                    <Heart className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-pink-300 opacity-70" />
+                                                )}
+
+                                                {/* نشانگر ثبت علائم در روز انتخاب شده */}
+                                                {isSelected && hasSymptomLog && (
+                                                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-white shadow" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* راهنمای نشانگرها */}
+                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                        <Flower className="h-3 w-3 text-rose-500" /> پریود
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <Droplets className="h-3 w-3 text-sky-500" /> باروری
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <Sparkles className="h-3 w-3 text-purple-500" /> تخمک‌گذاری
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <Heart className="h-2.5 w-2.5 text-pink-300" /> صمیمی
+                                    </span>
+                                </div>
+                            </section>
+
+                            {/* Actions */}
+                            <section className="flex gap-3">
+                                <Button onClick={() => setIsSymptomsModalOpen(true)} className="h-12 flex-1 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200/60 transition-all active:scale-[0.98] hover:from-pink-600 hover:to-rose-600">
+                                    <Plus className="ml-2 h-4 w-4" />
+                                    {dailyLog ? 'ویرایش علائم' : 'ثبت علائم روزانه'}
+                                </Button>
+                                <Button onClick={() => setIsStartPeriodModalOpen(true)} variant="outline" className="h-12 flex-1 rounded-2xl border-pink-200 bg-white text-pink-600 hover:bg-pink-50">
+                                    شروع پریود
+                                </Button>
+                            </section>
+
+                            {/* Workout */}
                             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-pink-50">
                                 <div className="mb-4 flex items-center gap-2">
                                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
-                                        <Share2 className="h-3.5 w-3.5 text-pink-500" />
+                                        <Dumbbell className="h-3.5 w-3.5 text-pink-500" />
                                     </div>
-                                    <h2 className="text-base font-bold text-gray-800">همگام‌سازی با پارتنر</h2>
+                                    <h2 className="text-base font-bold text-gray-800">تمرین‌های مناسب پریود</h2>
                                 </div>
-                                <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                                    با اشتراک‌گذاری این کد یا لینک، پارتنر شما می‌تواند بدون دیدن جزئیات حساس، از وضعیت کلی سیکل و حالات روحی شما برای حمایت بهتر مطلع شود.
+                                <p className="mb-4 text-xs text-gray-500 leading-relaxed">
+                                    ورزش‌های سبک می‌توانند درد و خستگی را کاهش دهند. یک برنامه مناسب انتخاب کنید و قدم به قدم پیش بروید.
                                 </p>
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between rounded-2xl bg-pink-50/50 p-3 ring-1 ring-pink-100">
-                                        <span className="text-xs font-bold text-gray-500">کد اختصاصی:</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-extrabold text-pink-600 tracking-wider">{trackerSettings.partner_code}</span>
-                                            <button onClick={handleCopyCode} className="p-1.5 rounded-lg hover:bg-pink-100 transition-colors text-pink-600">
-                                                {copiedCode ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <Button onClick={handleCopyLink} variant="outline" className="w-full h-11 rounded-2xl border-pink-200 bg-white text-xs text-pink-600 hover:bg-pink-50 flex items-center justify-center gap-2">
-                                        {copiedLink ? (
-                                            <>
-                                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                                لینک دعوت کپی شد!
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Share2 className="h-4 w-4" />
-                                                کپی لینک دعوت مستقیم پارتنر
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
+                                <Button onClick={() => setIsWorkoutModalOpen(true)} className="w-full h-11 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white text-sm font-bold hover:from-pink-600 hover:to-rose-600">
+                                    مشاهده تمرین‌ها
+                                </Button>
                             </section>
-                        )}
 
-                        {/* Date Selection */}
-                        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-pink-50">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h2 className="text-base font-bold text-gray-800">تغییر روز بررسی</h2>
-                                <button
-                                    type="button"
-                                    onClick={() => openCalendarForField(null)}
-                                    className="flex items-center gap-1 rounded-full bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-600 transition-colors hover:bg-pink-100"
-                                >
-                                    <CalendarIcon className="h-3.5 w-3.5" />
-                                    تقویم شمسی
-                                </button>
-                            </div>
-                            <div className="rounded-2xl bg-[#FFF9FA] p-4 text-center ring-1 ring-pink-100">
-                                <span className="text-sm font-bold text-gray-700">{selectedJalaliString}</span>
-                            </div>
-                        </section>
-
-                        {/* Smart Insights */}
-                        <section className="space-y-3 pb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
-                                    <Sparkles className="h-3.5 w-3.5 text-pink-500" />
-                                </div>
-                                <h2 className="text-base font-bold text-gray-800">توصیه‌های هوشمند</h2>
-                            </div>
-                            {insights.map((item) => (
-                                <Card
-                                    key={item.id}
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => setActiveInsight(item)}
-                                    className="cursor-pointer overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-sm ring-1 ring-pink-50 transition-all hover:shadow-md hover:ring-pink-100 active:scale-[0.99]"
-                                >
-                                    <div className="flex">
-                                        <div className={`w-1 shrink-0 bg-gradient-to-b ${item.accent}`} />
-                                        <div className="flex flex-1 items-center gap-3 p-4">
-                                            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.iconBg}`}>
-                                                {item.icon}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <h3 className="text-sm font-bold text-gray-900">{item.title}</h3>
-                                                <p className="mt-1 text-xs leading-relaxed text-gray-500">{item.description}</p>
-                                            </div>
-                                            <ChevronLeft className="h-4 w-4 shrink-0 text-gray-300" />
+                            {/* Partner Sync */}
+                            {trackerSettings?.partner_code && (
+                                <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-pink-50">
+                                    <div className="mb-4 flex items-center gap-2">
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
+                                            <Share2 className="h-3.5 w-3.5 text-pink-500" />
                                         </div>
+                                        <h2 className="text-base font-bold text-gray-800">همگام‌سازی با پارتنر</h2>
                                     </div>
-                                </Card>
-                            ))}
-                        </section>
-                    </main>
-                )}
-            </div>
+                                    <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                                        با اشتراک‌گذاری این کد یا لینک، پارتنر شما می‌تواند بدون دیدن جزئیات حساس، از وضعیت کلی سیکل و حالات روحی شما برای حمایت بهتر مطلع شود.
+                                    </p>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between rounded-2xl bg-pink-50/50 p-3 ring-1 ring-pink-100">
+                                            <span className="text-xs font-bold text-gray-500">کد اختصاصی:</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-extrabold text-pink-600 tracking-wider">{trackerSettings.partner_code}</span>
+                                                <button onClick={handleCopyCode} className="p-1.5 rounded-lg hover:bg-pink-100 transition-colors text-pink-600">
+                                                    {copiedCode ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <Button onClick={handleCopyLink} variant="outline" className="w-full h-11 rounded-2xl border-pink-200 bg-white text-xs text-pink-600 hover:bg-pink-50 flex items-center justify-center gap-2">
+                                            {copiedLink ? (
+                                                <>
+                                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                    لینک دعوت کپی شد!
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Share2 className="h-4 w-4" />
+                                                    کپی لینک دعوت مستقیم پارتنر
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </section>
+                            )}
 
-            {/* Setup Modal (initial + edit) */}
-            {(isSetupModalOpen || isEditSettingsModalOpen) && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
-                    <div className="w-full max-w-sm rounded-[2.5rem] bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-300">
-                        <div className="text-center mb-8">
-                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-50 text-pink-500">
-                                <Sparkles className="h-8 w-8" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-800">
-                                {isEditSettingsModalOpen ? 'ویرایش اطلاعات' : 'خوش آمدید!'}
-                            </h3>
-                            <p className="mt-2 text-sm text-gray-500">
-                                {isEditSettingsModalOpen ? 'اطلاعات سیکل خود را به‌روزرسانی کنید' : 'برای شروع، اطلاعات سیکل خود را وارد کنید'}
-                            </p>
-                        </div>
-
-                        <div className="space-y-5">
-                            <div className="space-y-2 text-right">
-                                <label className="text-xs font-bold text-gray-400 mr-2">تاریخ شروع آخرین پریود</label>
-                                <button
-                                    type="button"
-                                    onClick={() => openCalendarForField('setup_start')}
-                                    className="w-full rounded-2xl bg-gray-50 p-4 text-center text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
-                                >
-                                    {formatJalaliDate(gregorianToJalali(
-                                        parseGregorianString(setupData.last_period_start_date).getFullYear(),
-                                        parseGregorianString(setupData.last_period_start_date).getMonth() + 1,
-                                        parseGregorianString(setupData.last_period_start_date).getDate()
-                                    ))}
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 text-right">
-                                    <label className="text-xs font-bold text-gray-400 mr-2">میانگین سیکل (روز)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="مثلاً ۲۸"
-                                        className="w-full rounded-2xl bg-gray-50 p-4 text-center text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
-                                        value={setupData.cycle_length}
-                                        onChange={(e) => setSetupData({ ...setupData, cycle_length: parseInt(e.target.value) || 0 })}
-                                    />
+                            {/* Smart Insights */}
+                            <section className="space-y-3 pb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
+                                        <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+                                    </div>
+                                    <h2 className="text-base font-bold text-gray-800">توصیه‌های هوشمند</h2>
                                 </div>
-                                <div className="space-y-2 text-right">
-                                    <label className="text-xs font-bold text-gray-400 mr-2">مدت پریود (روز)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="مثلاً ۵"
-                                        className="w-full rounded-2xl bg-gray-50 p-4 text-center text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
-                                        value={setupData.period_length}
-                                        onChange={(e) => setSetupData({ ...setupData, period_length: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <Button
-                            disabled={loading}
-                            className="mt-8 h-14 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-lg font-bold text-white shadow-lg shadow-pink-200/50"
-                            onClick={handleSaveSetup}
-                        >
-                            {loading ? 'در حال ثبت...' : isEditSettingsModalOpen ? 'ذخیره تغییرات' : 'شروع استفاده'}
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Start Period Modal */}
-            {isStartPeriodModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
-                    <div className="w-full max-w-sm rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] animate-in zoom-in-95 duration-200">
-                        <div className="mb-6 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-gray-800">ثبت شروع دوره جدید</h3>
-                            <button onClick={() => setIsStartPeriodModalOpen(false)} className="rounded-full bg-gray-50 p-2 text-gray-400 hover:bg-gray-100 transition-colors">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-5">
-                            <div className="space-y-2 text-right">
-                                <label className="text-xs font-bold text-gray-400 mr-2">تاریخ شروع پریود</label>
-                                <button
-                                    type="button"
-                                    onClick={() => openCalendarForField('period_start')}
-                                    className="w-full rounded-2xl bg-[#FFF9FA] p-4 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
-                                >
-                                    {formatJalaliDate(gregorianToJalali(
-                                        parseGregorianString(startPeriodData.start_date).getFullYear(),
-                                        parseGregorianString(startPeriodData.start_date).getMonth() + 1,
-                                        parseGregorianString(startPeriodData.start_date).getDate()
-                                    ))}
-                                </button>
-                            </div>
-                            <div className="space-y-2 text-right">
-                                <label className="text-xs font-bold text-gray-400 mr-2">تاریخ پایان پریود (اختیاری)</label>
-                                <button
-                                    type="button"
-                                    onClick={() => openCalendarForField('period_end')}
-                                    className="w-full rounded-2xl bg-[#FFF9FA] p-4 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
-                                >
-                                    {startPeriodData.end_date
-                                        ? formatJalaliDate(gregorianToJalali(
-                                            parseGregorianString(startPeriodData.end_date).getFullYear(),
-                                            parseGregorianString(startPeriodData.end_date).getMonth() + 1,
-                                            parseGregorianString(startPeriodData.end_date).getDate()
-                                        ))
-                                        : 'انتخاب کنید'}
-                                </button>
-                                <span className="block text-[10px] text-gray-400 mr-2 leading-relaxed">
-                                    در صورتی که دوره به اتمام نرسیده است، این بخش را خالی بگذارید.
-                                </span>
-                            </div>
-                        </div>
-
-                        <Button
-                            disabled={loading}
-                            className="mt-8 h-12 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-base font-bold text-white shadow-lg hover:from-pink-600 hover:to-rose-600"
-                            onClick={handleSaveStartPeriod}
-                        >
-                            {loading ? 'در حال ثبت...' : 'ثبت شروع دوره جدید'}
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Insight Detail Modal */}
-            {activeInsight && (
-                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 px-4 pb-6 backdrop-blur-sm sm:items-center" onClick={() => setActiveInsight(null)}>
-                    <div className="w-full max-w-sm overflow-hidden rounded-[2rem] bg-white shadow-2xl duration-200" onClick={(e) => e.stopPropagation()}>
-                        <div className={`relative overflow-hidden bg-gradient-to-br px-6 pb-8 pt-6 ${activeInsight.headerGradient}`}>
-                            <button onClick={() => setActiveInsight(null)} className="relative z-10 mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/30 backdrop-blur-sm">
-                                <X className="h-5 w-5" />
-                            </button>
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
-                                    {React.cloneElement(activeInsight.icon as React.ReactElement, { className: 'h-8 w-8 text-white' })}
-                                </div>
-                                <h3 className="text-xl font-bold text-white">{activeInsight.title}</h3>
-                            </div>
-                        </div>
-                        <div className="space-y-5 px-6 py-6">
-                            <p className="text-sm leading-relaxed text-gray-600">{activeInsight.details}</p>
-                            <ul className="space-y-2.5">
-                                {activeInsight.tips.map((tip) => (
-                                    <li key={tip} className={`flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-sm text-gray-600 ring-1 ${activeInsight.dialogTheme.tipsItemBg} ${activeInsight.dialogTheme.tipsItemRing}`}>
-                                        <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${activeInsight.dialogTheme.tipsDot}`} />
-                                        <span className="leading-relaxed">{tip}</span>
-                                    </li>
+                                {insights.map((item) => (
+                                    <Card
+                                        key={item.id}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setActiveInsight(item)}
+                                        className="cursor-pointer overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-sm ring-1 ring-pink-50 transition-all hover:shadow-md hover:ring-pink-100 active:scale-[0.99]"
+                                    >
+                                        <div className="flex">
+                                            <div className={`w-1 shrink-0 bg-gradient-to-b ${item.accent}`} />
+                                            <div className="flex flex-1 items-center gap-3 p-4">
+                                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.iconBg}`}>
+                                                    {item.icon}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h3 className="text-sm font-bold text-gray-900">{item.title}</h3>
+                                                    <p className="mt-1 text-xs leading-relaxed text-gray-500">{item.description}</p>
+                                                </div>
+                                                <ChevronLeft className="h-4 w-4 shrink-0 text-gray-300" />
+                                            </div>
+                                        </div>
+                                    </Card>
                                 ))}
-                            </ul>
-                            <Button className={activeInsight.dialogTheme.button} onClick={() => setActiveInsight(null)}>
-                                متوجه شدم
+                            </section>
+                        </main>
+                    )}
+                </div>
+
+                {/* Initial Setup Modal */}
+                {isSetupModalOpen && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
+                        <div className="w-full max-w-sm rounded-[2.5rem] bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+                            <div className="text-center mb-8">
+                                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-50 text-pink-500">
+                                    <Sparkles className="h-8 w-8" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-800">خوش آمدید!</h3>
+                                <p className="mt-2 text-sm text-gray-500">
+                                    برای شروع، اطلاعات سیکل خود را وارد کنید
+                                </p>
+                            </div>
+
+                            <div className="space-y-5">
+                                <div className="space-y-2 text-right">
+                                    <label className="text-xs font-bold text-gray-400 mr-2">تاریخ شروع آخرین پریود</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => openCalendarForField('setup_start')}
+                                        className="w-full rounded-2xl bg-gray-50 p-4 text-center text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                    >
+                                        {formatJalaliDate(gregorianToJalali(
+                                            parseGregorianString(setupData.last_period_start_date).getFullYear(),
+                                            parseGregorianString(setupData.last_period_start_date).getMonth() + 1,
+                                            parseGregorianString(setupData.last_period_start_date).getDate()
+                                        ))}
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2 text-right">
+                                        <label className="text-xs font-bold text-gray-400 mr-2">میانگین سیکل (روز)</label>
+                                        <input
+                                            type="number"
+                                            placeholder="مثلاً ۲۸"
+                                            className="w-full rounded-2xl bg-gray-50 p-4 text-center text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                            value={setupData.cycle_length}
+                                            onChange={(e) => setSetupData({ ...setupData, cycle_length: parseInt(e.target.value) || 0 })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 text-right">
+                                        <label className="text-xs font-bold text-gray-400 mr-2">مدت پریود (روز)</label>
+                                        <input
+                                            type="number"
+                                            placeholder="مثلاً ۵"
+                                            className="w-full rounded-2xl bg-gray-50 p-4 text-center text-sm outline-none ring-1 ring-gray-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                            value={setupData.period_length}
+                                            onChange={(e) => setSetupData({ ...setupData, period_length: parseInt(e.target.value) || 0 })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Button
+                                disabled={loading}
+                                className="mt-8 h-14 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-lg font-bold text-white shadow-lg shadow-pink-200/50"
+                                onClick={handleSaveSetup}
+                            >
+                                {loading ? 'در حال ثبت...' : 'شروع استفاده'}
                             </Button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Symptoms Modal */}
-            {isSymptomsModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
-                    <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem]">
-                        <div className="mb-6 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-gray-800">ثبت وضعیت برای {selectedJalaliString}</h3>
-                            <button onClick={() => setIsSymptomsModalOpen(false)} className="rounded-full bg-gray-50 p-2 text-gray-400">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
+                {/* Start Period Modal */}
+                {isStartPeriodModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
+                        <div className="w-full max-w-sm rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] animate-in zoom-in-95 duration-200">
+                            <div className="mb-6 flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-gray-800">ثبت شروع دوره جدید</h3>
+                                <button onClick={() => setIsStartPeriodModalOpen(false)} className="rounded-full bg-gray-50 p-2 text-gray-400 hover:bg-gray-100 transition-colors">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
 
-                        <div className="space-y-7">
-                            {/* Water & Calorie */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-1 text-xs font-bold text-gray-500">
-                                        <span>💧</span> آب مصرفی
-                                    </label>
-                                    {waterCups()}
+                            <div className="space-y-5">
+                                <div className="space-y-2 text-right">
+                                    <label className="text-xs font-bold text-gray-400 mr-2">تاریخ شروع پریود</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => openCalendarForField('period_start')}
+                                        className="w-full rounded-2xl bg-[#FFF9FA] p-4 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                    >
+                                        {formatJalaliDate(gregorianToJalali(
+                                            parseGregorianString(startPeriodData.start_date).getFullYear(),
+                                            parseGregorianString(startPeriodData.start_date).getMonth() + 1,
+                                            parseGregorianString(startPeriodData.start_date).getDate()
+                                        ))}
+                                    </button>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-1 text-xs font-bold text-gray-500">
-                                        <span>🔥</span> کالری دریافتی (kcal)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        className="w-full rounded-2xl bg-[#FFF9FA] p-3 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-orange-200 text-gray-700"
-                                        value={selectedCalorie}
-                                        onChange={(e) => setSelectedCalorie(parseInt(e.target.value) || 0)}
+                                <div className="space-y-2 text-right">
+                                    <label className="text-xs font-bold text-gray-400 mr-2">تاریخ پایان پریود (اختیاری)</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => openCalendarForField('period_end')}
+                                        className="w-full rounded-2xl bg-[#FFF9FA] p-4 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                    >
+                                        {startPeriodData.end_date
+                                            ? formatJalaliDate(gregorianToJalali(
+                                                parseGregorianString(startPeriodData.end_date).getFullYear(),
+                                                parseGregorianString(startPeriodData.end_date).getMonth() + 1,
+                                                parseGregorianString(startPeriodData.end_date).getDate()
+                                            ))
+                                            : 'انتخاب کنید'}
+                                    </button>
+                                    <span className="block text-[10px] text-gray-400 mr-2 leading-relaxed">
+                                        در صورتی که دوره به اتمام نرسیده است، این بخش را خالی بگذارید.
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2 text-right">
+                                        <label className="text-xs font-bold text-gray-400 mr-2">میانگین سیکل (روز)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full rounded-2xl bg-[#FFF9FA] p-4 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                            value={startPeriodData.cycle_length}
+                                            onChange={(e) => setStartPeriodData(prev => ({ ...prev, cycle_length: parseInt(e.target.value) || 0 }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 text-right">
+                                        <label className="text-xs font-bold text-gray-400 mr-2">مدت پریود (روز)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full rounded-2xl bg-[#FFF9FA] p-4 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                            value={startPeriodData.period_length}
+                                            onChange={(e) => setStartPeriodData(prev => ({ ...prev, period_length: parseInt(e.target.value) || 0 }))}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Button
+                                disabled={loading}
+                                className="mt-8 h-12 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-base font-bold text-white shadow-lg hover:from-pink-600 hover:to-rose-600"
+                                onClick={handleSaveStartPeriod}
+                            >
+                                {loading ? 'در حال ثبت...' : 'ثبت شروع دوره جدید'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Insight Detail Modal */}
+                {activeInsight && (
+                    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 px-4 pb-6 backdrop-blur-sm sm:items-center" onClick={() => setActiveInsight(null)}>
+                        <div className="w-full max-w-sm overflow-hidden rounded-[2rem] bg-white shadow-2xl duration-200" onClick={(e) => e.stopPropagation()}>
+                            <div className={`relative overflow-hidden bg-gradient-to-br px-6 pb-8 pt-6 ${activeInsight.headerGradient}`}>
+                                <button onClick={() => setActiveInsight(null)} className="relative z-10 mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/30 backdrop-blur-sm">
+                                    <X className="h-5 w-5" />
+                                </button>
+                                <div className="relative z-10 flex flex-col items-center text-center">
+                                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                                        {React.cloneElement(activeInsight.icon as React.ReactElement, { className: 'h-8 w-8 text-white' })}
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white">{activeInsight.title}</h3>
+                                </div>
+                            </div>
+                            <div className="space-y-5 px-6 py-6">
+                                <p className="text-sm leading-relaxed text-gray-600">{activeInsight.details}</p>
+                                <ul className="space-y-2.5">
+                                    {activeInsight.tips.map((tip) => (
+                                        <li key={tip} className={`flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-sm text-gray-600 ring-1 ${activeInsight.dialogTheme.tipsItemBg} ${activeInsight.dialogTheme.tipsItemRing}`}>
+                                            <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${activeInsight.dialogTheme.tipsDot}`} />
+                                            <span className="leading-relaxed">{tip}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <Button className={activeInsight.dialogTheme.button} onClick={() => setActiveInsight(null)}>
+                                    متوجه شدم
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Symptoms Modal */}
+                {isSymptomsModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
+                        <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem]">
+                            <div className="mb-6 flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-gray-800">ثبت وضعیت برای {selectedJalaliString}</h3>
+                                <button onClick={() => setIsSymptomsModalOpen(false)} className="rounded-full bg-gray-50 p-2 text-gray-400">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-7">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-1 text-xs font-bold text-gray-500">
+                                            <span>💧</span> آب مصرفی
+                                        </label>
+                                        {waterCups()}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-1 text-xs font-bold text-gray-500">
+                                            <span>🔥</span> کالری دریافتی (kcal)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            className="w-full rounded-2xl bg-[#FFF9FA] p-3 text-center text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-orange-200 text-gray-700"
+                                            value={selectedCalorie}
+                                            onChange={(e) => setSelectedCalorie(parseInt(e.target.value) || 0)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <span className="block text-sm font-bold text-gray-700">حالت روحی چطوره؟</span>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {MOODS.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => toggleSelection(item.id, 'mood')}
+                                                className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
+                                                    selectedMood === item.id
+                                                        ? 'scale-105 border-pink-400 bg-pink-50 shadow-sm'
+                                                        : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-pink-50/50'
+                                                }`}
+                                            >
+                                                <span className="text-2xl">{item.emoji}</span>
+                                                <span className="text-[10px] text-gray-500">{item.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <span className="block text-sm font-bold text-gray-700">هوس چه طعمی کردی؟</span>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {FOODS.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => toggleSelection(item.id, 'food')}
+                                                className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
+                                                    selectedFoods.includes(item.id)
+                                                        ? 'scale-105 border-sky-300 bg-sky-50 shadow-sm'
+                                                        : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-sky-50/50'
+                                                }`}
+                                            >
+                                                <span className="text-2xl">{item.emoji}</span>
+                                                <span className="text-[10px] text-gray-500">{item.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <span className="block text-sm font-bold text-gray-700">علائم فیزیکی (در صورت وجود)</span>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {PHYSICAL_SYMPTOMS.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => toggleSelection(item.id, 'physical')}
+                                                className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
+                                                    selectedPhysicalSymptoms.includes(item.id)
+                                                        ? 'scale-105 border-amber-300 bg-amber-50 shadow-sm'
+                                                        : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-amber-50/50'
+                                                }`}
+                                            >
+                                                <span className="text-2xl">{item.emoji}</span>
+                                                <span className="text-[10px] text-gray-500">{item.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-pink-500">
+                                        <MessageCircle className="h-4 w-4" />
+                                        <span className="text-sm font-bold">یادداشت من</span>
+                                    </div>
+                                    <textarea
+                                        className="w-full resize-none rounded-2xl border-0 bg-[#FFF9FA] p-4 text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
+                                        placeholder="علائم یا اتفاقات امروز را بنویس..."
+                                        rows={3}
+                                        value={symptomText}
+                                        onChange={(e) => setSymptomText(e.target.value)}
                                     />
                                 </div>
                             </div>
 
-                            {/* Mood */}
-                            <div className="space-y-3">
-                                <span className="block text-sm font-bold text-gray-700">حالت روحی چطوره؟</span>
-                                <div className="flex flex-wrap gap-2.5">
-                                    {MOODS.map((item) => (
-                                        <button
-                                            key={item.id}
-                                            type="button"
-                                            onClick={() => toggleSelection(item.id, 'mood')}
-                                            className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
-                                                selectedMood === item.id
-                                                    ? 'scale-105 border-pink-400 bg-pink-50 shadow-sm'
-                                                    : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-pink-50/50'
-                                            }`}
-                                        >
-                                            <span className="text-2xl">{item.emoji}</span>
-                                            <span className="text-[10px] text-gray-500">{item.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Food Cravings */}
-                            <div className="space-y-3">
-                                <span className="block text-sm font-bold text-gray-700">هوس چه طعمی کردی؟</span>
-                                <div className="flex flex-wrap gap-2.5">
-                                    {FOODS.map((item) => (
-                                        <button
-                                            key={item.id}
-                                            type="button"
-                                            onClick={() => toggleSelection(item.id, 'food')}
-                                            className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
-                                                selectedFoods.includes(item.id)
-                                                    ? 'scale-105 border-sky-300 bg-sky-50 shadow-sm'
-                                                    : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-sky-50/50'
-                                            }`}
-                                        >
-                                            <span className="text-2xl">{item.emoji}</span>
-                                            <span className="text-[10px] text-gray-500">{item.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Physical Symptoms */}
-                            <div className="space-y-3">
-                                <span className="block text-sm font-bold text-gray-700">علائم فیزیکی (در صورت وجود)</span>
-                                <div className="flex flex-wrap gap-2.5">
-                                    {PHYSICAL_SYMPTOMS.map((item) => (
-                                        <button
-                                            key={item.id}
-                                            type="button"
-                                            onClick={() => toggleSelection(item.id, 'physical')}
-                                            className={`flex w-[68px] flex-col items-center justify-center gap-1 rounded-2xl border-2 py-3 transition-all ${
-                                                selectedPhysicalSymptoms.includes(item.id)
-                                                    ? 'scale-105 border-amber-300 bg-amber-50 shadow-sm'
-                                                    : 'border-transparent bg-[#FFF9FA] ring-1 ring-pink-50 hover:bg-amber-50/50'
-                                            }`}
-                                        >
-                                            <span className="text-2xl">{item.emoji}</span>
-                                            <span className="text-[10px] text-gray-500">{item.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Notes */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-pink-500">
-                                    <MessageCircle className="h-4 w-4" />
-                                    <span className="text-sm font-bold">یادداشت من</span>
-                                </div>
-                                <textarea
-                                    className="w-full resize-none rounded-2xl border-0 bg-[#FFF9FA] p-4 text-sm outline-none ring-1 ring-pink-100 focus:ring-2 focus:ring-pink-200 text-gray-700"
-                                    placeholder="علائم یا اتفاقات امروز را بنویس..."
-                                    rows={3}
-                                    value={symptomText}
-                                    onChange={(e) => setSymptomText(e.target.value)}
-                                />
-                            </div>
+                            <Button
+                                disabled={loading}
+                                className="mt-8 h-12 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-base font-bold text-white shadow-lg hover:from-pink-600 hover:to-rose-600"
+                                onClick={handleSaveDailyLog}
+                            >
+                                {loading ? 'در حال ذخیره...' : 'ثبت نهایی علائم روزانه'}
+                            </Button>
                         </div>
-
-                        <Button
-                            disabled={loading}
-                            className="mt-8 h-12 w-full rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-base font-bold text-white shadow-lg hover:from-pink-600 hover:to-rose-600"
-                            onClick={handleSaveDailyLog}
-                        >
-                            {loading ? 'در حال ذخیره...' : 'ثبت نهایی علائم روزانه'}
-                        </Button>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Jalali Calendar Modal */}
-            <JalaliCalendarModal
-                open={isCalendarModalOpen}
-                onClose={() => setIsCalendarModalOpen(false)}
-                selectedDate={getCalendarSelectedDate()}
-                onSelectDate={handleCalendarDateSelect}
-                markedDates={markedDates}
-            />
-            {/* Workout Modal */}
-            <WorkoutModal
-                open={isWorkoutModalOpen}
-                onClose={() => setIsWorkoutModalOpen(false)}
-            />
-        </div>
+                {/* Jalali Calendar Modal */}
+                <JalaliCalendarModal
+                    open={isCalendarModalOpen}
+                    onClose={() => setIsCalendarModalOpen(false)}
+                    selectedDate={getCalendarSelectedDate()}
+                    onSelectDate={handleCalendarDateSelect}
+                    markedDates={markedDates}
+                />
+                {/* Workout Modal */}
+                <WorkoutModal
+                    open={isWorkoutModalOpen}
+                    onClose={() => setIsWorkoutModalOpen(false)}
+                />
+            </div>
+        </>
     );
 }
