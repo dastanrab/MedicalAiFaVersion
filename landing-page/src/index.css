@@ -1,0 +1,205 @@
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'YekanBakhFaNum';
+  src: url('/fonts/YekanBakhFaNum-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'YekanBakhFaNum';
+  src: url('/fonts/YekanBakhFaNum-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'YekanBakhFaNum';
+  src: url('/fonts/YekanBakhFaNum-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'YekanBakhFaNum';
+  src: url('/fonts/YekanBakhFaNum-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: 'YekanBakhFaNum', sans-serif;
+  --color-brand: #5bc9f3;
+  --color-blue-50: #f0fafe;
+  --color-blue-100: #e0f4fd;
+  --color-blue-200: #b9e9fb;
+  --color-blue-300: #85daf8;
+  --color-blue-400: #5bc9f3;
+  --color-blue-500: #33b4e8;
+  --color-blue-600: #2196cd;
+  --color-blue-700: #1d78a6;
+  --color-blue-800: #1e6589;
+  --color-blue-900: #1e5471;
+  --color-blue-950: #14394e;
+  --color-indigo-50: #eff7fc;
+  --color-indigo-100: #dcedf8;
+  --color-indigo-200: #bcdcf2;
+  --color-indigo-300: #8ac3e8;
+  --color-indigo-400: #55a5d9;
+  --color-indigo-500: #3389c4;
+  --color-indigo-600: #246ea8;
+  --color-indigo-700: #1f5888;
+  --color-indigo-800: #1e4b71;
+  --color-indigo-900: #1e405e;
+  --color-indigo-950: #14293e;
+}
+
+:root {
+  font-family: 'YekanBakhFaNum', sans-serif;
+  color: #17202a;
+  background: #ffffff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --brand-shadow: 0 16px 40px -12px rgba(33, 150, 205, 0.32);
+  --soft-shadow: 0 10px 32px -14px rgba(15, 23, 42, 0.15);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #fff;
+  direction: rtl;
+  text-align: right;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  color: #14394e;
+  background: #b9e9fb;
+}
+
+.container-shell {
+  width: min(1180px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.section-space {
+  padding-block: clamp(4.5rem, 8vw, 7.5rem);
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #b9e9fb;
+  border-radius: 999px;
+  background: #f0fafe;
+  padding: 0.4rem 0.8rem;
+  color: #1d78a6;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(33, 150, 205, 0.45);
+}
+
+.dot-grid {
+  background-image: radial-gradient(rgba(51, 180, 232, 0.24) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.hairline-grid {
+  background-image:
+    linear-gradient(rgba(30, 101, 137, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 101, 137, 0.055) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.floating {
+  animation: floating 6s ease-in-out infinite;
+}
+
+.pulse-soft {
+  animation: pulse-soft 3.6s ease-in-out infinite;
+}
+
+.ribbon-track {
+  animation: ribbon-scroll 32s linear infinite;
+}
+
+.ribbon-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ribbon-scroll {
+  to {
+    transform: translateX(50%);
+  }
+}
+
+@keyframes floating {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@media (max-width: 640px) {
+  .container-shell {
+    width: min(100% - 32px, 1180px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .ribbon-track {
+    transform: none;
+  }
+}

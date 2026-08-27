@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Temporary: the current backends speak HTTP.
+  Remove this file (and the AndroidManifest networkSecurityConfig attribute)
+  once VITE_API_BASE_URL / VITE_WS_URL are HTTPS / WSS.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">185.222.163.113</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">localhost</domain>
+    </domain-config>
+</network-security-config>
