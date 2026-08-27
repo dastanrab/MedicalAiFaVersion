@@ -17,6 +17,7 @@ import {
     Map,
     Users,
     Stethoscope,
+    Crown,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -40,6 +41,7 @@ export const labNavItems: ProviderNavItem[] = [
     { label: 'زمان‌بندی نمونه‌گیری', segment: 'schedule', icon: CalendarDays },
     //{ label: 'نمونه‌گیری در منزل', segment: 'home-sampling', icon: Home },
     { label: 'نتایج آزمایش', segment: 'results', icon: FileText },
+    { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات آزمایشگاه', segment: 'settings', icon: Settings },
@@ -52,6 +54,7 @@ export const pharmacyNavItems: ProviderNavItem[] = [
     { label: 'موجودی داروها', segment: 'inventory', icon: Package },
     { label: 'ارسال / تحویل', segment: 'delivery', icon: Truck },
     { label: 'موقعیت روی نقشه', segment: 'map', icon: MapPin },
+    { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات داروخانه', segment: 'settings', icon: Settings },
@@ -65,6 +68,7 @@ export const nurseNavItems: ProviderNavItem[] = [
     { label: 'محدوده خدمت‌رسانی', segment: 'coverage', icon: Map },
     { label: 'پرسنل', segment: 'personnel', icon: Users },
     { label: 'خدمات درمانی', segment: 'services', icon: Stethoscope},
+    { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات پروفایل', segment: 'settings', icon: Settings },

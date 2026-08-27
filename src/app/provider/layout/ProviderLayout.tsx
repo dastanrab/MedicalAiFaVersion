@@ -13,6 +13,8 @@ import { providerRoleLabels, providerThemes, providerDefaultNames } from '../con
 import { mockNotifications } from '../data/mockData';
 import { useProviderAuthStore, useNurseAccountType } from '../store/providerAuthStore';
 import { useDoctorAuthStore } from '../doctor/store/doctorAuthStore';
+import { DEFAULT_PROVIDER_SUBSCRIPTION, useProviderPlanStore } from '../store/providerPlanStore';
+import { getProviderPlans } from '../data/providerPlans';
 
 function useNavItems(role: ProviderRole): ProviderNavItem[] {
     const nurseAccountType = useNurseAccountType();
@@ -33,6 +35,9 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
 
     const session = useProviderAuthStore((s) => s.sessions[role]);
     const doctor = useDoctorAuthStore((s) => s.doctor);
+    const subscription =
+        useProviderPlanStore((s) => s.subscriptions[role]) ?? DEFAULT_PROVIDER_SUBSCRIPTION;
+    const currentPlanName = getProviderPlans(role).find((p) => p.id === subscription.planId)?.name;
     const profileName =
         role === 'doctor'
             ? (doctor?.name ?? providerDefaultNames[role])
@@ -50,10 +55,8 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
                     <p className="truncate text-sm font-medium text-white">{profileName}</p>
                     <p className="truncate text-xs text-slate-500">
                         {providerRoleLabels[role]}
-                        {role === 'doctor' && (
-                            <span className="mr-1.5 inline-flex rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300">
-                                doctor
-                            </span>
+                        {currentPlanName && (
+                            <span className="mr-1.5 text-slate-400">· پلن {currentPlanName}</span>
                         )}
                     </p>
                 </div>
@@ -71,7 +74,11 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
                             (item.segment === 'appointments' &&
                                 location.pathname.startsWith(`${base}/appointments`)) ||
                             (item.segment === 'patients' &&
-                                location.pathname.startsWith(`${base}/patients`));
+                                location.pathname.startsWith(`${base}/patients`)) ||
+                            (item.segment === 'plans' &&
+                                location.pathname.startsWith(`${base}/plans`)) ||
+                            (item.segment === 'consultations' &&
+                                location.pathname.startsWith(`${base}/consultations`));
                         const Icon = item.icon;
                         return (
                             <li key={item.segment}>
@@ -135,13 +142,23 @@ export function ProviderNavbar({ role }: ProviderNavbarProps) {
             (item.segment === 'requests' && location.pathname.includes('/requests')) ||
             (item.segment === 'calendar' && location.pathname.includes('/calendar')) ||
             (item.segment === 'appointments' && location.pathname.includes('/appointments')) ||
-            (item.segment === 'patients' && location.pathname.includes('/patients'))
+            (item.segment === 'patients' && location.pathname.includes('/patients')) ||
+            (item.segment === 'plans' && location.pathname.includes('/plans')) ||
+            (item.segment === 'consultations' && location.pathname.includes('/consultations'))
         );
     });
 
+    const nestedPlanTitle = location.pathname.includes('/plans/checkout')
+        ? 'تکمیل پرداخت اشتراک'
+        : location.pathname.includes('/plans/gateway')
+          ? 'درگاه پرداخت'
+          : location.pathname.includes('/plans/result')
+            ? 'نتیجه پرداخت'
+            : current?.label ?? 'پنل خدمات‌دهنده';
+
     return (
         <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
-            <h1 className="text-lg font-semibold text-slate-800">{current?.label ?? 'پنل خدمات‌دهنده'}</h1>
+            <h1 className="text-lg font-semibold text-slate-800">{nestedPlanTitle}</h1>
             <div className="flex items-center gap-2">
                 <button
                     type="button"

@@ -25,6 +25,10 @@ import { ProviderFinancePage } from '../screens/shared/ProviderFinancePage';
 import { ProviderReviewsPage } from '../screens/shared/ProviderReviewsPage';
 import { ProviderSettingsPage } from '../screens/shared/ProviderSettingsPage';
 import { ProviderSupportPage } from '../screens/shared/ProviderSupportPage';
+import { ProviderPlansPage } from '../screens/shared/ProviderPlansPage';
+import { ProviderPlanCheckoutPage } from '../screens/shared/ProviderPlanCheckoutPage';
+import { ProviderPlanGatewayPage } from '../screens/shared/ProviderPlanGatewayPage';
+import { ProviderPlanPaymentResultPage } from '../screens/shared/ProviderPlanPaymentResultPage';
 import {
     ProviderLogin,
     ProviderAuthGate,
@@ -83,6 +87,17 @@ function SharedSettings({ role }: { role: ProviderRole }) {
     return <ProviderSettingsPage role={role} />;
 }
 
+function planRoutes(role: ProviderRole) {
+    return (
+        <>
+            <Route path="plans" element={<ProviderPlansPage role={role} />} />
+            <Route path="plans/checkout" element={<ProviderPlanCheckoutPage role={role} />} />
+            <Route path="plans/gateway" element={<ProviderPlanGatewayPage role={role} />} />
+            <Route path="plans/result" element={<ProviderPlanPaymentResultPage role={role} />} />
+        </>
+    );
+}
+
 function RoleRoutes({ role }: { role: ProviderRole }) {
     if (role === 'lab') {
         return (
@@ -95,6 +110,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="schedule" element={<LabSchedulePage />} />
                 <Route path="home-sampling" element={<LabHomeSamplingPage />} />
                 <Route path="results" element={<LabResultsPage />} />
+                {planRoutes('lab')}
                 <Route path="finance" element={<SharedFinance role="lab" />} />
                 <Route path="reviews" element={<ProviderReviewsPage role="lab"/>} />
                 <Route path="settings" element={<SharedSettings role="lab" />} />
@@ -114,6 +130,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="inventory" element={<PharmacyInventoryPage />} />
                 <Route path="delivery" element={<PharmacyDeliveryPage />} />
                 <Route path="map" element={<PharmacyMapPage />} />
+                {planRoutes('pharmacy')}
                 <Route path="finance" element={<SharedFinance role="pharmacy" />} />
                 <Route path="reviews" element={<ProviderReviewsPage role="pharmacy"  />} />
                 <Route path="settings" element={<SharedSettings role="pharmacy" />} />
@@ -136,6 +153,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="consultations" element={<DoctorConsultationsPage />} />
                 <Route path="/consultations/:id" element={<DoctorChatPage />} />
                 <Route path="prescriptions" element={<DoctorPrescriptionsPage />} />
+                {planRoutes('doctor')}
                 <Route path="finance" element={<DoctorFinancePage />} />
                 <Route path="reviews" element={<DoctorReviewsPage />} />
                 <Route path="settings" element={<DoctorSettingsPage />} />
@@ -155,6 +173,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Route path="coverage" element={<NurseCoveragePage />} />
             <Route path="personnel" element={<NursePersonnelPage />} />
             <Route path="services" element={<NurseServicesPage />} />
+            {planRoutes('nurse')}
             <Route path="finance" element={<SharedFinance role="nurse" />} />
             <Route path="reviews" element={<ProviderReviewsPage role="nurse" />} />
             <Route path="settings" element={<SharedSettings role="nurse" />} />

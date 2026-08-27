@@ -8,6 +8,7 @@ import {
     Wallet,
     Star,
     Settings,
+    Crown,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export const doctorNavItems: DoctorNavItem[] = [
     { label: 'برنامه زمانی', segment: 'schedule', icon: Clock },
     { label: 'مشاوره‌ها', segment: 'consultations', icon: MessageSquare },
    // { label: 'نسخه‌ها', segment: 'prescriptions', icon: FileText },
+    { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات', segment: 'settings', icon: Settings },
