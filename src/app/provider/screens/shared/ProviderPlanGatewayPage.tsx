@@ -6,7 +6,7 @@ import { providerPath } from '../../config/providerNav';
 import { cycleLabel } from '../../data/providerPlans';
 import { getGatewayById } from '../../../data/paymentGateways';
 import { formatPrice } from '../../components';
-import { loadProviderPlanCheckout } from '../../lib/providerPlanCheckout';
+import { isVipCheckout, loadProviderPlanCheckout } from '../../lib/providerPlanCheckout';
 
 interface ProviderPlanGatewayPageProps {
     role: ProviderRole;
@@ -19,11 +19,15 @@ export function ProviderPlanGatewayPage({ role }: ProviderPlanGatewayPageProps) 
     const [busy, setBusy] = useState<'success' | 'failed' | 'cancelled' | null>(null);
     const [secondsLeft, setSecondsLeft] = useState(10 * 60);
 
+    const isVip = isVipCheckout(session);
+    const fallbackPath = isVip ? providerPath(role, 'vip/charge') : providerPath(role, 'plans');
+    const resultPath = isVip ? providerPath(role, 'vip/result') : providerPath(role, 'plans/result');
+
     useEffect(() => {
         if (!session || session.role !== role) {
-            navigate(providerPath(role, 'plans'), { replace: true });
+            navigate(fallbackPath, { replace: true });
         }
-    }, [navigate, role, session]);
+    }, [fallbackPath, navigate, role, session]);
 
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -54,7 +58,7 @@ export function ProviderPlanGatewayPage({ role }: ProviderPlanGatewayPageProps) 
             amount: String(session.payable),
         });
         window.setTimeout(() => {
-            navigate(`${providerPath(role, 'plans/result')}?${params.toString()}`, { replace: true });
+            navigate(`${resultPath}?${params.toString()}`, { replace: true });
         }, 900);
     };
 
@@ -95,7 +99,14 @@ export function ProviderPlanGatewayPage({ role }: ProviderPlanGatewayPageProps) 
                     <div className="space-y-4 p-5">
                         <div className="rounded-2xl bg-slate-50 p-4 text-sm">
                             <Row label="پذیرنده" value="پلتفرم خدمات سلامت" />
-                            <Row label="بابت" value={`اشتراک پلن ${session.planName} (${cycleLabel(session.cycle)})`} />
+                            <Row
+                                label="بابت"
+                                value={
+                                    isVip
+                                        ? `${session.planName}${session.vipGift ? ` + هدیه ${formatPrice(session.vipGift)} تومان` : ''}`
+                                        : `اشتراک پلن ${session.planName}${session.cycle ? ` (${cycleLabel(session.cycle)})` : ''}`
+                                }
+                            />
                             <Row label="شماره سفارش" value={session.authority} mono />
                             <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                                 <span className="text-slate-500">مبلغ قابل پرداخت</span>

@@ -18,6 +18,7 @@ import {
     Users,
     Stethoscope,
     Crown,
+    Sparkles,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -42,6 +43,7 @@ export const labNavItems: ProviderNavItem[] = [
     //{ label: 'نمونه‌گیری در منزل', segment: 'home-sampling', icon: Home },
     { label: 'نتایج آزمایش', segment: 'results', icon: FileText },
     { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
+    { label: 'معرفی ویژه VIP', segment: 'vip', icon: Sparkles },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات آزمایشگاه', segment: 'settings', icon: Settings },
@@ -55,6 +57,7 @@ export const pharmacyNavItems: ProviderNavItem[] = [
     { label: 'ارسال / تحویل', segment: 'delivery', icon: Truck },
     { label: 'موقعیت روی نقشه', segment: 'map', icon: MapPin },
     { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
+    { label: 'معرفی ویژه VIP', segment: 'vip', icon: Sparkles },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات داروخانه', segment: 'settings', icon: Settings },
@@ -69,6 +72,7 @@ export const nurseNavItems: ProviderNavItem[] = [
     { label: 'پرسنل', segment: 'personnel', icon: Users },
     { label: 'خدمات درمانی', segment: 'services', icon: Stethoscope},
     { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
+    { label: 'معرفی ویژه VIP', segment: 'vip', icon: Sparkles },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات پروفایل', segment: 'settings', icon: Settings },

@@ -23,6 +23,7 @@ import {
     type ProviderPlanDiscountCode,
     type ProviderPlanId,
 } from '../../data/providerPlans';
+import { getVipPackage, vipPackageCredit } from '../../data/providerVip';
 import {
     paymentGateways,
     type PaymentGatewayId,
@@ -61,14 +62,28 @@ export function ProviderPlanCheckoutPage({ role }: ProviderPlanCheckoutPageProps
     const cycle = isBillingCycle(searchParams.get('cycle'))
         ? searchParams.get('cycle')!
         : session?.cycle ?? 'monthly';
-    const plan = planId ? getProviderPlan(role, planId) : undefined;
-    const amount = plan ? getPlanPrice(plan, cycle) : 0;
+    const vipPackage = getVipPackage(searchParams.get('package') ?? session?.vipPackageId);
+    const isVip =
+        Boolean(searchParams.get('package')) ||
+        (!searchParams.get('plan') && session?.kind === 'vip_charge');
+    const plan = !isVip && planId ? getProviderPlan(role, planId) : undefined;
+    const amount = isVip ? (vipPackage?.payAmount ?? 0) : plan ? getPlanPrice(plan, cycle) : 0;
+    const backPath = isVip ? providerPath(role, 'vip/charge') : providerPath(role, 'plans');
+    const gatewayPath = isVip ? providerPath(role, 'vip/gateway') : providerPath(role, 'plans/gateway');
 
     useEffect(() => {
-        if (!planId || amount <= 0 || (session && session.role !== role)) {
+        if (session && session.role !== role) {
+            navigate(backPath, { replace: true });
+            return;
+        }
+        if (isVip) {
+            if (!vipPackage || amount <= 0) navigate(providerPath(role, 'vip/charge'), { replace: true });
+            return;
+        }
+        if (!planId || amount <= 0) {
             navigate(providerPath(role, 'plans'), { replace: true });
         }
-    }, [amount, navigate, planId, role, session]);
+    }, [amount, backPath, isVip, navigate, planId, role, session, vipPackage]);
 
     const discountAmount = appliedDiscount ? calcProviderPlanDiscount(amount, appliedDiscount) : 0;
     const payable = Math.max(0, amount - discountAmount);
@@ -91,10 +106,37 @@ export function ProviderPlanCheckoutPage({ role }: ProviderPlanCheckoutPageProps
     };
 
     const handlePay = () => {
-        if (!plan || isPaying) return;
+        if (isPaying) return;
+        if (isVip) {
+            if (!vipPackage) return;
+            setIsPaying(true);
+            saveProviderPlanCheckout({
+                kind: 'vip_charge',
+                role,
+                planName: `شارژ VIP`,
+                amount,
+                payable,
+                discount: discountAmount,
+                coupon: appliedDiscount?.code ?? '',
+                gatewayId,
+                authority: createProviderAuthority(gatewayId),
+                returnPath: providerPath(role, 'vip'),
+                createdAt: new Date().toISOString(),
+                vipPackageId: vipPackage.id,
+                vipCredit: vipPackageCredit(vipPackage),
+                vipGift: vipPackage.giftAmount,
+            });
+            window.setTimeout(() => {
+                navigate(gatewayPath, { replace: true });
+            }, 700);
+            return;
+        }
+
+        if (!plan) return;
         setIsPaying(true);
 
         saveProviderPlanCheckout({
+            kind: 'subscription',
             role,
             planId: plan.id,
             planName: plan.name,
@@ -110,11 +152,11 @@ export function ProviderPlanCheckoutPage({ role }: ProviderPlanCheckoutPageProps
         });
 
         window.setTimeout(() => {
-            navigate(providerPath(role, 'plans/gateway'), { replace: true });
+            navigate(gatewayPath, { replace: true });
         }, 700);
     };
 
-    if (!plan) {
+    if (!plan && !vipPackage) {
         return (
             <div className="flex min-h-[40vh] items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -125,16 +167,20 @@ export function ProviderPlanCheckoutPage({ role }: ProviderPlanCheckoutPageProps
     return (
         <div className="mx-auto max-w-3xl space-y-6">
             <PageHeader
-                title="تکمیل پرداخت اشتراک"
-                description="جزئیات پلن، کد تخفیف و درگاه بانکی را بررسی کنید."
+                title={isVip ? 'تکمیل پرداخت شارژ VIP' : 'تکمیل پرداخت اشتراک'}
+                description={
+                    isVip
+                        ? 'مبلغ شارژ، هدیه، کد تخفیف و درگاه بانکی را بررسی کنید.'
+                        : 'جزئیات پلن، کد تخفیف و درگاه بانکی را بررسی کنید.'
+                }
                 actions={
                     <button
                         type="button"
-                        onClick={() => navigate(providerPath(role, 'plans'))}
+                        onClick={() => navigate(backPath)}
                         className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50"
                     >
                         <ArrowRight className="h-4 w-4" />
-                        بازگشت به پلن‌ها
+                        {isVip ? 'بازگشت به بسته‌ها' : 'بازگشت به پلن‌ها'}
                     </button>
                 }
             />
@@ -142,10 +188,14 @@ export function ProviderPlanCheckoutPage({ role }: ProviderPlanCheckoutPageProps
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <p className="text-xs text-slate-500">پلن انتخاب‌شده</p>
-                        <h2 className="mt-1 text-lg font-bold text-slate-800">{plan.name}</h2>
+                        <p className="text-xs text-slate-500">{isVip ? 'بسته شارژ' : 'پلن انتخاب‌شده'}</p>
+                        <h2 className="mt-1 text-lg font-bold text-slate-800">
+                            {isVip ? 'شارژ سرویس VIP' : plan?.name}
+                        </h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            دوره {cycleLabel(cycle)} · {plan.description}
+                            {isVip
+                                ? `پرداخت ${formatPrice(amount)} تومان + هدیه ${formatPrice(vipPackage?.giftAmount ?? 0)} تومان`
+                                : `دوره ${cycleLabel(cycle)} · ${plan?.description ?? ''}`}
                         </p>
                     </div>
                     <div className="text-left">
@@ -264,7 +314,14 @@ export function ProviderPlanCheckoutPage({ role }: ProviderPlanCheckoutPageProps
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="space-y-2.5 text-sm">
-                    <Row label="مبلغ اشتراک" value={formatPrice(amount)} />
+                    <Row label={isVip ? 'مبلغ شارژ' : 'مبلغ اشتراک'} value={formatPrice(amount)} />
+                    {isVip && vipPackage && (
+                        <Row
+                            label="شارژ هدیه"
+                            value={formatPrice(vipPackage.giftAmount)}
+                            valueClass="text-emerald-600"
+                        />
+                    )}
                     <Row
                         label="تخفیف"
                         value={discountAmount > 0 ? `−${formatPrice(discountAmount)}` : '۰'}

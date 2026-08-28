@@ -29,6 +29,8 @@ import { ProviderPlansPage } from '../screens/shared/ProviderPlansPage';
 import { ProviderPlanCheckoutPage } from '../screens/shared/ProviderPlanCheckoutPage';
 import { ProviderPlanGatewayPage } from '../screens/shared/ProviderPlanGatewayPage';
 import { ProviderPlanPaymentResultPage } from '../screens/shared/ProviderPlanPaymentResultPage';
+import { ProviderVipPage } from '../screens/shared/ProviderVipPage';
+import { ProviderVipChargePage } from '../screens/shared/ProviderVipChargePage';
 import {
     ProviderLogin,
     ProviderAuthGate,
@@ -94,6 +96,11 @@ function planRoutes(role: ProviderRole) {
             <Route path="plans/checkout" element={<ProviderPlanCheckoutPage role={role} />} />
             <Route path="plans/gateway" element={<ProviderPlanGatewayPage role={role} />} />
             <Route path="plans/result" element={<ProviderPlanPaymentResultPage role={role} />} />
+            <Route path="vip" element={<ProviderVipPage role={role} />} />
+            <Route path="vip/charge" element={<ProviderVipChargePage role={role} />} />
+            <Route path="vip/checkout" element={<ProviderPlanCheckoutPage role={role} />} />
+            <Route path="vip/gateway" element={<ProviderPlanGatewayPage role={role} />} />
+            <Route path="vip/result" element={<ProviderPlanPaymentResultPage role={role} />} />
         </>
     );
 }

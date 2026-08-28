@@ -77,6 +77,8 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
                                 location.pathname.startsWith(`${base}/patients`)) ||
                             (item.segment === 'plans' &&
                                 location.pathname.startsWith(`${base}/plans`)) ||
+                            (item.segment === 'vip' &&
+                                location.pathname.startsWith(`${base}/vip`)) ||
                             (item.segment === 'consultations' &&
                                 location.pathname.startsWith(`${base}/consultations`));
                         const Icon = item.icon;
@@ -144,17 +146,22 @@ export function ProviderNavbar({ role }: ProviderNavbarProps) {
             (item.segment === 'appointments' && location.pathname.includes('/appointments')) ||
             (item.segment === 'patients' && location.pathname.includes('/patients')) ||
             (item.segment === 'plans' && location.pathname.includes('/plans')) ||
+            (item.segment === 'vip' && location.pathname.includes('/vip')) ||
             (item.segment === 'consultations' && location.pathname.includes('/consultations'))
         );
     });
 
     const nestedPlanTitle = location.pathname.includes('/plans/checkout')
         ? 'تکمیل پرداخت اشتراک'
-        : location.pathname.includes('/plans/gateway')
-          ? 'درگاه پرداخت'
-          : location.pathname.includes('/plans/result')
-            ? 'نتیجه پرداخت'
-            : current?.label ?? 'پنل خدمات‌دهنده';
+        : location.pathname.includes('/vip/checkout')
+          ? 'تکمیل پرداخت VIP'
+          : location.pathname.includes('/vip/charge')
+            ? 'شارژ سرویس VIP'
+            : location.pathname.includes('/plans/gateway') || location.pathname.includes('/vip/gateway')
+              ? 'درگاه پرداخت'
+              : location.pathname.includes('/plans/result') || location.pathname.includes('/vip/result')
+                ? 'نتیجه پرداخت'
+                : current?.label ?? 'پنل خدمات‌دهنده';
 
     return (
         <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">

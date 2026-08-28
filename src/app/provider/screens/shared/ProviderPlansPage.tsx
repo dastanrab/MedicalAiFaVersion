@@ -73,6 +73,7 @@ export function ProviderPlansPage({ role }: ProviderPlansPageProps) {
 
         const amount = getPlanPrice(plan, cycle);
         saveProviderPlanCheckout({
+            kind: 'subscription',
             role,
             planId: plan.id,
             planName: plan.name,
@@ -109,6 +110,15 @@ export function ProviderPlansPage({ role }: ProviderPlansPageProps) {
             <PageHeader
                 title="پلن‌ها و اشتراک"
                 description={`پلن مناسب پنل ${providerRoleLabels[role]} را انتخاب کنید و اشتراک را تمدید یا ارتقا دهید.`}
+                actions={
+                    <button
+                        type="button"
+                        onClick={() => navigate(providerPath(role, 'vip'))}
+                        className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm font-semibold text-amber-800 hover:bg-amber-100"
+                    >
+                        معرفی ویژه VIP
+                    </button>
+                }
             />
 
             <div className={`rounded-2xl border border-slate-200 bg-white p-5 ring-1 ${accent.ring}/10`}>
@@ -307,6 +317,10 @@ export function ProviderPlansPage({ role }: ProviderPlansPageProps) {
                         <FaqItem
                             q="تفاوت دوره ماهانه و سالانه چیست؟"
                             a={`با پرداخت سالانه تا ${toFaDigits(maxSaving)}٪ کمتر از مجموع ۱۲ ماه پرداخت می‌کنید.`}
+                        />
+                        <FaqItem
+                            q="تفاوت اشتراک پنل و VIP چیست؟"
+                            a="اشتراک پنل امکانات خود داشبورد را باز می‌کند. معرفی ویژه VIP جداست و برای دیده شدن در جستجوی بیمار با کلمات کلیدی و شارژ کیف‌پول است."
                         />
                     </ul>
                     <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
