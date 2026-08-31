@@ -13,13 +13,12 @@ import {
   Star,
   HelpCircle,
   ChevronDown,
-  Bell,
   Crown,
   Bookmark,
   Heart,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Card } from '../components/ui/card';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { AppBar } from '../components/AppBar';
@@ -27,6 +26,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../admin/store/settingsStore';
 import { todayJalali, PERSIAN_MONTHS, toFaDigits } from '../provider/utils/jalali';
+
+// مسیر ایمپورت را بسته به پوشه‌بندی پروژه خود اصلاح کنید
+import NotificationBellWidget from '../components/NotificationBellWidget';
+import { useUserStore } from "../store/useUserStore";
 
 const blogPosts = [
   {
@@ -229,6 +232,8 @@ function QuickActionCard({ action, onClick }: { action: QuickAction; onClick: ()
 }
 
 export function Home() {
+  const user = useUserStore((state) => state.user);
+  const subscriberId = user?.novu_subscriber_id;
   const navigate = useNavigate();
   const { accessToken } = useAuthStore();
   const faq = useSettingsStore((s) => s.content.faq);
@@ -238,18 +243,30 @@ export function Home() {
   const blogScrollRef = useRef<HTMLDivElement>(null);
   const blogCardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeBlogIndex, setActiveBlogIndex] = useState(0);
-  const [healthScore, setHealthScore] = useState<number>(0); // استیت برای ذخیره امتیاز
+  const [healthScore, setHealthScore] = useState<number>(0);
+  const [showHealthPopup, setShowHealthPopup] = useState<boolean>(false);
 
   useEffect(() => {
-    // خواندن امتیاز از لوکال استوریج هنگام لود صفحه
-    const savedScore = localStorage.getItem('userHealthScore');
-    if (savedScore) {
-      setHealthScore(Number(savedScore));
-    } else {
-      setHealthScore(0); // یا هر عدد پیش‌فرض مثل ۸۵
+    // اگر اطلاعات کاربر هنوز لود نشده است، منتظر بمان
+    if (!user || !user.id) return;
+
+    // ایجاد یک کلید یکتا برای هر کاربر
+    const storageKey = `userHealthScore_${user.id}`;
+
+    const savedScore = localStorage.getItem(storageKey);
+    const score = savedScore ? Number(savedScore) : 0;
+
+    setHealthScore(score);
+
+    // اگر امتیاز صفر بود، بعد از ۱.۵ ثانیه پاپ‌آپ را نشان بده
+    if (score === 0) {
+      const timer = setTimeout(() => setShowHealthPopup(true), 400);
+      return () => clearTimeout(timer);
     }
-  }, []);
-  // دریافت اطلاعات پروفایل کاربر
+  }, [user?.id]); // اضافه کردن user.id به آرایه وابستگی‌ها
+
+
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -272,7 +289,6 @@ export function Home() {
     if (accessToken) fetchProfile();
   }, [accessToken]);
 
-  // دریافت اطلاعات پارتنر
   useEffect(() => {
     const fetchPartnerDashboard = async () => {
       if (!accessToken) return;
@@ -371,7 +387,6 @@ export function Home() {
           className="relative h-full overflow-x-hidden overflow-y-auto bg-[#F6F8FC] pb-16 font-[YekanBakhFaNum]"
           dir="rtl"
       >
-        {/* Ambient background decoration */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[420px] overflow-hidden">
           <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
           <div className="absolute -top-10 left-0 h-56 w-56 rounded-full bg-indigo-200/40 blur-3xl" />
@@ -380,7 +395,6 @@ export function Home() {
         <AppBar showChat />
 
         <div className="relative z-10 px-5 pt-24 pb-4 text-right sm:px-6">
-          {/* Hero */}
           <motion.div
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -418,35 +432,38 @@ export function Home() {
                     </div>
                   </div>
 
-                  <button
-                      type="button"
-                      onClick={() => navigate('/chats')}
-                      aria-label="اعلان‌ها"
-                      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors hover:bg-white/25"
-                  >
-                    <Bell className="h-4.5 w-4.5" />
-                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-blue-600" />
-                  </button>
+                  {/* ======================================================== */}
+                  {/* جایگذاری کامپوننت NotificationBellWidget به جای دکمه قبلی */}
+                  {/* ======================================================== */}
+                  <div className="relative flex shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25 backdrop-blur-sm transition-colors hover:bg-white/25 [&_svg]:text-white">
+                    <NotificationBellWidget subscriberId={subscriberId ?? 'e481d666-914e-4f24-9475-3d76a7369c58'} />
+                  </div>
+
                 </div>
 
+                {/* کدهای قبلی دکمه کارت سلامت... */}
                 <button
                     type="button"
-                    onClick={() => navigate('/results')}
+                    onClick={() => navigate(healthScore === 0 ? '/results' : '/results')}
                     className="group mt-5 flex w-full items-center gap-3 rounded-2xl bg-white/10 p-2.5 pr-3.5 text-right ring-1 ring-white/15 backdrop-blur-sm transition-colors hover:bg-white/15"
                 >
-                  <HealthScoreRing value={healthScore > 0 ? toFaDigits(healthScore) : 0}/>
+                  <HealthScoreRing  value={healthScore > 0 ? toFaDigits(healthScore) : 0}/>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-white">امتیاز سلامت شما عالی است</p>
+                    {/* متن داینامیک شد */}
+                    <p className="text-sm font-bold text-white">
+                      {healthScore === 0 ? 'ارزیابی سلامت خود را شروع کنید' : 'امتیاز سلامت شما'}
+                    </p>
                     <p className="mt-0.5 text-[11px] text-blue-100/80">
-                      بر اساس آخرین تحلیل هوش مصنوعی
+                      {healthScore === 0 ? 'هنوز امتیازی برای شما ثبت نشده است' : 'بر اساس آخرین تحلیل هوش مصنوعی'}
                     </p>
                   </div>
                   <ChevronLeft className="h-4.5 w-4.5 shrink-0 text-white/70 transition-transform group-hover:-translate-x-1" />
                 </button>
+
               </div>
             </div>
 
-            {/* Health stats — floating */}
+            {/* بقیه المان‌های صفحه بدون تغییر مانده است ... */}
             <div className="relative z-10 -mt-8 grid grid-cols-3 gap-2 px-1">
               {[
                 { label: 'معاینه', value: '۱۲', icon: Stethoscope },
@@ -470,7 +487,6 @@ export function Home() {
             </div>
           </motion.div>
 
-          {/* Featured CTA — AI diagnosis */}
           <motion.button
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -499,7 +515,6 @@ export function Home() {
             </div>
           </motion.button>
 
-          {/* Partner Info Section (Pink Gradient) - Only rendered when partner data exists */}
           {partnerData && (
               <motion.div
                   initial={{ opacity: 0, y: 16 }}
@@ -554,7 +569,6 @@ export function Home() {
               </motion.div>
           )}
 
-          {/* Premium membership teaser */}
           <motion.button
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -575,7 +589,6 @@ export function Home() {
             <ChevronLeft className="relative h-5 w-5 shrink-0 text-amber-500 transition-transform group-hover:-translate-x-1" />
           </motion.button>
 
-          {/* Period tracker — conditional */}
           {userData?.gender === 1 && (
               <button
                   type="button"
@@ -593,7 +606,6 @@ export function Home() {
               </button>
           )}
 
-          {/* Quick access grid */}
           <motion.div
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -625,7 +637,6 @@ export function Home() {
             </div>
           </motion.div>
 
-          {/* Recent activity */}
           <motion.div
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -667,7 +678,6 @@ export function Home() {
             </div>
           </motion.div>
 
-          {/* Latest articles — full-bleed carousel */}
           <motion.div
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -833,6 +843,65 @@ export function Home() {
               </motion.div>
           )}
         </div>
+        <AnimatePresence>
+          {showHealthPopup && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+
+                {/* پس‌زمینه بلور شده و تیره */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-[#0F172A]/40 backdrop-blur-md"
+                    onClick={() => setShowHealthPopup(false)} // بستن با کلیک بیرون پاپ‌آپ
+                />
+
+                {/* محتوای پاپ‌آپ */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                    className="relative z-10 w-full max-w-sm overflow-hidden rounded-[2rem] bg-white p-6 text-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] ring-1 ring-gray-100"
+                >
+                  {/* آیکون تزئینی */}
+                  <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50/50 shadow-inner">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
+                      <Activity className="h-7 w-7" />
+                    </div>
+                  </div>
+
+                  <h3 className="mb-2 text-xl font-extrabold text-gray-900">
+                    پایش سلامت شما تکمیل نیست!
+                  </h3>
+
+                  <p className="mb-8 text-sm leading-relaxed text-gray-500">
+                    برای دریافت برنامه‌های اختصاصی، توصیه‌های هوش مصنوعی و پیگیری دقیق وضعیت بدنی، نیاز است ابتدا اطلاعات سلامت خود را تکمیل کنید.
+                  </p>
+
+                  <div className="flex flex-col gap-3">
+                    <button
+                        onClick={() => {
+                          setShowHealthPopup(false);
+                          navigate('/results'); // مسیر مورد نظر برای تکمیل ارزیابی
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30 active:scale-[0.98]"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      شروع ارزیابی و پایش
+                    </button>
+
+                    <button
+                        onClick={() => setShowHealthPopup(false)}
+                        className="w-full rounded-2xl py-3 text-sm font-bold text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 active:scale-[0.98]"
+                    >
+                      شاید بعداً
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+          )}
+        </AnimatePresence>
       </div>
   );
 }

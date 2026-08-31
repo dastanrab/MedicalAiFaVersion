@@ -21,7 +21,10 @@ import { mockChartData } from '../../data/mockData';
 import { useLabStore } from '../../store/labStore';
 import { labStatusLabels, labStatusStyles } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
-import {useProviderSession} from "../../store/providerAuthStore";
+import { useProviderSession } from "../../store/providerAuthStore";
+
+// اضافه شدن ایمپورت fetchWithAuth
+import { fetchWithAuth } from '../../utils/apiClient';
 
 const chartConfig = { count: { label: 'درخواست', color: '#f59e0b' } } satisfies ChartConfig;
 
@@ -61,16 +64,17 @@ export function LabDashboard() {
 
         if (showLoading) setLoading(true);
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/owner/lab/profile', {
+            // جایگزینی fetch با fetchWithAuth
+            const response = await fetchWithAuth('http://185.222.163.113:7000/api/owner/lab/profile', {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     Accept: 'application/json',
                 },
-            });
+            },"lab");
 
             const result = await response.json();
 
-            if (response.ok && result.status === true) {
+            if (result.status === true) {
                 const labData = result.data;
                 setProfile({
                     id: labData.id,
@@ -84,7 +88,13 @@ export function LabDashboard() {
             } else {
                 setError(result.message || 'خطا در دریافت اطلاعات');
             }
-        } catch (err) {
+        } catch (err: any) {
+            // مدیریت خطای ۴۰۱ و جلوگیری از اجرای کدهای بعدی
+            if (err.message === 'UNAUTHORIZED') {
+                console.warn('Session expired. Redirecting...');
+                return;
+            }
+
             console.error('Network error:', err);
             setError('مشکل در ارتباط با سرور');
         } finally {
@@ -101,18 +111,19 @@ export function LabDashboard() {
 
         setUpdating(true);
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/owner/lab/status', {
+            // جایگزینی fetch با fetchWithAuth
+            const response = await fetchWithAuth('http://185.222.163.113:7000/api/owner/lab/status', {
                 method: 'PUT',
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                 },
-            });
+            },'lab');
 
             const result = await response.json();
 
-            if (response.ok) {
+            if (result.status === true || result.data) {
                 // تلاش برای استخراج isActive از پاسخ (ساختارهای مختلف)
                 let newIsActive: boolean | undefined;
                 if (result.data) {
@@ -131,7 +142,13 @@ export function LabDashboard() {
             } else {
                 alert(result.message || 'خطا در تغییر وضعیت');
             }
-        } catch (err) {
+        } catch (err: any) {
+            // مدیریت خطای ۴۰۱ و جلوگیری از اجرای کدهای بعدی
+            if (err.message === 'UNAUTHORIZED') {
+                console.warn('Session expired in toggleStatus. Redirecting...');
+                return;
+            }
+
             console.error('Network error:', err);
             alert('مشکل در ارتباط با سرور');
         } finally {

@@ -9,6 +9,7 @@ interface User {
     phone?: string;
     mobile?: string;
     is_verify: boolean;
+    novu_subscriber_id?: string;
     [key: string]: any;
 }
 

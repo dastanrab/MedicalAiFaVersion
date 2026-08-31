@@ -8,6 +8,8 @@ export interface ProviderUser {
     avatar?: string | null;
     /** نوع حساب پرستار: مستقل یا شرکت */
     nurseAccountType?: NurseAccountType;
+    // شما می‌توانید فیلدهای بیشتری که از پروفایل دریافت می‌شود را اینجا اضافه کنید
+    [key: string]: any;
 }
 
 export interface ProviderSession {
@@ -20,6 +22,8 @@ interface ProviderAuthState {
     setAuth: (role: ProviderRole, token: string, user: ProviderUser) => void;
     logout: (role: ProviderRole) => void;
     getSession: (role: ProviderRole) => ProviderSession | null;
+    // --- مورد جدید اضافه شده برای ProfileGuard ---
+    setProfile: (role: ProviderRole, profileData: Partial<ProviderUser>) => void;
 }
 
 export const useProviderAuthStore = create<ProviderAuthState>()(
@@ -31,6 +35,26 @@ export const useProviderAuthStore = create<ProviderAuthState>()(
                 set((state) => ({
                     sessions: { ...state.sessions, [role]: { token, user } },
                 })),
+
+            // --- متد جدید اضافه شده برای ProfileGuard ---
+            setProfile: (role, profileData) =>
+                set((state) => {
+                    const existingSession = state.sessions[role];
+                    if (!existingSession) return state; // اگر سشنی وجود ندارد تغییری نده
+
+                    return {
+                        sessions: {
+                            ...state.sessions,
+                            [role]: {
+                                ...existingSession,
+                                user: {
+                                    ...existingSession.user,
+                                    ...profileData
+                                }
+                            }
+                        }
+                    };
+                }),
 
             logout: (role) => {
                 set((state) => {

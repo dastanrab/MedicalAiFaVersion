@@ -536,14 +536,14 @@ export function UserProfile() {
               onSetDefault={setDefaultAddress}
           />
 
-          <button
-              type="button"
-              onClick={logout}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 bg-white py-3 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"
-          >
-            <LogOut className="h-4 w-4" />
-            خروج از حساب کاربری
-          </button>
+          {/*<button*/}
+          {/*    type="button"*/}
+          {/*    onClick={logout}*/}
+          {/*    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 bg-white py-3 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"*/}
+          {/*>*/}
+          {/*  <LogOut className="h-4 w-4" />*/}
+          {/*  خروج از حساب کاربری*/}
+          {/*</button>*/}
         </div>
       </ProfileScrollShell>
   );

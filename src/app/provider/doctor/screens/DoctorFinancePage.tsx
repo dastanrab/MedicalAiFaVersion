@@ -1,11 +1,12 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Wallet, TrendingUp } from 'lucide-react';
+import { Wallet, TrendingUp, Plus, X } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
     ChartContainer,
     ChartTooltipContent,
-    type ChartConfig, ChartTooltip,
+    type ChartConfig,
+    ChartTooltip,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, formatPrice } from '../../components';
 import { useDoctorAuthStore } from "../store/doctorAuthStore";
@@ -43,34 +44,40 @@ export function DoctorFinancePage() {
     });
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchFinanceData = async () => {
-            try {
-                if (!token) return;
+    // --- State های مربوط به شارژ کیف پول ---
+    const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
+    const [chargeAmount, setChargeAmount] = useState<string>('');
+    const [isCharging, setIsCharging] = useState(false);
 
-                const response = await fetch('http://185.222.163.113:7000/api/doctor/finance', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
-                });
+    // استخراج تابع دریافت اطلاعات برای استفاده مجدد بعد از شارژ
+    const fetchFinanceData = useCallback(async () => {
+        try {
+            if (!token) return;
+            setLoading(true);
+            const response = await fetch('http://185.222.163.113:7000/api/doctor/finance', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
 
-                const result = await response.json();
+            const result = await response.json();
 
-                if (result.status === 200 && result.data) {
-                    setFinanceData(result.data);
-                }
-            } catch (error) {
-                console.error('Error fetching finance data:', error);
-            } finally {
-                setLoading(false);
+            if (result.status === 200 && result.data) {
+                setFinanceData(result.data);
             }
-        };
-
-        fetchFinanceData();
+        } catch (error) {
+            console.error('Error fetching finance data:', error);
+        } finally {
+            setLoading(false);
+        }
     }, [token]);
+
+    useEffect(() => {
+        fetchFinanceData();
+    }, [fetchFinanceData]);
 
     const chartData = useMemo(() => {
         return financeData.rows
@@ -88,9 +95,56 @@ export function DoctorFinancePage() {
         }
     };
 
+    // --- تابع انجام فرآیند شارژ شبیه‌سازی شده ---
+    const handleChargeSubmit = async () => {
+        const amountNum = Number(chargeAmount);
+        if (!chargeAmount || isNaN(amountNum) || amountNum < 10000) {
+            alert('لطفا مبلغ معتبری وارد کنید (حداقل ۱۰,۰۰۰ تومان/ریال).');
+            return;
+        }
+
+        setIsCharging(true);
+        try {
+            const response = await fetch('http://185.222.163.113:7000/api/doctor/wallet/charge-mock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ amount: amountNum }),
+            });
+
+            const result = await response.json();
+
+            if (result.status === 200) {
+                // موفقیت: بستن مودال، پاک کردن اینپوت و دریافت مجدد اطلاعات جدول/نمودار
+                setIsChargeModalOpen(false);
+                setChargeAmount('');
+                fetchFinanceData();
+            } else {
+                alert(result.message || 'خطا در انجام عملیات شارژ.');
+            }
+        } catch (error) {
+            console.error('Error charging wallet:', error);
+            alert('خطا در ارتباط با سرور.');
+        } finally {
+            setIsCharging(false);
+        }
+    };
+
     return (
-        <div className="space-y-6">
-            <PageHeader title="گزارش مالی" description="درآمد، تراکنش‌ها و تسویه‌ها" />
+        <div className="space-y-6 relative">
+            <div className="flex items-center justify-between">
+                <PageHeader title="گزارش مالی" description="درآمد، تراکنش‌ها و تسویه‌ها" />
+                <button
+                    onClick={() => setIsChargeModalOpen(true)}
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                >
+                    <Plus className="h-4 w-4" />
+                    افزایش موجودی
+                </button>
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
                 <KpiCard
@@ -124,7 +178,7 @@ export function DoctorFinancePage() {
                                         tickFormatter={(v) => formatPrice(v)}
                                     />
                                     <ChartTooltip content={<ChartTooltipContent />} />
-                                    <Bar dataKey="amount" fill="var(--color-amount)"  />
+                                    <Bar dataKey="amount" fill="var(--color-amount)" />
                                 </BarChart>
                             </ChartContainer>
                         </div>
@@ -170,8 +224,8 @@ export function DoctorFinancePage() {
                                                             : 'bg-indigo-50 text-indigo-700'
                                                     }`}
                                                 >
-                                {t.type === 1 ? 'درآمد' : 'سایر / تسویه'}
-                                </span>
+                                                    {t.type === 1 ? 'درآمد' : 'سایر / برداشت'}
+                                                </span>
                                         </td>
                                         <td className="px-4 py-3 text-slate-500 text-xs text-center" dir="ltr">
                                             {t.date}
@@ -190,6 +244,45 @@ export function DoctorFinancePage() {
                         </div>
                     </div>
                 </>
+            )}
+
+            {/* مودال افزایش موجودی */}
+            {isChargeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-slate-800">افزایش موجودی کیف پول</h3>
+                            <button
+                                onClick={() => setIsChargeModalOpen(false)}
+                                className="text-slate-400 hover:text-slate-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-600">
+                                    مبلغ (تومان)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={chargeAmount}
+                                    onChange={(e) => setChargeAmount(e.target.value)}
+                                    placeholder="مثلا 50000"
+                                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    dir="ltr"
+                                />
+                            </div>
+                            <button
+                                onClick={handleChargeSubmit}
+                                disabled={isCharging}
+                                className="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-70"
+                            >
+                                {isCharging ? 'در حال پرداخت...' : 'پرداخت (شبیه‌سازی)'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

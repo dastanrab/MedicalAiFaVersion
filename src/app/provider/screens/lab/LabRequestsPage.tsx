@@ -16,6 +16,7 @@ import {
     type LabRequestStatus,
 } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
+import {fetchWithAuth} from "../../utils/apiClient";
 
 // دیکشنری وضعیت‌های درخواست
 const statusLabels: Record<number, string> = {
@@ -122,12 +123,15 @@ export function LabRequestsPage() {
 
             try {
                 setLoading(true);
-                const response = await fetch('http://185.222.163.113:7000/api/owner/lab/requests', {
+
+                // تغییر مهم ۱: استفاده از fetchWithAuth به جای fetch خام
+                const response = await fetchWithAuth('http://185.222.163.113:7000/api/owner/lab/requests', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',
                     },
-                });
+                },'lab');
+
                 const result = await response.json();
 
                 if (result.status && result.data) {
@@ -160,7 +164,14 @@ export function LabRequestsPage() {
 
                     setRequests(mappedRequests);
                 }
-            } catch (error) {
+            } catch (error: any) {
+                // تغییر مهم ۲: جلوگیری از بروز خطای کرش در کنسول در زمان دریافت ۴۰۱
+                // وقتی fetchWithAuth خطای UNAUTHORIZED را پرتاب می‌کند، جریان اینجا متوقف می‌شود
+                if (error.message === 'UNAUTHORIZED') {
+                    console.warn('Session expired. fetchWithAuth is handling the redirect.');
+                    return;
+                }
+
                 console.error('Error fetching requests:', error);
             } finally {
                 setLoading(false);

@@ -4,7 +4,7 @@ import { ProviderToaster } from '../components/ProviderToaster';
 import type { ProviderRole } from '../config/providerNav';
 import { providerPath } from '../config/providerNav';
 import { LabDashboard } from '../screens/lab/LabDashboard';
-import {LabRequestsPage, LabRequestsPagee} from '../screens/lab/LabRequestsPage';
+import {LabRequestsPage} from '../screens/lab/LabRequestsPage';
 import { LabCatalogPage } from '../screens/lab/LabCatalogPage';
 import { LabSchedulePage } from '../screens/lab/LabSchedulePage';
 import { LabHomeSamplingPage } from '../screens/lab/LabHomeSamplingPage';
@@ -55,7 +55,29 @@ import { DoctorReviewsPage } from '../doctor/screens/DoctorReviewsPage';
 import { DoctorSettingsPage } from '../doctor/screens/DoctorSettingsPage';
 import NurseCoveragePage from "../screens/nurse/NurseCoveragePage";
 import {DoctorChatPage} from "../doctor/screens/DoctorChatPage";
+import {ProfileGuard} from "../components/ProfileGuard";
 
+function ProtectedRolePanel({ role }: { role: ProviderRole }) {
+    if (role === 'doctor') {
+        return (
+            <DoctorAuthGate>
+                {/* اضافه شدن ProfileGuard برای دکتر */}
+                <ProfileGuard role={role}>
+                    <ProviderRoleLayout role={role} />
+                </ProfileGuard>
+            </DoctorAuthGate>
+        );
+    }
+
+    return (
+        <ProviderAuthGate role={role}>
+            {/* اضافه شدن ProfileGuard برای بقیه نقش‌ها */}
+            <ProfileGuard role={role}>
+                <ProviderRoleLayout role={role} />
+            </ProfileGuard>
+        </ProviderAuthGate>
+    );
+}
 function LabRequestDetailRoute() {
     const { id } = useParams();
     return <LabRequestDetailPage requestId={Number(id)} />;
@@ -198,21 +220,6 @@ function ProviderRoleLayout({ role }: { role: ProviderRole }) {
     );
 }
 
-function ProtectedRolePanel({ role }: { role: ProviderRole }) {
-    if (role === 'doctor') {
-        return (
-            <DoctorAuthGate>
-                <ProviderRoleLayout role={role} />
-            </DoctorAuthGate>
-        );
-    }
-
-    return (
-        <ProviderAuthGate role={role}>
-            <ProviderRoleLayout role={role} />
-        </ProviderAuthGate>
-    );
-}
 
 export function ProviderRoutes() {
     return (

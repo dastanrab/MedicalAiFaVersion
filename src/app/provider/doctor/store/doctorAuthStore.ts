@@ -66,6 +66,8 @@ interface DoctorAuthState {
     logout: () => void;
     isAuthenticated: () => boolean;
     fetchProfile: () => Promise<void>;
+    // --- مورد جدید اضافه شده برای ProfileGuard ---
+    setProfile: (profileData: Partial<DoctorUser>) => void;
 }
 
 export const useDoctorAuthStore = create<DoctorAuthState>()(
@@ -143,6 +145,15 @@ export const useDoctorAuthStore = create<DoctorAuthState>()(
                 } catch (error) {
                     console.error('Fetch profile failed:', error);
                 }
+            },
+
+            // --- متد جدید اضافه شده برای ProfileGuard ---
+            setProfile: (profileData) => {
+                set((state) => ({
+                    doctor: state.doctor
+                        ? { ...state.doctor, ...profileData }
+                        : (profileData as DoctorUser)
+                }));
             },
 
             logout: () => {
