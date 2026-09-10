@@ -49,6 +49,8 @@ export function LabRequestDetailPage() {
     const [error, setError] = useState<string | null>(null);
     const [uploadingTestId, setUploadingTestId] = useState<number | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [downloadingTestId, setDownloadingTestId] = useState<number | null>(null);
+    const [downloadingPrescriptionIndex, setDownloadingPrescriptionIndex] = useState<number | null>(null);
 
     // استیت مربوط به پذیرش درخواست
     const [isAccepting, setIsAccepting] = useState(false);
@@ -58,6 +60,87 @@ export function LabRequestDetailPage() {
     const [selectedTestIds, setSelectedTestIds] = useState<number[]>([]);
     const [assigning, setAssigning] = useState(false);
     const [loadingTests, setLoadingTests] = useState(false);
+
+    const handleViewPrescription = async (fileUrl: string, index: number) => {
+        if (!fileUrl) return;
+        setDownloadingPrescriptionIndex(index);
+
+        try {
+            const response = await fetch(fileUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${labSession?.token}`,
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('خطا در دریافت فایل');
+            }
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.target = '_blank';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+
+        } catch (error) {
+            console.error(error);
+            alert('خطا در دریافت فایل نسخه. لطفاً دوباره تلاش کنید.');
+        } finally {
+            setDownloadingPrescriptionIndex(null);
+        }
+    };
+    const handleViewResult = async (fileUrl: string, testPackId: number) => {
+        if (!fileUrl) return;
+        setDownloadingTestId(testPackId);
+
+        try {
+            const response = await fetch(fileUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${labSession?.token}`,
+                    // 'Accept' header depends on the file type, but generally not strictly needed for blobs
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('خطا در دریافت فایل');
+            }
+
+            // تبدیل پاسخ سرور به فایل (Blob)
+            const blob = await response.blob();
+
+            // ساخت یک URL موقت برای فایل در حافظه مرورگر
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            // ایجاد یک تگ a مجازی برای باز کردن فایل در تب جدید
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.target = '_blank';
+            // در صورتی که می‌خواهید فایل مستقیماً دانلود شود (به جای باز شدن) خط زیر را از کامنت در بیاورید
+            // link.download = 'result_file';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // پاکسازی URL موقت پس از چند ثانیه برای آزاد شدن مموری
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+
+        } catch (error) {
+            console.error(error);
+            alert('خطا در دریافت فایل نتیجه. لطفاً دوباره تلاش کنید.');
+        } finally {
+            setDownloadingTestId(null);
+        }
+    };
 
     const fetchRequestDetails = async () => {
         try {
@@ -384,34 +467,34 @@ export function LabRequestDetailPage() {
 
                         {request.prescriptionType === 'file' && request.prescriptionFiles && request.prescriptionFiles.length > 0 && (
                             <div className="pt-2">
-                                <span className="text-slate-500 mb-3 flex items-center gap-2 font-medium">
-                                    <ImageIcon className="w-4 h-4" /> فایل‌های ضمیمه شده:
-                                </span>
+        <span className="text-slate-500 mb-3 flex items-center gap-2 font-medium">
+            <ImageIcon className="w-4 h-4" /> فایل‌های ضمیمه شده:
+        </span>
                                 <div className="flex flex-wrap gap-3">
                                     {request.prescriptionFiles.map((fileUrl, index) => (
-                                        <a
+                                        <button
                                             key={index}
-                                            href={fileUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="block border rounded-xl overflow-hidden hover:shadow-md transition-all relative group bg-slate-50"
+                                            onClick={() => handleViewPrescription(fileUrl, index)}
+                                            disabled={downloadingPrescriptionIndex === index}
+                                            className="block border rounded-xl overflow-hidden hover:shadow-md transition-all relative group bg-slate-50 flex items-center justify-center h-24 w-24 disabled:opacity-70 disabled:cursor-wait"
+                                            title={`مشاهده فایل ${index + 1}`}
                                         >
-                                            <img
-                                                src={fileUrl}
-                                                alt={`نسخه ${index + 1}`}
-                                                className="h-24 w-24 object-cover"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=PDF/File';
-                                                }}
-                                            />
-                                            <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-white text-xs font-medium bg-black/40 px-2 py-1 rounded">مشاهده</span>
-                                            </div>
-                                        </a>
+                                            {downloadingPrescriptionIndex === index ? (
+                                                <Spinner />
+                                            ) : (
+                                                <>
+                                                    <ImageIcon className="h-8 w-8 text-slate-300" />
+                                                    <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <span className="text-white text-xs font-medium bg-black/40 px-2 py-1 rounded">مشاهده</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
                         )}
+
                     </div>
                 </div>
 
@@ -501,18 +584,21 @@ export function LabRequestDetailPage() {
                                             <td className="px-4 py-3.5 text-left text-slate-600 font-mono">{formatPrice(test.price)}</td>
                                             <td className="px-4 py-3.5 flex items-center justify-center gap-2">
                                                 {/* اگر فایلی وجود داشته باشد دکمه مشاهده نتیجه نمایش داده میشود */}
+                                                {/* اگر فایلی وجود داشته باشد دکمه مشاهده نتیجه نمایش داده میشود */}
                                                 {test.result_file && (
-                                                    <a
-                                                        href={test.result_file}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-green-50 px-3.5 py-2 text-xs font-medium text-green-600 hover:bg-green-100 transition-colors shadow-sm"
+                                                    <button
+                                                        onClick={() => handleViewResult(test.result_file!, test.test_pack_id)}
+                                                        disabled={downloadingTestId === test.test_pack_id}
+                                                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-green-50 px-3.5 py-2 text-xs font-medium text-green-600 hover:bg-green-100 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-wait"
                                                     >
-                                                        <FileCheck className="h-4 w-4" />
-                                                        مشاهده نتیجه
-                                                    </a>
+                                                        {downloadingTestId === test.test_pack_id ? (
+                                                            <Spinner /> /* در صورت نیاز از یک آیکون لودینگ کوچک استفاده کنید یا متن را تغییر دهید */
+                                                        ) : (
+                                                            <FileCheck className="h-4 w-4" />
+                                                        )}
+                                                        {downloadingTestId === test.test_pack_id ? 'در حال باز کردن...' : 'مشاهده نتیجه'}
+                                                    </button>
                                                 )}
-
                                                 <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-blue-50 px-3.5 py-2 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-colors shadow-sm">
                                                     {uploadingTestId === test.test_pack_id ? (
                                                         <span>در حال آپلود...</span>

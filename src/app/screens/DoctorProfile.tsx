@@ -12,24 +12,15 @@ import {
   CheckCircle,
   Briefcase,
   Heart,
-  FileText,
   Loader2,
-  ThumbsUp,
-  UserCircle
+  CreditCard,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
-import mapImage from 'figma:asset/64bcbcf457707b2cfce084e06eccf4fbded0e165.png';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../components/ui/dialog';
 import { useAuthStore } from "../store/authStore";
 import { AppBar } from '../components/AppBar';
 import { PageLoader } from '../components/PageLoader';
@@ -91,29 +82,45 @@ export function DoctorProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  console.log(id)
+
   const [sessionId, setSessionId] = useState<string | null>(null);
-  // استیت جدید برای نگهداری زمان باقی‌مانده (TTL)
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  // وضعیت‌های داده‌ای
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [recommenders, setRecommenders] = useState<any[]>([]);
+  const [isRecommendedByMe, setIsRecommendedByMe] = useState(false);
+  const [isTogglingRecommendation, setIsTogglingRecommendation] = useState(false);
+  const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<Record<string, TimeSlot[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [newReview, setNewReview] = useState('');
+
+  // وضعیت‌های مربوط به رزرو و پرداخت
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [selectedGateway, setSelectedGateway] = useState<'saman' >('saman');
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     let currentSessionId = location.state?.sessionId || null;
-    let timer: NodeJS.Timeout; // تعریف تایمر
+    let timer: NodeJS.Timeout;
 
     if (!currentSessionId) {
-      const contextStr = sessionStorage.getItem('diagnosis_doctor_context_'+id);
+      const contextStr = sessionStorage.getItem('diagnosis_doctor_context_' + id);
 
       if (contextStr) {
         try {
           const parsedData = JSON.parse(contextStr);
           const now = new Date().getTime();
           if (parsedData.expiry && now > parsedData.expiry) {
-            console.log("Session context expired.");
-            sessionStorage.removeItem('diagnosis_doctor_context');
+            sessionStorage.removeItem('diagnosis_doctor_context_' + id);
           } else {
             currentSessionId = parsedData.sessionId;
 
-            // محاسبه و فعال‌سازی تایمر
             if (parsedData.expiry) {
               const initialTimeLeft = Math.floor((parsedData.expiry - now) / 1000);
               setTimeLeft(initialTimeLeft);
@@ -126,7 +133,7 @@ export function DoctorProfile() {
                   clearInterval(timer);
                   setTimeLeft(null);
                   setSessionId(null);
-                  sessionStorage.removeItem('diagnosis_doctor_context');
+                  sessionStorage.removeItem('diagnosis_doctor_context_' + id);
                 } else {
                   setTimeLeft(remaining);
                 }
@@ -134,46 +141,17 @@ export function DoctorProfile() {
             }
           }
         } catch (e) {
-          console.error("Error parsing session context", e);
-          sessionStorage.removeItem('diagnosis_doctor_context');
+          sessionStorage.removeItem('diagnosis_doctor_context_' + id);
         }
       }
     }
 
     setSessionId(currentSessionId);
 
-    // پاکسازی تایمر در صورت خروج از کامپوننت
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [location.state]);
-
-
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-
-  const [recommenders, setRecommenders] = useState<any[]>([]);
-  const [isRecommendedByMe, setIsRecommendedByMe] = useState(false);
-  const [isTogglingRecommendation, setIsTogglingRecommendation] = useState(false);
-
-  const [reserveError, setReserveError] = useState<string | null>(null);
-  const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-
-  const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<Record<string, TimeSlot[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-  const [showBookingDialog, setShowBookingDialog] = useState(false);
-  const [newReview, setNewReview] = useState('');
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [reservationToken, setReservationToken] = useState<string | null>(null);
-  const [reservationExpiry, setReservationExpiry] = useState<string | null>(null);
-  const [isReserving, setIsReserving] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  }, [location.state, id]);
 
   useEffect(() => {
     if (id) {
@@ -187,12 +165,6 @@ export function DoctorProfile() {
       fetchUserProfile();
     }
   }, [accessToken]);
-
-  useEffect(() => {
-    if (doctorData?.id && accessToken) {
-      checkActiveReservation();
-    }
-  }, [doctorData?.id, accessToken]);
 
   const fetchUserProfile = async () => {
     try {
@@ -253,41 +225,6 @@ export function DoctorProfile() {
     }
   };
 
-  const checkActiveReservation = async () => {
-    try {
-      const response = await fetch(
-          `http://185.222.163.113:7000/api/user/reservations/active?doctor_id=${doctorData?.id}`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          setReservationToken(result.data.reservation_token);
-          setReservationExpiry(result.data.expires_at);
-
-          const slot = availableSlots.find((s: any) => s.id === result.data.slot_id);
-          if (slot) {
-            setSelectedSlot(slot as any);
-            setSelectedDate(result.data.slot_date);
-          }
-
-          setShowConfirmDialog(true);
-          alert(`شما یک رزرو فعال دارید که ${Math.floor(result.data.remaining_seconds / 60)} دقیقه دیگر منقضی می‌شود`);
-        }
-      }
-    } catch (error) {
-      console.log('No active reservation found');
-    }
-  };
-
   const fetchDoctorData = async () => {
     try {
       setLoading(true);
@@ -298,7 +235,7 @@ export function DoctorProfile() {
       });
 
       if (!response.ok) {
-        throw new Error('خطا در دریافت اطلاعات پزشک');
+        throw new Error('دکتر مورد نظر یافت نشد');
       }
 
       const result: ApiResponse = await response.json();
@@ -314,138 +251,54 @@ export function DoctorProfile() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطای ناشناخته');
-      console.error('Error fetching doctor data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const cancelReservation = async () => {
-    if (!reservationToken) return;
-    if (!confirm('آیا از لغو رزرو موقت اطمینان دارید؟')) return;
-
-    setIsCancelling(true);
-    setConfirmError(null);
-
-    try {
-      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/cancel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({ reservation_token: reservationToken })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'خطا در لغو رزرو');
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        setReservationToken(null);
-        setReservationExpiry(null);
-        setSelectedSlot(null);
-        setShowConfirmDialog(false);
-        await fetchDoctorData();
-        alert('رزرو موقت شما لغو شد');
-      }
-    } catch (error) {
-      setConfirmError(error instanceof Error ? error.message : 'خطا در لغو رزرو');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
-  const handleReserveSlot = async () => {
+  const handleProceedToPayment = async () => {
     if (!selectedSlot) return;
 
-    if (reservationToken) {
-      setReserveError('شما قبلاً یک رزرو فعال دارید');
-      setShowBookingDialog(false);
-      setShowConfirmDialog(true);
+    if (!accessToken) {
+      alert('لطفاً ابتدا وارد حساب کاربری خود شوید');
       return;
     }
 
-    setIsReserving(true);
-    setReserveError(null);
+    setIsPaying(true);
+    setPaymentError(null);
 
     try {
-      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/reserve', {
+      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/reserve-saman', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           slot_id: selectedSlot.id,
-          session_id: sessionId
+          session_id: sessionId,
+          gateway: selectedGateway
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'خطا در رزرو موقت');
-      }
-
       const result = await response.json();
 
-      if (result.success) {
-        setReservationToken(result.data.reservation_token);
-        setReservationExpiry(result.data.expires_at);
-        setShowBookingDialog(false);
-        setShowConfirmDialog(true);
-      }
-    } catch (error) {
-      setReserveError(error instanceof Error ? error.message : 'خطا در رزرو موقت');
-    } finally {
-      setIsReserving(false);
-    }
-  };
-
-  const confirmBooking = async () => {
-    if (!reservationToken) return;
-
-    setIsConfirming(true);
-    setConfirmError(null);
-
-    try {
-      const mockAuthority = `A${String(Date.now()).slice(-35)}`;
-      const mockStatus = 'OK';
-
-      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/confirm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          reservation_token: reservationToken,
-          authority: mockAuthority,
-          status: mockStatus
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'خطا در تایید رزرو');
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'خطا در ثبت نوبت و ارتباط با درگاه پرداخت');
       }
 
-      const result = await response.json();
+      const paymentUrl = result.data?.payment?.payment_url;
 
-      if (result.success) {
-        setReservationToken(null);
-        setReservationExpiry(null);
-        setSelectedSlot(null);
-        setShowConfirmDialog(false);
-        await fetchDoctorData();
-        alert(`رزرو با موفقیت تکمیل شد\nشماره پیگیری: ${result.data.payment.ref_id}`);
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+      } else {
+        throw new Error('آدرس اتصال به درگاه دریافت نشد');
       }
-    } catch (error) {
-      setConfirmError(error instanceof Error ? error.message : 'خطا در تایید رزرو');
-    } finally {
-      setIsConfirming(false);
+
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : 'خطا در فرآیند پرداخت');
+      setIsPaying(false);
     }
   };
 
@@ -464,7 +317,6 @@ export function DoctorProfile() {
     return new Intl.DateTimeFormat('fa-IR', options).format(date);
   };
 
-  // تابع قالب‌بندی زمان باقی‌مانده (سشن)
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
@@ -484,26 +336,15 @@ export function DoctorProfile() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const message = errorData?.message || `خطای سرور: ${response.status}`;
-        throw new Error(message);
+        throw new Error(errorData?.message || `خطای سرور: ${response.status}`);
       }
 
       const data = await response.json();
-
-      if (!data.room_id) {
-        throw new Error('اطلاعات اتاق چت دریافت نشد');
-      }
+      if (!data.room_id) throw new Error('اطلاعات اتاق چت دریافت نشد');
 
       navigate(`/consultation/${data.room_id}`);
-
     } catch (error) {
-      if (error instanceof TypeError) {
-        console.error('خطای اتصال:', error);
-        alert('اتصال به سرور برقرار نشد. لطفاً اینترنت خود را بررسی کنید.');
-      } else if (error instanceof Error) {
-        console.error('خطا:', error.message);
-        alert(error.message);
-      }
+      alert(error instanceof Error ? error.message : 'خطا در برقراری چت');
     }
   }
 
@@ -547,57 +388,45 @@ export function DoctorProfile() {
     'مشاوره پزشکی'
   ];
 
-  const mockTips = [
-    {
-      id: 1,
-      type: 'text',
-      title: 'نکات مهم سلامت',
-      content: 'مراقبت از سلامتی خود را جدی بگیرید و به طور منظم معاینات دوره‌ای انجام دهید.',
-      date: '۲ روز پیش',
-    }
-  ];
-
-  const isDoctor = currentUser?.user?.role === 'doctor' || currentUser?.role === 2;
-
   return (
-      <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white" dir="rtl">
+      <div className="h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24" dir="rtl">
         <AppBar backTo="/doctors" />
-        <div className="pt-24 px-6 pb-24">
+        <div className="pt-24 px-4 sm:px-6 max-w-3xl mx-auto">
 
-          {/* پاپ‌آپ زمان باقی‌مانده سشن (TTL) */}
+          {/* بنر سشن فعال تشخیص */}
           {timeLeft !== null && timeLeft > 0 && (
-              <div className="fixed bottom-24 left-4 sm:bottom-4 sm:left-4 z-50 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
-                <Clock className="w-5 h-5 text-blue-500" />
-                <div>
-                  <p className="font-semibold text-sm">یک سشن تشخیص فعال وجود دارد!</p>
-                  <p className="text-xs">
-                    زمان باقی‌مانده برای ارسال: <span className="font-bold text-blue-600 font-mono" dir="ltr">{formatTime(timeLeft)}</span>
+              <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl shadow-sm flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">یک سشن تشخیص فعال وجود دارد</p>
+                  <p className="text-xs text-blue-600">
+                    زمان باقی‌مانده: <span className="font-bold font-mono" dir="ltr">{formatTime(timeLeft)}</span>
                   </p>
                 </div>
               </div>
           )}
 
-          {/* کارت پروفایل پزشک */}
+          {/* کارت مشخصات پزشک */}
           <Card className="p-6 shadow-xl border-0 mb-6">
-            <div className="flex gap-3 mb-6 items-start">
+            <div className="flex gap-4 mb-6 items-start">
               <img
                   src={doctorData.image_url || 'https://via.placeholder.com/150'}
                   alt={doctorData.name}
-                  className="w-24 h-24 rounded-2xl object-cover"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-base lg:text-lg text-gray-900">{doctorData.name}</h1>
+                  <h1 className="text-base lg:text-lg font-bold text-gray-900">{doctorData.name}</h1>
                   {doctorData.is_vip && (
                       <Badge className="bg-yellow-500 text-white text-xs">VIP</Badge>
                   )}
                 </div>
-                <p className="text-gray-600 mb-3">{doctorData.specialty_name}</p>
+                <p className="text-gray-600 text-sm mb-3">{doctorData.specialty_name}</p>
 
                 <div className="flex items-center gap-2">
                   <div className="flex items-center">
                     <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 ml-1" />
-                    <span className="text-sm text-gray-900">{doctorData.rating}</span>
+                    <span className="text-sm font-semibold text-gray-900">{doctorData.rating}</span>
                     <span className="text-xs text-gray-500 mr-1">({doctorData.reviews || doctorData.visit_count})</span>
                   </div>
                   <span className="text-gray-300">•</span>
@@ -606,268 +435,68 @@ export function DoctorProfile() {
               </div>
               <button
                   onClick={toggleFavorite}
-                  className="w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform flex-shrink-0"
+                  className="w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center hover:scale-105 transition-transform flex-shrink-0 border border-gray-100"
               >
-                <Heart
-                    className={`w-6 h-6 ${
-                        isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'
-                    }`}
-                />
+                <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
               </button>
             </div>
 
-            {/* آمار سریع */}
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="flex justify-center mb-1">
-                  <Award className="w-5 h-5 text-blue-600" />
-                </div>
+              <div className="text-center p-3 bg-blue-50 rounded-xl">
+                <div className="flex justify-center mb-1"><Award className="w-5 h-5 text-blue-600" /></div>
                 <p className="text-xs text-gray-600">تجربه</p>
-                <p className="text-sm text-gray-900">{doctorData.experience}</p>
+                <p className="text-sm font-semibold text-gray-900">{doctorData.experience}</p>
               </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="flex justify-center mb-1">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                </div>
+              <div className="text-center p-3 bg-green-50 rounded-xl">
+                <div className="flex justify-center mb-1"><CheckCircle className="w-5 h-5 text-green-600" /></div>
                 <p className="text-xs text-gray-600">بیماران</p>
-                <p className="text-sm text-gray-900">{new Intl.NumberFormat('fa-IR').format(doctorData.visit_count)}+</p>
+                <p className="text-sm font-semibold text-gray-900">{new Intl.NumberFormat('fa-IR').format(doctorData.visit_count)}+</p>
               </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <div className="flex justify-center mb-1">
-                  <Star className="w-5 h-5 text-purple-600" />
-                </div>
+              <div className="text-center p-3 bg-purple-50 rounded-xl">
+                <div className="flex justify-center mb-1"><Star className="w-5 h-5 text-purple-600" /></div>
                 <p className="text-xs text-gray-600">امتیاز</p>
-                <p className="text-sm text-gray-900">{doctorData.rating}/۵</p>
+                <p className="text-sm font-semibold text-gray-900">{doctorData.rating}/۵</p>
               </div>
             </div>
 
-            {/* موقعیت و هزینه */}
-            <div className="space-y-2 pt-4 border-t">
+            <div className="space-y-2 pt-4 border-t border-gray-100">
               <div className="flex items-start">
                 <MapPin className="w-5 h-5 text-gray-400 ml-2 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-gray-600">{doctorData.address}</p>
               </div>
               <div className="flex items-center">
                 <Wallet className="w-5 h-5 text-gray-400 ml-2" />
-                <p className="text-sm text-gray-600">هزینه ویزیت: <span className="text-gray-900">{formatPrice(doctorData.visit_price)}</span></p>
-              </div>
-            </div>
-
-            {/* تگ‌ها */}
-            {doctorData.tags && doctorData.tags.length > 0 && (
-                <div className="pt-4 border-t mt-4">
-                  <div className="flex flex-wrap gap-2">
-                    {doctorData.tags.map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                    ))}
-                  </div>
-                </div>
-            )}
-          </Card>
-
-          {/* کارت ثبت پیشنهاد */}
-          {isDoctor && currentUser?.id !== doctorData.id && (
-              <Card className="p-4 shadow-lg border-0 mb-6 bg-blue-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-blue-900 mb-1">پیشنهاد همکار</h3>
-                    <p className="text-xs text-blue-700">آیا این همکار را به بیماران پیشنهاد می‌دهید؟</p>
-                  </div>
-                  <Button
-                      onClick={handleToggleRecommendation}
-                      disabled={isTogglingRecommendation || isRecommendedByMe}
-                      variant={isRecommendedByMe ? "default" : "outline"}
-                      className={isRecommendedByMe ? "bg-blue-600 opacity-100" : "border-blue-600 text-blue-600"}
-                  >
-                    <ThumbsUp className="w-4 h-4 ml-2" />
-                    {isRecommendedByMe ? 'پیشنهاد داده‌اید' : 'پیشنهاد می‌دهم'}
-                  </Button>
-                </div>
-              </Card>
-          )}
-
-          {/* بخش نقشه */}
-          <Card className="overflow-hidden shadow-lg border-0 mb-6">
-            <img
-                src={mapImage}
-                alt="نقشه موقعیت"
-                className="w-full h-48 object-cover"
-            />
-            <div className="p-4">
-              <div className="flex items-start">
-                <MapPin className="w-5 h-5 text-blue-500 ml-2 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-900 mb-0.5">موقعیت مطب</p>
-                  <p className="text-sm text-gray-600">{doctorData.address}</p>
-                  {(doctorData.city || doctorData.province) && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {doctorData.city && doctorData.city}
-                        {doctorData.city && doctorData.province && '، '}
-                        {doctorData.province && doctorData.province}
-                      </p>
-                  )}
-                </div>
+                <p className="text-sm text-gray-600">هزینه ویزیت: <span className="text-gray-900 font-bold">{formatPrice(doctorData.visit_price)}</span></p>
               </div>
             </div>
           </Card>
 
-          {/* تب‌ها */}
-          <Tabs defaultValue="about" className="mb-6">
-            <TabsList className="w-full grid grid-cols-3">
-              <TabsTrigger value="about">درباره</TabsTrigger>
-              <TabsTrigger value="tips">نکات</TabsTrigger>
-              <TabsTrigger value="reviews">نظرات</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="about" className="mt-4">
-              <Card className="p-5 shadow-lg border-0">
-                <h3 className="text-lg text-gray-900 mb-3">درباره پزشک</h3>
-                <p className="text-sm text-gray-600 mb-4">{doctorData.bio}</p>
-
-                <h3 className="text-lg text-gray-900 mb-2">تحصیلات</h3>
-                <ul className="space-y-1 mb-4">
-                  {mockEducation.map((edu: string, index: number) => (
-                      <li key={index} className="text-sm text-gray-600 flex items-center">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full ml-2" />
-                        {edu}
-                      </li>
-                  ))}
-                </ul>
-
-                <h3 className="text-lg text-gray-900 mb-2">خدمات پزشکی</h3>
-                <div className="space-y-2">
-                  {mockServices.map((service: string, index: number) => (
-                      <div key={index} className="flex items-start">
-                        <Briefcase className="w-4 h-4 text-blue-500 ml-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-gray-600">{service}</span>
-                      </div>
-                  ))}
-                </div>
-
-                {doctorData.medical_code && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm text-gray-600">
-                        کد نظام پزشکی: <span className="text-gray-900">{doctorData.medical_code}</span>
-                      </p>
-                    </div>
-                )}
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="tips" className="mt-4">
-              <div className="space-y-4">
-                <h3 className="text-lg text-gray-900 mb-4">نکات تخصصی سلامت</h3>
-                {mockTips.map((tip: any) => (
-                    <Card key={tip.id} className="p-5 shadow-lg border-0">
-                      <div>
-                        <div className="flex items-start mb-3">
-                          <FileText className="w-5 h-5 text-blue-500 ml-2 flex-shrink-0 mt-1" />
-                          <div className="flex-1">
-                            <h4 className="text-base text-gray-900 mb-1">{tip.title}</h4>
-                            <p className="text-xs text-gray-500">{tip.date}</p>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">{tip.content}</p>
-                      </div>
-                    </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="reviews" className="mt-4">
-              <Card className="p-5 shadow-lg border-0">
-                <div className="mb-6 pb-6 border-b">
-                  <h3 className="text-lg text-gray-900 mb-3">ثبت نظر</h3>
-                  <textarea
-                      value={newReview}
-                      onChange={(e) => setNewReview(e.target.value)}
-                      placeholder="تجربه خود را با این پزشک به اشتراک بگذارید..."
-                      className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={4}
-                      dir="rtl"
-                  />
-                  <Button
-                      onClick={handleAddReview}
-                      className="mt-3 w-full sm:w-auto"
-                      disabled={!newReview.trim()}
-                  >
-                    ثبت نظر
-                  </Button>
-                </div>
-                <h3 className="text-lg text-gray-900 mb-4">نظرات کاربران</h3>
-                <div className="text-center text-gray-500 py-8">
-                  <p className="text-sm">هنوز نظری ثبت نشده است</p>
-                </div>
-              </Card>
-            </TabsContent>
-          </Tabs>
-
-          {/* لیست همکارانی که این پزشک را پیشنهاد داده‌اند */}
-          {recommenders.length > 0 && (
-              <Card className="p-5 shadow-lg border-0 mb-6">
-                <h3 className="text-lg text-gray-900 mb-4 flex items-center gap-2">
-                  <ThumbsUp className="w-5 h-5 text-blue-500" />
-                  پزشکانی که ایشان را پیشنهاد داده‌اند ({recommenders.length})
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {recommenders.map((peer, idx) => (
-                      <div
-                          key={idx}
-                          className="flex flex-col items-center p-3 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => navigate(`/doctor/${peer.id}`)}
-                      >
-                        {peer.image_url ? (
-                            <img src={peer.image_url} alt={peer.name} className="w-14 h-14 rounded-full mb-2 object-cover" />
-                        ) : (
-                            <UserCircle className="w-14 h-14 text-gray-300 mb-2" />
-                        )}
-                        <span className="text-sm font-semibold text-gray-800 text-center">{peer.name}</span>
-                        <span className="text-xs text-gray-500 text-center">{peer.specialty_name || 'پزشک'}</span>
-                      </div>
-                  ))}
-                </div>
-              </Card>
-          )}
-
-          {/* بخش رزرو نوبت */}
+          {/* ========================================================================= */}
+          {/* بخش نوبت‌دهی و پرداخت (یکپارچه درون کارت) */}
+          {/* ========================================================================= */}
           <Card className="p-5 shadow-xl border-0 mb-6">
-            <h3 className="text-lg text-gray-900 mb-4">رزرو نوبت</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              انتخاب زمان ویزیت و پرداخت
+            </h3>
 
-            {reservationToken && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-green-800">
-                      <CheckCircle className="w-5 h-5 ml-2" />
-                      <span>شما یک رزرو فعال دارید</span>
-                    </div>
-                    <Button
-                        onClick={() => setShowConfirmDialog(true)}
-                        variant="outline"
-                        size="sm"
-                        className="text-green-700 border-green-300 hover:bg-green-100"
-                    >
-                      مشاهده و تایید
-                    </Button>
-                  </div>
-                </div>
-            )}
             {Object.keys(availableSlots).length > 0 ? (
                 <>
+                  {/* انتخاب روز */}
                   <div className="mb-4">
-                    <label className="block text-sm text-gray-700 mb-2">انتخاب تاریخ</label>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
+                    <label className="block text-sm text-gray-700 font-medium mb-2">انتخاب تاریخ</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
                       {Object.keys(availableSlots).map((date) => (
                           <button
                               key={date}
                               onClick={() => {
                                 setSelectedDate(date);
                                 setSelectedSlot(null);
+                                setPaymentError(null);
                               }}
-                              className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-all ${
+                              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                                   selectedDate === date
-                                      ? 'bg-blue-500 text-white'
+                                      ? 'bg-blue-600 text-white shadow-md'
                                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                               }`}
                           >
@@ -877,177 +506,184 @@ export function DoctorProfile() {
                     </div>
                   </div>
 
+                  {/* انتخاب ساعت */}
                   {selectedDate && availableSlots[selectedDate] && (
                       <div className="mb-4">
-                        <label className="block text-sm text-gray-700 mb-2">ساعت‌های موجود</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {availableSlots[selectedDate].map((slot: TimeSlot) => (
-                              <button
-                                  key={slot.id}
-                                  onClick={() => setSelectedSlot(slot)}
-                                  className={`p-3 rounded-lg text-sm transition-all flex items-center justify-center ${
-                                      selectedSlot?.id === slot.id
-                                          ? 'bg-green-500 text-white'
-                                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                  }`}
-                              >
-                                <Clock className="w-4 h-4 ml-2" />
-                                {slot.start_time} - {slot.end_time}
-                              </button>
-                          ))}
+                        <label className="block text-sm text-gray-700 font-medium mb-2">ساعت‌های قابل رزرو</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {availableSlots[selectedDate].map((slot: TimeSlot) => {
+                            const isSelected = selectedSlot?.id === slot.id;
+                            return (
+                                <button
+                                    key={slot.id}
+                                    onClick={() => {
+                                      setSelectedSlot(slot);
+                                      setPaymentError(null);
+                                    }}
+                                    className={`p-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center border ${
+                                        isSelected
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-300'
+                                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                >
+                                  <Clock className={`w-4 h-4 ml-2 ${isSelected ? 'text-white' : 'text-blue-500'}`} />
+                                  {slot.start_time} - {slot.end_time}
+                                </button>
+                            );
+                          })}
                         </div>
+                      </div>
+                  )}
+
+                  {/* کادر تایید و درگاه پرداخت (درون همین کارت و با انتخاب ساعت نمایان می‌شود) */}
+                  {selectedSlot && (
+                      <div className="mt-6 pt-5 border-t border-gray-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {paymentError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs text-center font-medium">
+                              {paymentError}
+                            </div>
+                        )}
+
+                        {/* خلاصه و مبلغ */}
+                        <div className="flex items-center justify-between bg-blue-50/60 p-3.5 rounded-xl border border-blue-100">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-800">
+                            <Check className="w-4 h-4 text-green-600" />
+                            <span>{formatDate(selectedDate)}</span>
+                            <span className="text-gray-400">|</span>
+                            <span>ساعت {selectedSlot.start_time}</span>
+                          </div>
+                          <div className="text-sm sm:text-base font-bold text-blue-700">
+                            {formatPrice(doctorData.visit_price)}
+                          </div>
+                        </div>
+
+                        {/* انتخاب درگاه */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-2 font-medium">انتخاب درگاه پرداخت:</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedGateway('saman')}
+                                className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all ${
+                                    selectedGateway === 'saman'
+                                        ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20 shadow-sm'
+                                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                              <CreditCard className="w-4 h-4 text-blue-600" />
+                              درگاه سامان (سپ)
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setSelectedGateway('zarinpal')}
+                                className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all ${
+                                    selectedGateway === 'zarinpal'
+                                        ? 'border-yellow-500 bg-yellow-50 text-yellow-800 ring-2 ring-yellow-500/20 shadow-sm'
+                                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                              <ShieldCheck className="w-4 h-4 text-yellow-600" />
+                              درگاه زرین‌پال
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* دکمه ارسال به پرداخت */}
+                        <Button
+                            onClick={handleProceedToPayment}
+                            disabled={isPaying}
+                            className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-sm sm:text-base rounded-xl shadow-md flex items-center justify-center gap-2 transition-all"
+                        >
+                          {isPaying ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                در حال اتصال به درگاه بانک...
+                              </>
+                          ) : (
+                              <>
+                                <ShieldCheck className="w-5 h-5" />
+                                پرداخت و قطعی کردن رزرو
+                              </>
+                          )}
+                        </Button>
                       </div>
                   )}
                 </>
             ) : (
                 <div className="text-center text-gray-500 py-8">
-                  <p className="text-sm">در حال حاضر نوبت آزادی وجود ندارد</p>
+                  <p className="text-sm">در حال حاضر نوبت آزادی برای این پزشک ثبت نشده است</p>
                 </div>
             )}
           </Card>
 
-          {/* دکمه‌های اقدام */}
-          <div className="space-y-3">
-            <Dialog open={showBookingDialog}  onOpenChange={(open) => {
-              setShowBookingDialog(open);
-              if (!open) setReserveError(null);
-            }}>
-              <DialogTrigger asChild>
-                <Button
-                    onClick={() => {
-                      if (selectedSlot) {
-                        setShowBookingDialog(true);
-                      }
-                    }}
-                    disabled={!selectedSlot}
-                    className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Calendar className="w-5 h-5 ml-2" />
-                  رزرو ویزیت حضوری
-                </Button>
-              </DialogTrigger>
-              <DialogContent dir="rtl">
-                <DialogHeader>
-                  <DialogTitle>تأیید رزرو موقت</DialogTitle>
-                  <DialogDescription>
-                    این نوبت برای ۱۵ دقیقه برای شما رزرو خواهد شد
-                  </DialogDescription>
-                </DialogHeader>
-                {selectedSlot && (
-                    <div className="space-y-3 py-4">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">تاریخ:</span>
-                        <span className="text-gray-900">{formatDate(selectedDate)}</span>
+          {/* تب‌های توضیحات و نظرات */}
+          <Tabs defaultValue="about" className="mb-6">
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="about">درباره پزشک</TabsTrigger>
+              <TabsTrigger value="reviews">نظرات</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="about" className="mt-4">
+              <Card className="p-5 shadow-lg border-0">
+                <h3 className="text-base font-bold text-gray-900 mb-3">درباره پزشک</h3>
+                <p className="text-sm text-gray-600 leading-relaxed mb-4">{doctorData.bio || 'توضیحاتی ثبت نشده است.'}</p>
+
+                <h3 className="text-base font-bold text-gray-900 mb-2">تحصیلات</h3>
+                <ul className="space-y-1 mb-4">
+                  {mockEducation.map((edu: string, index: number) => (
+                      <li key={index} className="text-sm text-gray-600 flex items-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full ml-2" />
+                        {edu}
+                      </li>
+                  ))}
+                </ul>
+
+                <h3 className="text-base font-bold text-gray-900 mb-2">خدمات تخصصی</h3>
+                <div className="space-y-2">
+                  {mockServices.map((service: string, index: number) => (
+                      <div key={index} className="flex items-start">
+                        <Briefcase className="w-4 h-4 text-blue-500 ml-2 flex-shrink-0 mt-0.5" />
+                        <span className="text-sm text-gray-600">{service}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">ساعت:</span>
-                        <span className="text-gray-900">{selectedSlot.start_time} - {selectedSlot.end_time}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">هزینه ویزیت:</span>
-                        <span className="text-gray-900">{formatPrice(doctorData.visit_price)}</span>
-                      </div>
-                    </div>
-                )}
-                {reserveError && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                      <p className="text-red-800 text-sm">{reserveError}</p>
-                    </div>
-                )}
+                  ))}
+                </div>
+              </Card>
+            </TabsContent>
 
-                <Button
-                    onClick={handleReserveSlot}
-                    className="w-full"
-                    disabled={isReserving}
-                >
-                  {isReserving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                        در حال رزرو...
-                      </>
-                  ) : (
-                      'رزرو موقت (۱۵ دقیقه)'
-                  )}
-                </Button>
-              </DialogContent>
-            </Dialog>
+            <TabsContent value="reviews" className="mt-4">
+              <Card className="p-5 shadow-lg border-0">
+                <div className="mb-6 pb-6 border-b border-gray-100">
+                  <h3 className="text-base font-bold text-gray-900 mb-3">ثبت نظر</h3>
+                  <textarea
+                      value={newReview}
+                      onChange={(e) => setNewReview(e.target.value)}
+                      placeholder="تجربه خود را با این پزشک به اشتراک بگذارید..."
+                      className="w-full p-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      dir="rtl"
+                  />
+                  <Button onClick={handleAddReview} className="mt-3" disabled={!newReview.trim()}>
+                    ثبت نظر
+                  </Button>
+                </div>
+                <div className="text-center text-gray-500 py-4">
+                  <p className="text-sm">هنوز نظری ثبت نشده است</p>
+                </div>
+              </Card>
+            </TabsContent>
+          </Tabs>
 
-            <Dialog open={showConfirmDialog} onOpenChange={(open) => {
-              setShowConfirmDialog(open);
-              if (!open) setConfirmError(null);
-            }}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>تایید نهایی رزرو</DialogTitle>
-                  <DialogDescription>
-                    رزرو موقت شما برای ۱۵ دقیقه ثبت شده است
-                  </DialogDescription>
-                </DialogHeader>
-
-                {selectedSlot && (
-                    <div className="space-y-3">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Clock className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-900">
-              زمان باقی‌مانده: {reservationExpiry ?
-                              Math.max(0, Math.floor((new Date(reservationExpiry).getTime() - Date.now()) / 1000 / 60))
-                              : 0} دقیقه
-            </span>
-                        </div>
-                        <div className="text-sm text-gray-700 space-y-1">
-                          <p><strong>تاریخ:</strong> {selectedDate}</p>
-                          <p><strong>ساعت:</strong> {selectedSlot.start_time} - {selectedSlot.end_time}</p>
-                        </div>
-                      </div>
-
-                      {confirmError && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                            <p className="text-red-800 text-sm">{confirmError}</p>
-                          </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button
-                            onClick={confirmBooking}
-                            disabled={isConfirming || isCancelling}
-                            className="flex-1 bg-green-600 hover:bg-green-700"
-                        >
-                          {isConfirming ? 'در حال تایید...' : 'تأیید نهایی'}
-                        </Button>
-
-                        <Button
-                            onClick={cancelReservation}
-                            disabled={isConfirming || isCancelling}
-                            variant="destructive"
-                            className="flex-1"
-                        >
-                          {isCancelling ? 'در حال لغو...' : 'لغو رزرو'}
-                        </Button>
-                      </div>
-                    </div>
-                )}
-              </DialogContent>
-            </Dialog>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                  onClick={() => navigate(`/consultation/${id}`)}
-                  variant="outline"
-                  className="h-12"
-              >
-                <Video className="w-5 h-5 ml-2" />
-                تماس تصویری
-              </Button>
-              <Button
-                  onClick={startChat}
-                  variant="outline"
-                  className="h-12"
-              >
-                <MessageSquare className="w-5 h-5 ml-2" />
-                گفتگو
-              </Button>
-            </div>
+          {/* دکمه‌های ارتباطی (چت و تماس تصویری) */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <Button onClick={() => navigate(`/consultation/${id}`)} variant="outline" className="h-12 border-blue-200 hover:bg-blue-50 text-blue-700">
+              <Video className="w-5 h-5 ml-2 text-blue-600" />
+              تماس تصویری
+            </Button>
+            <Button onClick={startChat} variant="outline" className="h-12 border-blue-200 hover:bg-blue-50 text-blue-700">
+              <MessageSquare className="w-5 h-5 ml-2 text-blue-600" />
+              گفتگوی متنی
+            </Button>
           </div>
 
         </div>

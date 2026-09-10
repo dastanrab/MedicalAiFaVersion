@@ -63,7 +63,7 @@ interface DoctorAuthState {
     doctor: DoctorUser | null;
     token: string | null;
     login: (mobile: string, password: string) => Promise<boolean>;
-    logout: () => void;
+    logout: () => Promise<void>; // <-- تغییر: نوع بازگشتی به Promise<void> تغییر کرد
     isAuthenticated: () => boolean;
     fetchProfile: () => Promise<void>;
     // --- مورد جدید اضافه شده برای ProfileGuard ---
@@ -108,7 +108,8 @@ export const useDoctorAuthStore = create<DoctorAuthState>()(
                             status: user.status,
                             role: user.role,
                             province_id: user.province_id,
-                            city_id: user.city_id,},
+                            city_id: user.city_id,
+                        },
                     });
 
                     await get().fetchProfile();
@@ -156,7 +157,25 @@ export const useDoctorAuthStore = create<DoctorAuthState>()(
                 }));
             },
 
-            logout: () => {
+            // <-- تغییرات اصلی در متد logout اعمال شده است -->
+            logout: async () => {
+                const currentToken = get().token;
+
+                if (currentToken) {
+                    try {
+                        await fetch(`${API_BASE_URL}/logout-all`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${currentToken}`,
+                                'Accept': 'application/json',
+                            },
+                        });
+                    } catch (error) {
+                        console.error('Doctor logout API failed:', error);
+                    }
+                }
+
+                // پاک‌سازی استیت و هدایت به پنل ورود پزشک (مستقل از نتیجه API)
                 set({ doctor: null, token: null });
                 window.location.href = '/provider/doctor/login';
             },

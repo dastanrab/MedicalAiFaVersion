@@ -16,13 +16,13 @@ export async function fetchWithAuth(
     if (response.status === 401) {
         if (role === 'doctor') {
             useDoctorAuthStore.getState().logout();
-            window.location.replace('/doctor/login');
+            window.location.replace('/provider/doctor/login');
         } else {
             useProviderAuthStore.getState().logout(role);
             window.location.replace(`/provider/${role}/login`);
         }
 
-        throw new Error('UNAUTHORIZED');
+        throw new Error('شما احراز نیستید');
     }
 
     return response;

@@ -34,6 +34,7 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
     const base = providerBasePath(role);
 
     const session = useProviderAuthStore((s) => s.sessions[role]);
+    console.log('session',session)
     const doctor = useDoctorAuthStore((s) => s.doctor);
     const subscription =
         useProviderPlanStore((s) => s.subscriptions[role]) ?? DEFAULT_PROVIDER_SUBSCRIPTION;
@@ -131,7 +132,7 @@ export function ProviderNavbar({ role }: ProviderNavbarProps) {
 
     const logout = () => {
         if (role === 'doctor') {
-            logoutDoctor();
+            logoutDoctor().then();
         } else {
             logoutProvider(role);
         }

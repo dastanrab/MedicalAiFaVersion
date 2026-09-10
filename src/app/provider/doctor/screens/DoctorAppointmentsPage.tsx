@@ -21,6 +21,7 @@ import {
 } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
 import { useDoctorAuthStore } from "../store/doctorAuthStore";
+import {fetchWithAuth} from "../../utils/apiClient";
 
 const API_BASE_URL = 'http://185.222.163.113:7000/api';
 
@@ -100,14 +101,12 @@ export function DoctorAppointmentsPage() {
         setError('');
 
         try {
-            const response = await fetch(`${API_BASE_URL}/doctor/appointments`, {
+            const response = await fetchWithAuth(`${API_BASE_URL}/doctor/appointments`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
                 },
-            });
-
-            if (!response.ok) throw new Error('خطا در دریافت نوبت‌ها');
+            },'doctor');
             const result = await response.json();
 
             if (result.status && result.data) {
@@ -121,7 +120,10 @@ export function DoctorAppointmentsPage() {
                 }));
                 setAppointments(mapped);
             }
-        } catch (err) {
+        } catch (err: any) {
+            // اضافه کردن مدیریت ۴۰۱ برای توقف اجرا و ریدایرکت
+            if (err.message === 'UNAUTHORIZED') return;
+
             setError(err instanceof Error ? err.message : 'خطا در دریافت اطلاعات');
         } finally {
             setIsLoading(false);
@@ -130,19 +132,22 @@ export function DoctorAppointmentsPage() {
 
     const fetchCalendarSummary = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/doctor/schedule/calendar-summary`, {
+            const res = await fetchWithAuth(`${API_BASE_URL}/doctor/schedule/calendar-summary`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
                 },
-            });
+            },'doctor');
             const result = await res.json();
             if (result.status) {
                 setCalendarSummary(result.data ?? []);
             }
-        } catch (err) {
-            console.error('خطا در دریافت خلاصه تقویم', err);
-        }
+        }  catch (err: any) {
+        // جلوگیری از ثبت ارور کاذب در کنسول هنگام انقضای سشن
+        if (err.message === 'UNAUTHORIZED') return;
+
+        console.error('خطا در دریافت خلاصه تقویم', err);
+    }
     };
 
     // آماده‌سازی داده‌های تقویم با لیبل‌های متنی چندخطی

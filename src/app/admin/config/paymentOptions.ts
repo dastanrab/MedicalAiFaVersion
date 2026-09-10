@@ -2,8 +2,6 @@ export type PaymentStatus = 'success' | 'pending' | 'failed' | 'refunded';
 
 export type PaymentMethod = 'online' | 'wallet' | 'card';
 
-export type PaymentServiceType = 'appointment' | 'subscription' | 'lab' | 'consultation';
-
 export const paymentStatusLabels: Record<PaymentStatus, string> = {
     success: 'موفق',
     pending: 'در انتظار',
@@ -24,19 +22,7 @@ export const paymentMethodLabels: Record<PaymentMethod, string> = {
     card: 'کارت به کارت',
 };
 
-export const paymentServiceLabels: Record<PaymentServiceType, string> = {
-    appointment: 'رزرو نوبت',
-    subscription: 'اشتراک',
-    lab: 'آزمایش',
-    consultation: 'مشاوره آنلاین',
-};
 
-export const paymentServiceStyles: Record<PaymentServiceType, string> = {
-    appointment: 'bg-indigo-50 text-indigo-700',
-    subscription: 'bg-violet-50 text-violet-700',
-    lab: 'bg-cyan-50 text-cyan-700',
-    consultation: 'bg-sky-50 text-sky-700',
-};
 
 export interface AdminPaymentRow {
     id: number;
@@ -56,3 +42,22 @@ export interface AdminPaymentRow {
     gatewayRef?: string | null;
     description?: string | null;
 }
+export type PaymentServiceType = 'appointment' | 'subscription' | 'lab' | 'consultation' | 'wallet' | 'other';
+
+export const paymentServiceLabels: Record<PaymentServiceType, string> = {
+    appointment: 'رزرو نوبت',
+    subscription: 'اشتراک',
+    lab: 'آزمایشگاه',
+    consultation: 'مشاوره/چت',
+    wallet: 'شارژ کیف پول',
+    other: 'سایر خدمات',
+};
+
+export const paymentServiceStyles: Record<PaymentServiceType, string> = {
+    appointment: 'bg-indigo-50 text-indigo-700',
+    subscription: 'bg-violet-50 text-violet-700',
+    lab: 'bg-cyan-50 text-cyan-700',
+    consultation: 'bg-sky-50 text-sky-700',
+    wallet: 'bg-emerald-50 text-emerald-700',
+    other: 'bg-slate-50 text-slate-700',
+};

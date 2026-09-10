@@ -14,6 +14,7 @@ import {
 } from '../../components';
 import { providerPath } from '../../config/providerNav';
 import { useProviderSession } from "../../store/providerAuthStore";
+import {SecureFileLink} from "../../components/SecureFileLink";
 
 // ================== STATUS CONFIG ==================
 const statusConfig: Record<number, { label: string; style: string }> = {
@@ -458,23 +459,22 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                         {details.code && <Row label="کد دیجیتال" value={details.code} />}
                                         {details.medicines && <Row label="داروهای درخواستی" value={details.medicines} />}
                                         {details.files?.length > 0 && (
-                                            <div className="flex justify-between py-2 text-sm">
-                                                <span className="text-slate-500">فایل‌ها</span>
-                                                <span className="font-medium">
+                                            <div className="flex flex-col gap-2 py-2 text-sm border-t border-slate-50 mt-2 pt-2">
+                                                <span className="text-slate-500 mb-1">فایل‌های پیوست نسخه:</span>
+                                                <div className="flex flex-wrap gap-2">
                                                     {details.files.map((f: string) => (
-                                                        <a
+                                                        <SecureFileLink
                                                             key={f}
-                                                            href={`http://185.222.163.113:7000/storage/${f}`}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="block text-xs text-teal-600 hover:underline"
-                                                        >
-                                                            {f.split('/').pop()}
-                                                        </a>
+                                                            filePath={f}
+                                                            requestId={request.id}
+                                                            token={token}
+                                                            baseUrl={BASE_URL} // همان متغیر BASE_URL در بالای فایل
+                                                        />
                                                     ))}
-                                                </span>
+                                                </div>
                                             </div>
                                         )}
+
                                         {details.has_insurance !== undefined && (
                                             <Row label="بیمه پایه" value={details.has_insurance ? 'دارد' : 'ندارد'} />
                                         )}

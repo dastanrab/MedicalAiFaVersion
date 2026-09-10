@@ -125,7 +125,7 @@ export async function bulkUserDelete(ids: number[]): Promise<void> {
 
 export async function fetchAdminPayments(): Promise<AdminPaymentRow[]> {
     try {
-        const result = await apiFetch<{ data: AdminPaymentRow[] }>('/admin/payments');
+        const result = await apiFetch<{ data: AdminPaymentRow[] }>('/admin/payments/report');
         return result.data;
     } catch {
         return samplePayments;

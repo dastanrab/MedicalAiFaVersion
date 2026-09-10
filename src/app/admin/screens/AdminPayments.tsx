@@ -129,8 +129,55 @@ export function AdminPayments() {
         if (!token) return;
         setLoading(true);
         try {
-            const data = await fetchAdminPayments();
-            setPayments(data);
+            const response = await fetchAdminPayments();
+            console.log('Raw API Response:', response);
+
+            // با توجه به paginate($perPage) در لاراول، داده‌ها در مسیر data.data قرار می‌گیرند.
+            const rawArray = response?.data || [];
+
+            const mappedPayments = rawArray.map((item: any) => {
+                // 1. مپ کردن وضعیت (Status) بر اساس اعداد بک‌اند
+                let mappedStatus: PaymentStatus = 'pending';
+                if (item.status === 2) mappedStatus = 'success';
+                else if (item.status === 3) mappedStatus = 'failed';
+                else if (item.status === 4) mappedStatus = 'refunded';
+                else if (item.status === 1) mappedStatus = 'pending';
+
+                // 2. مپ کردن نوع خدمت بر اساس label های دیتابیس (payment_reasons)
+                let mappedServiceType: PaymentServiceType = 'appointment'; // مقدار پیش‌فرض
+                if (item.label === 'نوبت آزمایشگاه') mappedServiceType = 'lab';
+                else if (item.label === 'چت با متخصص' || item.label === 'مشاوره آنلاین') mappedServiceType = 'consultation';
+                else if (item.label?.includes('اشتراک')) mappedServiceType = 'subscription';
+                else if (item.label === 'شارژ کیف پول') mappedServiceType = 'wallet';
+
+                // 3. مپ کردن روش پرداخت (Gateway)
+                let mappedMethod: PaymentMethod = 'online';
+                if (item.gateway === 'کیف پول') mappedMethod = 'wallet';
+
+                return {
+                    id: item.id,
+                    trackingCode: item.ref_id || String(item.id),
+                    patientName: item.user_name || 'کاربر ناشناس',
+                    patientPhone: item.user_phone || '', // در صورت اضافه شدن به بک‌اند
+                    amount: Number(item.amount) || 0,
+                    method: mappedMethod,
+                    status: mappedStatus,
+                    serviceType: mappedServiceType,
+                    appointmentId: item.order_id,
+                    province: item.province_name || '',
+                    city: item.city_name || '',
+                    paidAt: item.paid_at || item.created_at,
+                    gatewayRef: item.gateway,      // مقدار تبدیل شده لاراول (مثل "درگاه زرین پال")
+                    description: item.label,
+                    doctorName: '',                // فعلاً در کوئری بک‌اند نیست
+                } as AdminPaymentRow;
+            });
+
+            setPayments(mappedPayments);
+
+        } catch (error) {
+            console.error('Error loading payments:', error);
+            setPayments([]);
         } finally {
             setLoading(false);
         }
@@ -449,13 +496,36 @@ export function AdminPayments() {
                             className={selectClass}
                         >
                             <option value="all">همه استان‌ها</option>
-                            {iranProvinces.map((p) => (
-                                <option key={p} value={p}>
-                                    {p}
+                            {iranProvinces.map((p: any) => (
+                                // استفاده از p.id برای key و p.name برای value و نمایش
+                                <option key={p?.id ?? p} value={p?.name ?? p}>
+                                    {p?.name ?? p}
                                 </option>
                             ))}
                         </select>
                     </div>
+
+                    <div>
+                        <label className="mb-1.5 block text-xs text-slate-500">شهر</label>
+                        <select
+                            value={city}
+                            onChange={(e) => {
+                                setCity(e.target.value);
+                                resetPage();
+                            }}
+                            disabled={province === 'all'}
+                            className={`${selectClass} disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400`}
+                        >
+                            <option value="all">همه شهرها</option>
+                            {cities.map((c: any) => (
+                                // استفاده از c.id برای key و c.name برای value و نمایش
+                                <option key={c?.id ?? c} value={c?.name ?? c}>
+                                    {c?.name ?? c}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
 
                     <div>
                         <label className="mb-1.5 block text-xs text-slate-500">شهر</label>

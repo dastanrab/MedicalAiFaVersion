@@ -7,6 +7,7 @@ import {
     MessageSquare,
     Star,
     Loader2,
+    Power,
 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import {
@@ -23,6 +24,7 @@ import {
 import { doctorVisitTypeLabels } from '../data/mockDoctorData';
 import { providerPath } from '../../config/providerNav';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
+import {fetchWithAuth} from "../../utils/apiClient";
 
 const revenueChartConfig = {
     amount: { label: 'درآمد', color: '#2563eb' },
@@ -37,6 +39,7 @@ interface DashboardData {
         name: string;
         specialty: string;
         rating: number;
+        status?: number | boolean; // ۱ یا true برای فعال، ۰ یا false برای غیرفعال
     };
     stats: {
         todayAppointments: number;
@@ -89,21 +92,25 @@ export function DoctorDashboardPage() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
+    // استیت اختصاصی برای وضعیت فعال/غیرفعال بودن پزشک و لودینگ تغییر آن
+    const [isActive, setIsActive] = useState<boolean>(false);
+    const [isToggling, setIsToggling] = useState<boolean>(false);
+
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
                 setLoading(true);
-                const response = await fetch('http://185.222.163.113:7000/api/doctor/dashboard', {
+                const response = await fetchWithAuth('http://185.222.163.113:7000/api/doctor/dashboard', {
                     headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
-                });
+                },'doctor');
 
-                if (!response.ok) throw new Error('خطا در دریافت اطلاعات داشبورد');
-
-                const result = await response.json();
+                const result: DashboardData = await response.json();
                 setData(result);
+                // وضعیت اولیه از روی داده پروفایل ست می‌شود
+                setIsActive(Boolean(result.profile?.status === 1 || result.profile?.status === true));
             } catch (err: any) {
                 setError(err.message);
             } finally {
@@ -113,6 +120,33 @@ export function DoctorDashboardPage() {
 
         if (token) fetchDashboard();
     }, [token]);
+
+    // فانکشن تغییر وضعیت فعال / غیرفعال
+    const handleToggleStatus = async () => {
+        if (isToggling) return;
+
+        const nextStatus = !isActive;
+        setIsToggling(true);
+
+        try {
+            const response = await fetchWithAuth('http://185.222.163.113:7000/api/doctor/toggle-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: nextStatus ? 1 : 0 })
+            },'doctor');
+
+            setIsActive(nextStatus);
+        } catch (err) {
+            console.error(err);
+            alert('عملیات تغییر وضعیت با خطا مواجه شد');
+        } finally {
+            setIsToggling(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -136,9 +170,35 @@ export function DoctorDashboardPage() {
                 title="داشبورد پزشک"
                 description={`${data.profile.name} — ${data.profile.specialty}`}
                 actions={
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
-                        doctor
-                    </span>
+                    <button
+                        type="button"
+                        onClick={handleToggleStatus}
+                        disabled={isToggling}
+                        className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                            isActive
+                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-100 focus:ring-emerald-500'
+                                : 'bg-rose-50 text-rose-700 ring-1 ring-rose-300 hover:bg-rose-100 focus:ring-rose-500'
+                        } ${isToggling ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                        {isToggling ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <span className="relative flex h-2 w-2">
+                                <span
+                                    className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${
+                                        isActive ? 'bg-emerald-400' : 'bg-rose-400'
+                                    }`}
+                                />
+                                <span
+                                    className={`relative inline-flex h-2 w-2 rounded-full ${
+                                        isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                                    }`}
+                                />
+                            </span>
+                        )}
+                        <Power className="h-3.5 w-3.5" />
+                        <span>{isActive ? 'پزشک فعال است' : 'پزشک غیرفعال است'}</span>
+                    </button>
                 }
             />
 

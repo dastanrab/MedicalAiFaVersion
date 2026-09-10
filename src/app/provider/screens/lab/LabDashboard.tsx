@@ -103,6 +103,7 @@ export function LabDashboard() {
     };
 
     // تغییر وضعیت فعال/غیرفعال
+    // تغییر وضعیت فعال/غیرفعال
     const toggleStatus = async () => {
         if (!token) {
             alert('لطفاً وارد شوید.');
@@ -111,7 +112,6 @@ export function LabDashboard() {
 
         setUpdating(true);
         try {
-            // جایگزینی fetch با fetchWithAuth
             const response = await fetchWithAuth('http://185.222.163.113:7000/api/owner/lab/status', {
                 method: 'PUT',
                 headers: {
@@ -119,31 +119,18 @@ export function LabDashboard() {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                 },
-            },'lab');
+            }, 'lab');
 
             const result = await response.json();
 
-            if (result.status === true || result.data) {
-                // تلاش برای استخراج isActive از پاسخ (ساختارهای مختلف)
-                let newIsActive: boolean | undefined;
-                if (result.data) {
-                    newIsActive = result.data.isActive ?? (result.data.status === 1);
-                } else {
-                    newIsActive = result.isActive ?? (result.status === 1);
-                }
-
-                if (typeof newIsActive === 'boolean') {
-                    // به‌روزرسانی مستقیم state (بدون نیاز به fetch مجدد)
-                    setProfile((prev) => prev ? { ...prev, isActive: newIsActive } : null);
-                } else {
-                    // در صورت عدم وجود اطلاعات کافی، پروفایل را مجدداً دریافت کن
-                    await fetchProfile(false); // false = بدون تغییر loading اصلی
-                }
+            // بررسی موفقیت‌آمیز بودن درخواست (یا از طریق result.status یا HTTP Status)
+            if (result.status === true || response.ok) {
+                // اگر درخواست موفق بود، وضعیت قبلی را برعکس می‌کنیم
+                setProfile((prev) => prev ? { ...prev, isActive: !prev.isActive } : null);
             } else {
                 alert(result.message || 'خطا در تغییر وضعیت');
             }
         } catch (err: any) {
-            // مدیریت خطای ۴۰۱ و جلوگیری از اجرای کدهای بعدی
             if (err.message === 'UNAUTHORIZED') {
                 console.warn('Session expired in toggleStatus. Redirecting...');
                 return;
@@ -155,6 +142,7 @@ export function LabDashboard() {
             setUpdating(false);
         }
     };
+
 
     useEffect(() => {
         fetchProfile(true);

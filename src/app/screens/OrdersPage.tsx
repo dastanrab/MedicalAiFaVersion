@@ -112,6 +112,7 @@ const toJalaliDate = (iso: string): string => {
 
 /* ───────────────────── اینترفیس‌ها ───────────────────── */
 interface ApiOrder {
+    order_id: number;
     id: number;
     status: string | number;
     price: number;
@@ -267,9 +268,11 @@ export function OrdersPage() {
                 }
 
                 return {
+                    order_id:item.order_id,
                     id: item.id,
                     serviceType,
                     status: group,
+                    rawStatus: item.status,
                     status_label: finalStatusLabel, // استفاده از لیبل ترجمه شده
                     title:
                         serviceType !== 'consultation'
@@ -539,6 +542,7 @@ function OrderDetailSheet({
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState<string | null>(null);
     const [paying, setPaying] = useState(false);
+    const [downloadingTestId, setDownloadingTestId] = useState<number | null>(null); // <-- این خط را اضافه کنید
 
     // استیت‌های مربوط به ثبت نظر
     const [rating, setRating] = useState(0);
@@ -597,6 +601,117 @@ function OrderDetailSheet({
         setLabData(null);
         fetchData();
     }, [order?.id, order?.serviceType, accessToken]);
+// داخل کامپوننت OrderDetailSheet
+    const handleDoctorPay = async () => {
+        if (!order) return;
+        setPaying(true);
+        setDetailError(null);
+
+        try {
+            const res = await fetch(`http://185.222.163.113:7000/api/payments/initiate`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    order_id: order.order_id,
+                }),
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || 'خطا در ایجاد لینک پرداخت.');
+            }
+
+            if (json.payment_url) {
+                window.location.href = json.payment_url; // هدایت کاربر به درگاه پرداخت
+            } else {
+                throw new Error('آدرس پرداخت دریافت نشد.');
+            }
+
+        } catch (err: any) {
+            setDetailError(err.message);
+            setPaying(false); // فقط در صورت خطا false شود، چون در حالت موفق ریدایرکت می‌شود
+        }
+    };
+
+    const handleViewResult = async (fileUrl: string, testId: number) => {
+        if (!fileUrl) return;
+        setDownloadingTestId(testId); // فعال کردن حالت لودینگ برای این دکمه خاص
+
+        try {
+            const response = await fetch(fileUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`, // ارسال توکن احراز هویت
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('خطا در دریافت فایل نتیجه. دسترسی مجاز نیست.');
+            }
+
+            // تبدیل پاسخ به Blob
+            const blob = await response.blob();
+
+            // ساخت URL موقت در حافظه مرورگر
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            // باز کردن فایل در تب جدید
+            window.open(blobUrl, '_blank');
+
+            // بهتر است URL موقت را پس از مدت کوتاهی پاک کنیم تا حافظه آزاد شود
+            // مرورگر فرصت کافی برای بارگذاری آن در تب جدید خواهد داشت
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+
+        } catch (error) {
+            console.error("Error downloading result file:", error);
+            alert('مشکلی در باز کردن فایل نتیجه رخ داد. لطفاً دوباره تلاش کنید.');
+        } finally {
+            setDownloadingTestId(null); // غیرفعال کردن حالت لودینگ
+        }
+    };
+
+    const handlePharmacyPay = async () => {
+        if (!order || !detailData) return;
+        setPaying(true);
+        try {
+            // فراخوانی API پرداخت داروخانه
+            const res = await fetch(`http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}/pay`, {
+                method: 'POST', // یا POST اگر در روت‌های لاراول POST تعریف کرده‌اید
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/json',
+                },
+            });
+            const json = await res.json();
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || 'پرداخت ناموفق بود');
+            }
+
+            // به‌روزرسانی وضعیت سفارش در استیت محلی (طبق کنترلر بک‌اند: وضعیت ۲ = در حال آماده‌سازی)
+            const updatedOrder: UserRequestOrder = {
+                ...order,
+                status: 'active',
+                status_label: 'در حال آماده‌سازی',
+            };
+            if (onOrderUpdate) onOrderUpdate(updatedOrder);
+
+            // به‌روزرسانی دیتای داخل شیت
+            setDetailData((prev) => prev ? { ...prev, status: 2, status_label: 'در حال آماده‌سازی' } : null);
+
+            // رفرش کردن لیست کل سفارش‌ها در پس‌زمینه
+            if (refreshOrders) refreshOrders();
+
+        } catch (err: any) {
+            setDetailError(err.message);
+        } finally {
+            setPaying(false);
+        }
+    };
 
     const handleLabPay = async () => {
         if (!order || !labData) return;
@@ -674,7 +789,10 @@ function OrderDetailSheet({
     const Icon = serviceIcons[order.serviceType];
     console.log(order)
     const statusClass = getStatusClass(order.status);
-    const showPayButton = order.serviceType === 'lab' && labData && labData.status === 1;
+    const showLabPayButton = order.serviceType === 'lab' && labData && labData.status === 1;
+    const showPharmacyPayButton = order.serviceType === 'pharmacy' && detailData && detailData.status === 1;
+    const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
+
     console.log(order.status,'coplete status')
     const isCompleted = order.status === 'completed'; // بررسی تکمیل بودن سفارش برای ثبت نظر
    console.log(isCompleted,'coplete status')
@@ -768,11 +886,26 @@ function OrderDetailSheet({
                                             <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
                                                 <FileText className="h-4 w-4" />
                                                 <span>نتیجه: </span>
-                                                <a href={test.result_file} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-800 flex items-center gap-1">
-                                                    <Download className="h-3 w-3" /> دانلود
-                                                </a>
+                                                <button
+                                                    onClick={() => handleViewResult(test.result_file!, test.id)}
+                                                    disabled={downloadingTestId === test.id}
+                                                    className="underline hover:text-blue-800 flex items-center gap-1 disabled:opacity-60 disabled:cursor-wait disabled:no-underline"
+                                                >
+                                                    {downloadingTestId === test.id ? (
+                                                        <>
+                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                            <span>در حال باز کردن...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Download className="h-3 w-3" />
+                                                            <span>دانلود / مشاهده</span>
+                                                        </>
+                                                    )}
+                                                </button>
                                             </div>
                                         )}
+
                                     </div>
                                 ))}
                             </div>
@@ -798,8 +931,28 @@ function OrderDetailSheet({
                         </div>
                     )}
 
+                    {showDoctorPayButton && (
+                        <button
+                            onClick={handleDoctorPay}
+                            disabled={paying}
+                            className="mt-4 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2"
+                        >
+                            {paying ? (
+                                <>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <span>در حال اتصال به درگاه پرداخت…</span>
+                                </>
+                            ) : (
+                                <>
+                                    <CreditCard className="h-5 w-5" />
+                                    <span>پرداخت و نهایی کردن نوبت</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+
                     {/* دکمه پرداخت برای آزمایشگاه */}
-                    {showPayButton && (
+                    {showLabPayButton && (
                         <button
                             onClick={handleLabPay}
                             disabled={paying}
@@ -808,16 +961,39 @@ function OrderDetailSheet({
                             {paying ? (
                                 <>
                                     <Loader2 className="h-5 w-5 animate-spin" />
-                                    در حال پرداخت…
+                                    در حال پردازش…
                                 </>
                             ) : (
                                 <>
                                     <CreditCard className="h-5 w-5" />
-                                    پرداخت فاکتور
+                                    پرداخت فاکتور آزمایشگاه
                                 </>
                             )}
                         </button>
                     )}
+
+                    {/* دکمه پرداخت برای داروخانه */}
+                    {showPharmacyPayButton && (
+                        <button
+                            onClick={handlePharmacyPay}
+                            disabled={paying}
+                            // استفاده از رنگ سبز (emerald) برای هماهنگی با تم داروخانه
+                            className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 flex items-center justify-center gap-2"
+                        >
+                            {paying ? (
+                                <>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    در حال پردازش…
+                                </>
+                            ) : (
+                                <>
+                                    <CreditCard className="h-5 w-5" />
+                                    پرداخت فاکتور داروخانه
+                                </>
+                            )}
+                        </button>
+                    )}
+
 
                     {/* === فرم ثبت نظر برای سفارشات تکمیل شده === */}
                     {isCompleted && !detailLoading && (

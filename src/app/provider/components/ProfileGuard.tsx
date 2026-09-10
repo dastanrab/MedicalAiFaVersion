@@ -47,7 +47,7 @@ export function ProfileGuard({ role, children }: ProfileGuardProps) {
                     doctor: 'http://185.222.163.113:7000/api/doctor/profile',
                     lab: 'http://185.222.163.113:7000/api/owner/lab/profile',
                     pharmacy: 'http://185.222.163.113:7000/api/owner/pharmacy/profile',
-                    nurse: 'http://185.222.163.113:7000/api/medical-center/profile',
+                    nurse: 'http://185.222.163.113:7000/api/owner/medical-center/profile',
                 };
 
                 // استفاده از fetch wrapper هوشمند که قبلاً ساختیم

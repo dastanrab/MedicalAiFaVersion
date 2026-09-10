@@ -32,7 +32,7 @@ export const adminNavItems: AdminNavItem[] = [
     { icon: CalendarCheck, label: 'نوبت‌ها', path: '/admin/appointments' },
     { icon: MessagesSquare, label: 'گفتگوها', path: '/admin/chats' },
     { icon: CreditCard, label: 'پرداخت‌ها', path: '/admin/payments' },
-    //{ icon: Crown, label: 'اشتراک‌ها', path: '/admin/subscriptions' },
+    { icon: Crown, label: 'اشتراک‌ها', path: '/admin/subscriptions' },
    // { icon: Sparkles, label: 'تشخیص هوشمند', path: '/admin/ai-sessions' },
     { icon: HeartPulse, label: 'خدمات درمانی', path: '/admin/services' },
     { icon: BookOpen, label: 'محتوای سلامت', path: '/admin/health-content' },

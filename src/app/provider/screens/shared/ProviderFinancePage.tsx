@@ -39,6 +39,12 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
     const [isLoading, setIsLoading] = useState(true);
     console.log(role,'ssss')
     const isLab = role === 'lab';
+    const getRolePath = (role: string): string => {
+        if (role === 'nurse') {
+            return 'medical-center';
+        }
+        return role;
+    };
     const navigate = useNavigate();
     // دریافت داده‌ها از API
     useEffect(() => {
@@ -46,7 +52,7 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
             setIsLoading(true);
             try {
                 // جایگزین با متد fetch یا axios واقعی خودتان
-                const response = await fetch(`http://185.222.163.113:7000/api/owner/${role == 'lab' ? 'lab':'medical-center'}/finance?period=${period}`, {
+                const response = await fetch(`http://185.222.163.113:7000/api/owner/${getRolePath(role)}/finance?period=${period}`, {
                     headers: { 'Authorization': `Bearer ${labSession?.token}` }
                 });
                 const result = await response.json();
