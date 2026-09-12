@@ -143,15 +143,15 @@ export function OTPVerification() {
             </button>
 
             <div className="mt-6 space-y-5">
-              <div dir="ltr">
+              <div dir="ltr" className="flex justify-center">
                 <InputOTP
                   maxLength={otpLength}
                   value={otp}
                   onChange={setOtp}
                   disabled={loading}
-                  containerClassName="w-full"
+                  containerClassName="justify-center"
                 >
-                  <InputOTPGroup className="w-full justify-between gap-0">
+                  <InputOTPGroup className="gap-2">
                     {Array.from({ length: otpLength }, (_, i) => (
                       <InputOTPSlot
                         key={i}
