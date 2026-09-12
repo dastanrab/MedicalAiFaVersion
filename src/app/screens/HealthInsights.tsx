@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import {
   Brain,
   Flame,
@@ -14,6 +15,7 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle2,
+  Ruler,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
 import { Button } from '../components/ui/button';
@@ -297,6 +299,17 @@ export default function HealthInsights() {
             <p className="text-xs text-gray-500">پیگیری کالری و وعده‌های غذایی</p>
           </div>
         </div>
+
+        <Link
+          to="/body-measurement"
+          className="mb-5 flex items-center justify-between rounded-2xl border border-orange-100 bg-orange-50/80 px-4 py-3 text-sm text-orange-800 transition-colors hover:bg-orange-100"
+        >
+          <span className="flex items-center gap-2">
+            <Ruler className="h-4 w-4" />
+            تنظیم تناسب و تغذیه
+          </span>
+          <ChevronLeft className="h-4 w-4" />
+        </Link>
 
         {/* هدف و پیشرفت امروز */}
         <section className="mb-5 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-indigo-600 via-blue-600 to-blue-500 p-5 text-white shadow-[0_20px_50px_-20px_rgba(37,99,235,0.55)]">

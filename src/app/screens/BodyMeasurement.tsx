@@ -1,154 +1,157 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, Ruler, Info } from 'lucide-react';
+import { ChevronLeft, Ruler, Info } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
+import { useAuthStore } from '../store/authStore';
+import {
+  estimateDailyCalorieGoal,
+  loadBodyMeasurements,
+  profileFromUser,
+  saveBodyMeasurements,
+  type BodyMeasurements,
+} from '../services/fitnessStorage';
+import {
+  loadHealthInsights,
+  saveHealthInsights,
+} from '../services/healthInsightsStorage';
+
+const FIELDS: { key: keyof BodyMeasurements; label: string; placeholder: string }[] = [
+  { key: 'neck', label: 'دور گردن (سانتی‌متر)', placeholder: '۳۵' },
+  { key: 'waist', label: 'دور کمر (سانتی‌متر)', placeholder: '۸۰' },
+  { key: 'arm', label: 'دور بازو (سانتی‌متر)', placeholder: '۳۰' },
+  { key: 'thigh', label: 'دور ران (سانتی‌متر)', placeholder: '۵۵' },
+  { key: 'chest', label: 'دور سینه (سانتی‌متر)', placeholder: '۹۵' },
+];
 
 export function BodyMeasurement() {
   const navigate = useNavigate();
-  const [measurements, setMeasurements] = useState({
-    neck: '',
-    waist: '',
-    arm: '',
-    thigh: '',
-    chest: '',
-  });
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id ?? 'guest';
 
-  const updateMeasurement = (field: string, value: string) => {
-    setMeasurements({ ...measurements, [field]: value });
+  const [measurements, setMeasurements] = useState<BodyMeasurements>(() =>
+    loadBodyMeasurements(userId),
+  );
+
+  useEffect(() => {
+    setMeasurements(loadBodyMeasurements(userId));
+  }, [userId]);
+
+  const profile = useMemo(() => profileFromUser(user), [user]);
+  const suggestedGoal = useMemo(() => estimateDailyCalorieGoal(profile), [profile]);
+
+  const updateMeasurement = (field: keyof BodyMeasurements, value: string) => {
+    setMeasurements((prev) => ({ ...prev, [field]: value }));
   };
 
+  const allFieldsFilled = Object.values(measurements).every((value) => value.trim() !== '');
+
   const handleNext = () => {
-    // Navigate to next step (to be implemented)
+    if (!allFieldsFilled) return;
+
+    saveBodyMeasurements(userId, measurements);
+
+    const existing = loadHealthInsights(userId);
+    if (suggestedGoal != null) {
+      saveHealthInsights(userId, { ...existing, dailyGoal: suggestedGoal });
+    }
+
     navigate('/meal-plan');
   };
 
-  const allFieldsFilled = Object.values(measurements).every(value => value.trim() !== '');
+  const formatStat = (value: number | null, unit: string) => {
+    if (value == null) return '—';
+    return `${value.toLocaleString('fa-IR')} ${unit}`;
+  };
 
   return (
-    <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto pb-24">
+    <div
+      className="h-full overflow-y-auto bg-gradient-to-b from-orange-50 to-white pb-24 font-[YekanBakhFaNum]"
+      dir="rtl"
+    >
       <AppBar backTo="/home" />
 
-      <div className="px-6 pt-24 py-8 pb-8">
-        {/* Icon */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-3xl mx-auto flex items-center justify-center bg-gradient-to-br from-orange-500 to-orange-600 shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)]">
-            <Ruler className="w-10 h-10 text-white" />
+      <div className="px-5 pt-24 pb-8 sm:px-6">
+        <div className="mb-8 text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25">
+            <Ruler className="h-10 w-10 text-white" />
           </div>
-          <h2 className="mt-4 font-['Inter:SemiBold',sans-serif] font-semibold text-[22px] text-gray-900">Full Body Measurement</h2>
+          <h2 className="mt-4 text-[22px] font-semibold text-gray-900">اندازه‌گیری بدن</h2>
+          <p className="mt-1 text-sm text-gray-500">گام ۱ از ۳ — تناسب و تغذیه</p>
         </div>
 
-        {/* Info Banner */}
-        <div className="bg-blue-100 border border-blue-300 rounded-[14px] p-4 mb-6 flex items-start">
-          <Info className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-blue-900">
-            The more accurate the information, the more accurate the indicators will be calculated.
+        <div className="mb-6 flex items-start gap-3 rounded-[14px] border border-blue-200 bg-blue-50 p-4">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+          <p className="text-sm leading-6 text-blue-900">
+            هرچه اندازه‌ها دقیق‌تر باشد، هدف کالری و برنامه غذایی دقیق‌تر محاسبه می‌شود.
           </p>
         </div>
 
-        {/* Profile Info Summary */}
-        <div className="bg-white rounded-[14px] shadow-[0px_20px_25px_0px_rgba(0,0,0,0.1),0px_8px_10px_0px_rgba(0,0,0,0.1)] p-5 mb-6">
-          <h3 className="font-['Inter:Medium',sans-serif] font-medium text-[#364153] text-[15px] mb-4">Your Profile Information</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-blue-50 rounded-lg p-3 text-center">
-              <p className="text-[#717182] text-[12px] mb-1">Weight</p>
-              <p className="font-['Inter:SemiBold',sans-serif] font-semibold text-gray-900 text-[18px]">70 <span className="text-[14px] text-gray-600">kg</span></p>
+        <div className="mb-6 rounded-[14px] bg-white p-5 shadow-sm ring-1 ring-gray-100">
+          <h3 className="mb-4 text-[15px] font-medium text-[#364153]">اطلاعات پروفایل شما</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg bg-blue-50 p-3 text-center">
+              <p className="mb-1 text-[12px] text-[#717182]">وزن</p>
+              <p className="text-[16px] font-semibold text-gray-900">
+                {formatStat(profile.weightKg, 'کیلو')}
+              </p>
             </div>
-            <div className="bg-green-50 rounded-lg p-3 text-center">
-              <p className="text-[#717182] text-[12px] mb-1">Height</p>
-              <p className="font-['Inter:SemiBold',sans-serif] font-semibold text-gray-900 text-[18px]">175 <span className="text-[14px] text-gray-600">cm</span></p>
+            <div className="rounded-lg bg-emerald-50 p-3 text-center">
+              <p className="mb-1 text-[12px] text-[#717182]">قد</p>
+              <p className="text-[16px] font-semibold text-gray-900">
+                {formatStat(profile.heightCm, 'سانتی‌متر')}
+              </p>
             </div>
-            <div className="bg-purple-50 rounded-lg p-3 text-center">
-              <p className="text-[#717182] text-[12px] mb-1">Age</p>
-              <p className="font-['Inter:SemiBold',sans-serif] font-semibold text-gray-900 text-[18px]">28 <span className="text-[14px] text-gray-600">yrs</span></p>
+            <div className="rounded-lg bg-violet-50 p-3 text-center">
+              <p className="mb-1 text-[12px] text-[#717182]">سن</p>
+              <p className="text-[16px] font-semibold text-gray-900">
+                {formatStat(profile.age, 'سال')}
+              </p>
             </div>
           </div>
+          {suggestedGoal != null ? (
+            <p className="mt-3 text-center text-xs text-gray-500">
+              هدف پیشنهادی:{' '}
+              <span className="font-semibold text-orange-600">
+                {suggestedGoal.toLocaleString('fa-IR')} کیلوکالری
+              </span>
+            </p>
+          ) : (
+            <p className="mt-3 text-center text-xs text-amber-700">
+              وزن، قد و سن را در پروفایل تکمیل کنید تا هدف دقیق‌تری پیشنهاد شود.
+            </p>
+          )}
         </div>
 
-        {/* Form Card */}
-        <div className="bg-white rounded-[14px] shadow-[0px_20px_25px_0px_rgba(0,0,0,0.1),0px_8px_10px_0px_rgba(0,0,0,0.1)] p-6 space-y-5">
-          {/* Neck Circumference */}
-          <div>
-            <label className="block font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[#364153] text-[14px] tracking-[-0.1504px] mb-2">
-              Neck Circumference (cm)
-            </label>
-            <input
-              type="number"
-              placeholder="35"
-              value={measurements.neck}
-              onChange={(e) => updateMeasurement('neck', e.target.value)}
-              className="bg-[#f3f3f5] w-full h-[44px] rounded-[8px] px-3 font-['Inter:Regular',sans-serif] font-normal text-[#717182] text-[14px] tracking-[-0.1504px] border-none outline-none"
-            />
-          </div>
-
-          {/* Waist Circumference */}
-          <div>
-            <label className="block font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[#364153] text-[14px] tracking-[-0.1504px] mb-2">
-              Waist Circumference (cm)
-            </label>
-            <input
-              type="number"
-              placeholder="80"
-              value={measurements.waist}
-              onChange={(e) => updateMeasurement('waist', e.target.value)}
-              className="bg-[#f3f3f5] w-full h-[44px] rounded-[8px] px-3 font-['Inter:Regular',sans-serif] font-normal text-[#717182] text-[14px] tracking-[-0.1504px] border-none outline-none"
-            />
-          </div>
-
-          {/* Arm Circumference */}
-          <div>
-            <label className="block font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[#364153] text-[14px] tracking-[-0.1504px] mb-2">
-              Arm Circumference (cm)
-            </label>
-            <input
-              type="number"
-              placeholder="30"
-              value={measurements.arm}
-              onChange={(e) => updateMeasurement('arm', e.target.value)}
-              className="bg-[#f3f3f5] w-full h-[44px] rounded-[8px] px-3 font-['Inter:Regular',sans-serif] font-normal text-[#717182] text-[14px] tracking-[-0.1504px] border-none outline-none"
-            />
-          </div>
-
-          {/* Thigh Circumference */}
-          <div>
-            <label className="block font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[#364153] text-[14px] tracking-[-0.1504px] mb-2">
-              Thigh Circumference (cm)
-            </label>
-            <input
-              type="number"
-              placeholder="55"
-              value={measurements.thigh}
-              onChange={(e) => updateMeasurement('thigh', e.target.value)}
-              className="bg-[#f3f3f5] w-full h-[44px] rounded-[8px] px-3 font-['Inter:Regular',sans-serif] font-normal text-[#717182] text-[14px] tracking-[-0.1504px] border-none outline-none"
-            />
-          </div>
-
-          {/* Chest Circumference */}
-          <div>
-            <label className="block font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[#364153] text-[14px] tracking-[-0.1504px] mb-2">
-              Chest Circumference (cm)
-            </label>
-            <input
-              type="number"
-              placeholder="95"
-              value={measurements.chest}
-              onChange={(e) => updateMeasurement('chest', e.target.value)}
-              className="bg-[#f3f3f5] w-full h-[44px] rounded-[8px] px-3 font-['Inter:Regular',sans-serif] font-normal text-[#717182] text-[14px] tracking-[-0.1504px] border-none outline-none"
-            />
-          </div>
+        <div className="space-y-5 rounded-[14px] bg-white p-5 shadow-sm ring-1 ring-gray-100">
+          {FIELDS.map((field) => (
+            <div key={field.key}>
+              <label className="mb-2 block text-[14px] font-medium text-[#364153]">
+                {field.label}
+              </label>
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder={field.placeholder}
+                value={measurements[field.key]}
+                onChange={(e) => updateMeasurement(field.key, e.target.value)}
+                className="h-11 w-full rounded-lg border-none bg-[#f3f3f5] px-3 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-orange-300"
+              />
+            </div>
+          ))}
         </div>
 
-        {/* Next Button */}
         <button
+          type="button"
           onClick={handleNext}
           disabled={!allFieldsFilled}
-          className={`w-full h-[48px] rounded-[8px] shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)] mt-6 font-['Inter:Medium',sans-serif] font-medium text-[18px] tracking-[-0.4395px] transition-colors flex items-center justify-center ${
+          className={`mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[17px] font-medium transition-colors ${
             allFieldsFilled
-              ? 'bg-[#f97316] hover:bg-[#ea580c] text-white'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25 hover:bg-orange-600'
+              : 'cursor-not-allowed bg-gray-200 text-gray-500'
           }`}
         >
-          Next
-          <ArrowRight className="ml-2 w-5 h-5" />
+          ادامه به برنامه غذایی
+          <ChevronLeft className="h-5 w-5" />
         </button>
       </div>
     </div>

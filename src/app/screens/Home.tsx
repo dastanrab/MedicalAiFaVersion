@@ -365,7 +365,7 @@ export function Home() {
     },
     {
       title: 'تناسب و تغذیه',
-      desc: 'برنامه اختصاصی',
+      desc: 'اندازه‌گیری تا پیگیری کالری',
       path: '/body-measurement',
       icon: UtensilsCrossed,
       gradient: 'from-orange-500 to-amber-600',
