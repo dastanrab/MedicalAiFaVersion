@@ -374,6 +374,7 @@ export function Home() {
     {
       title: 'بینش سلامت',
       desc: 'نکات شخصی‌سازی‌شده',
+      path: '/health-insights',
       icon: Brain,
       gradient: 'from-indigo-500 to-indigo-700',
       iconBg: 'bg-indigo-100 text-indigo-600',

@@ -12,6 +12,7 @@ import { Consultation } from './screens/Consultation';
 import { Home } from './screens/Home';
 import { BodyMeasurement } from './screens/BodyMeasurement';
 import { MealPlan } from './screens/MealPlan';
+import HealthInsights from './screens/HealthInsights';
 import { AppContainer } from './components/AppContainer';
 import { Spinner } from './components/PageLoader';
 import { useAuthStore } from './store/authStore';
@@ -600,6 +601,16 @@ function App() {
                         <VerifiedRoute>
                             <AppContainer showNavbar>
                                 <MealPlan />
+                            </AppContainer>
+                        </VerifiedRoute>
+                    }
+                />
+                <Route
+                    path="/health-insights"
+                    element={
+                        <VerifiedRoute>
+                            <AppContainer showNavbar>
+                                <HealthInsights />
                             </AppContainer>
                         </VerifiedRoute>
                     }
