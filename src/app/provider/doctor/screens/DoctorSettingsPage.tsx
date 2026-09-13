@@ -6,7 +6,7 @@ import {ProvinceCitySelector} from "../../../components/ProvinceCitySelector";
 // توجه: مسیر ایمپورت ProvinceCitySelector را بر اساس ساختار پوشه‌های خود تنظیم کنید
 
 
-const BASE_URL = 'http://185.222.163.113:7000/api';
+const BASE_URL = 'https://api.mediraai.com/api';
 
 export function DoctorSettingsPage() {
     const token = useDoctorAuthStore((state) => state.token);

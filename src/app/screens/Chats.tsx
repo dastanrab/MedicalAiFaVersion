@@ -16,8 +16,8 @@ import { PageLoader } from '../components/PageLoader';
 import { useAuthStore } from '../store/authStore';
 
 const ROOM_ID = 1;
-const WS_HOST = '185.222.163.113:4070';
-const API_BASE = 'http://185.222.163.113:7000';
+const WS_HOST = 'chat.mediraai.com';
+const API_BASE = 'https://api.mediraai.com';
 const MAX_RECONNECT_ATTEMPTS = 10;
 const TYPING_THROTTLE_MS = 500;
 
@@ -122,7 +122,7 @@ export function Chats() {
   const fetchChatHistory = async () => {
     try {
       setIsLoadingHistory(true);
-      const res = await fetch(`http://${WS_HOST}/api/chat/rooms/${ROOM_ID}/messages?limit=100`, {
+      const res = await fetch(`https://${WS_HOST}/api/chat/rooms/${ROOM_ID}/messages?limit=100`, {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       });
       if (!res.ok) throw new Error();
@@ -155,7 +155,7 @@ export function Chats() {
 
   const fetchParticipants = async () => {
     try {
-      const res = await fetch(`http://${WS_HOST}/api/chat/rooms/${ROOM_ID}/participants`, {
+      const res = await fetch(`https://${WS_HOST}/api/chat/rooms/${ROOM_ID}/participants`, {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       });
       if (!res.ok) return;

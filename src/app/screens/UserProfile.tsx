@@ -46,7 +46,7 @@ const inputClass =
 const selectClass =
     'w-full h-11 rounded-xl px-3 bg-gray-50/80 border-0 text-gray-700 text-sm text-right ring-1 ring-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all cursor-pointer';
 
-const API_BASE_URL = 'http://185.222.163.113:7000';
+const API_BASE_URL = 'https://api.mediraai.com';
 
 type ServerAddress = {
   id: number;

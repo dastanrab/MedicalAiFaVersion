@@ -18,7 +18,7 @@ export function DoctorReviewsPage() {
     useEffect(() => {
         const fetchReviews = async () => {
             try {
-                const response = await fetch('http://185.222.163.113:7000/api/user/provider/reviews', {
+                const response = await fetch('https://api.mediraai.com/api/user/provider/reviews', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json'

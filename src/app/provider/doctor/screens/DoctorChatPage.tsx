@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router';
 import { Send, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
 
-const API_BASE = 'http://185.222.163.113:4070';
-const WS_HOST = '185.222.163.113:4070';
+// const API_BASE = 'http://185.222.163.113:4070';
+// const WS_HOST = '185.222.163.113:4070';
+const API_BASE = 'https://chat.mediraai.com';
+const WS_HOST = 'chat.mediraai.com';
 
 type Message = {
     id: number;
@@ -136,7 +138,7 @@ export function DoctorChatPage() {
         if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
         setConnectionStatus('connecting');
-        const ws = new WebSocket(`ws://${WS_HOST}/ws/chat/${roomId}?token=${authToken}`);
+        const ws = new WebSocket(`wss://${WS_HOST}/ws/chat/${roomId}?token=${authToken}`);
 
         ws.onopen = () => {
             setConnectionStatus('connected');

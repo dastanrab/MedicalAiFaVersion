@@ -44,10 +44,10 @@ export function ProfileGuard({ role, children }: ProfileGuardProps) {
             try {
                 // آدرس‌های API بر اساس نقش کاربر (در صورت نیاز این آدرس‌ها را با بک‌اند خود تطبیق دهید)
                 const apiEndpoints: Record<ProviderRole, string> = {
-                    doctor: 'http://185.222.163.113:7000/api/doctor/profile',
-                    lab: 'http://185.222.163.113:7000/api/owner/lab/profile',
-                    pharmacy: 'http://185.222.163.113:7000/api/owner/pharmacy/profile',
-                    nurse: 'http://185.222.163.113:7000/api/owner/medical-center/profile',
+                    doctor: 'https://api.mediraai.com/api/doctor/profile',
+                    lab: 'https://api.mediraai.com/api/owner/lab/profile',
+                    pharmacy: 'https://api.mediraai.com/api/owner/pharmacy/profile',
+                    nurse: 'https://api.mediraai.com/api/owner/medical-center/profile',
                 };
 
                 // استفاده از fetch wrapper هوشمند که قبلاً ساختیم

@@ -125,7 +125,7 @@ export function LabRequestsPage() {
                 setLoading(true);
 
                 // تغییر مهم ۱: استفاده از fetchWithAuth به جای fetch خام
-                const response = await fetchWithAuth('http://185.222.163.113:7000/api/owner/lab/requests', {
+                const response = await fetchWithAuth('https://api.mediraai.com/api/owner/lab/requests', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',

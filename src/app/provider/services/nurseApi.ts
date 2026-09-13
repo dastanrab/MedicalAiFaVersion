@@ -111,7 +111,7 @@ export interface NurseRequestInput {
 }
 
 // ----------- توابع کمکی -----------
-const BASE_URL = 'http://185.222.163.113:7000/api/owner/medical-center';
+const BASE_URL = 'https://api.mediraai.com/api/owner/medical-center';
 
 // تابع اصلی برای درخواست‌های API
 const apiRequest = async <T = any>(

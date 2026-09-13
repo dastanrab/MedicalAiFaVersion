@@ -100,7 +100,7 @@ export function DoctorDashboardPage() {
         const fetchDashboard = async () => {
             try {
                 setLoading(true);
-                const response = await fetchWithAuth('http://185.222.163.113:7000/api/doctor/dashboard', {
+                const response = await fetchWithAuth('https://api.mediraai.com/api/doctor/dashboard', {
                     headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -129,7 +129,7 @@ export function DoctorDashboardPage() {
         setIsToggling(true);
 
         try {
-            const response = await fetchWithAuth('http://185.222.163.113:7000/api/doctor/toggle-status', {
+            const response = await fetchWithAuth('https://api.mediraai.com/api/doctor/toggle-status', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

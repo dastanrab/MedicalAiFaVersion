@@ -1,4 +1,4 @@
-const BASE_URL = 'http://185.222.163.113:7000/api/owner';
+const BASE_URL = 'https://api.mediraai.com/api/owner';
 
 export const medicalCenterAuthService = {
     async sendOtp(phone: string): Promise<void> {

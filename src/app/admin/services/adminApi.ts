@@ -3,7 +3,7 @@ import type { AdminPaymentRow, PaymentStatus } from '../config/paymentOptions';
 import type { AdminAppointmentRow } from '../config/appointmentOptions';
 import { samplePayments } from '../data/samplePayments';
 
-const API_BASE = 'http://185.222.163.113:7000/api';
+const API_BASE = 'https://api.mediraai.com/api';
 
 let getToken: () => string | null = () => null;
 

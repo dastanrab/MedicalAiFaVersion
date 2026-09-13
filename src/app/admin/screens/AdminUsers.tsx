@@ -37,7 +37,7 @@ import { useAdminDataStore } from '../store/adminDataStore';
 import { AddUserModal } from '../components/AddUserModal';
 
 const PAGE_SIZE = 8;
-const API_URL = 'http://185.222.163.113:7000/api/admin/users';
+const API_URL = 'https://api.mediraai.com/api/admin/users';
 
 const statusMapApiToFront: Record<number, UserStatus> = {
     1: 'active',

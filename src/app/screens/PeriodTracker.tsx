@@ -24,7 +24,7 @@ import { JalaliCalendarModal, gregorianToJalali, jalaliToGregorian, formatJalali
 import { WorkoutModal } from '../components/WorkoutModal';
 import { jalaaliMonthLength } from 'jalaali-js';
 
-const API_BASE_URL = "http://185.222.163.113:7000/api/user";
+const API_BASE_URL = "https://api.mediraai.com/api/user";
 
 // ---------- Jalali Helpers ----------
 export interface JalaliDate {

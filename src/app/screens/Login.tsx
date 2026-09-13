@@ -20,7 +20,7 @@ export function Login() {
     setError('');
 
     try {
-      const response = await fetch('http://185.222.163.113:7000/api/user/login', {
+      const response = await fetch('https://api.mediraai.com/api/user/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

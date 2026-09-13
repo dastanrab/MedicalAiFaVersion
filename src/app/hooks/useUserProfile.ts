@@ -9,7 +9,7 @@ export interface UserProfileData {
   initials: string;
 }
 
-const API_URL = 'http://185.222.163.113:7000/api/user/profile';
+const API_URL = 'https://api.mediraai.com/api/user/profile';
 
 function parseUserProfile(user: Record<string, unknown>): UserProfileData {
   const firstName =

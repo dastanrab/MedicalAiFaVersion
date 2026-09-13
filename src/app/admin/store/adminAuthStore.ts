@@ -33,7 +33,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
                 // ۲. ارسال درخواست خروج به سرور در صورت وجود توکن
                 if (currentToken) {
                     try {
-                        await fetch('http://185.222.163.113:7000/api/logout-all', {
+                        await fetch('https://api.mediraai.com/api/logout-all', {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${currentToken}`,

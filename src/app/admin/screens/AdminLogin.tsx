@@ -25,7 +25,7 @@ export function AdminLogin() {
         setError('');
 
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/admin/login', {
+            const response = await fetch('https://api.mediraai.com/api/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone: username, password }),
@@ -61,7 +61,7 @@ export function AdminLogin() {
         setLoading(true);
         setError('');
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/admin/login/verify-2fa', {
+            const response = await fetch('https://api.mediraai.com/api/admin/login/verify-2fa', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pendingToken}` },
                 body: JSON.stringify({ code: otpCode }),

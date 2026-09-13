@@ -32,7 +32,7 @@ import {
     MessageCircleMore,
 } from "lucide-react";
 
-const API_BASE_URL = "http://185.222.163.113:7000";
+const API_BASE_URL = "https://api.mediraai.com";
 
 type TestPack = {
     id: number;

@@ -41,7 +41,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 
         try {
             const response = await fetch(
-                "http://185.222.163.113:7000/api/user/profile",
+                "https://api.mediraai.com/api/user/profile",
                 {
                     method: "GET",
                     headers: {

@@ -22,7 +22,7 @@ import type { NurseRequest } from '../../data/mockData';
 import { useProviderSession } from '../../store/providerAuthStore';
 
 const PAGE_SIZE = 8;
-const API_BASE_URL = 'http://185.222.163.113:7000/api/owner/medical-center';
+const API_BASE_URL = 'https://api.mediraai.com/api/owner/medical-center';
 
 const statusOptions = [
     { value: 'all', label: 'همه' },

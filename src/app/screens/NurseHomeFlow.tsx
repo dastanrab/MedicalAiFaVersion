@@ -31,7 +31,7 @@ import {useAuthStore} from "../store/authStore";
 // فرض می‌کنیم هوک استور شما اینجا قرار دارد
 
 
-const API_BASE_URL = "http://185.222.163.113:7000/api/user"; // فرض بر این است که روت‌ها در api.php هستند
+const API_BASE_URL = "https://api.mediraai.com/api/user"; // فرض بر این است که روت‌ها در api.php هستند
 
 // نگاشت آیکون‌ها بر اساس slug خدمات دریافتی از دیتابیس
 const getServiceIcon = (slug: string) => {

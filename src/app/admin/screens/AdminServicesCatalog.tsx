@@ -4,7 +4,7 @@ import { Switch } from '../../components/ui/switch';
 import {useAdminAuthStore} from "../store/adminAuthStore";
 
 
-const API_BASE = 'http://185.222.163.113:7000/api/admin/services';
+const API_BASE = 'https://api.mediraai.com/api/admin/services';
 
 export function AdminServicesCatalog() {
     const accessToken = useAdminAuthStore((state) => state.token);

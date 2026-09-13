@@ -54,7 +54,7 @@ export function DoctorFinancePage() {
         try {
             if (!token) return;
             setLoading(true);
-            const response = await fetch('http://185.222.163.113:7000/api/doctor/finance', {
+            const response = await fetch('https://api.mediraai.com/api/doctor/finance', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ export function DoctorFinancePage() {
 
         setIsCharging(true);
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/doctor/wallet/charge-mock', {
+            const response = await fetch('https://api.mediraai.com/api/doctor/wallet/charge-mock', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

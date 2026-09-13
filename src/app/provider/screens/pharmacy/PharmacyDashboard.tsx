@@ -24,7 +24,7 @@ import { providerPath } from '../../config/providerNav';
 import {useProviderSession} from "../../store/providerAuthStore";
 
 
-const BASE_URL = 'http://185.222.163.113:7000/api/owner/pharmacy';
+const BASE_URL = 'https://api.mediraai.com/api/owner/pharmacy';
 const chartConfig = { count: { label: 'درخواست', color: '#14b8a6' } } satisfies ChartConfig;
 
 interface DashboardApiResponse {

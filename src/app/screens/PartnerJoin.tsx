@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
-const API_BASE_URL = "http://185.222.163.113:7000/api/user";
+const API_BASE_URL = "https://api.mediraai.com/api/user";
 
 export default function PartnerJoin() {
     const { code } = useParams<{ code: string }>();

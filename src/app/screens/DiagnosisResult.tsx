@@ -143,7 +143,7 @@ export function DiagnosisResult() {
         setError(null);
 
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/user/diagnosis/diagnose', {
+            const response = await fetch('https://api.mediraai.com/api/user/diagnosis/diagnose', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

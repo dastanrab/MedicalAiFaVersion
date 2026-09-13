@@ -26,7 +26,7 @@ export function LabSchedulePage() {
 
             try {
                 setLoading(true);
-                const response = await fetch('http://185.222.163.113:7000/api/owner/lab/schedule', {
+                const response = await fetch('https://api.mediraai.com/api/owner/lab/schedule', {
                     headers: {
                         'Authorization': `Bearer ${labSession.token}`,
                         'Accept': 'application/json'

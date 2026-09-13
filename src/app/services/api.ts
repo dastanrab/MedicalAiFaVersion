@@ -1,5 +1,5 @@
 // src/services/api.ts
-const API_BASE_URL = 'http://185.222.163.113:7000/api';
+const API_BASE_URL = 'https://api.mediraai.com/api';
 
 // تابع برای دریافت توکن از store
 let getAccessToken: () => string | null = () => null;

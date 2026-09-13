@@ -37,7 +37,7 @@ export function LabResultsPage() {
     const fetchResults = async () => {
         try {
             setLoading(true);
-            const res = await fetch('http://185.222.163.113:7000/api/owner/lab/results', {
+            const res = await fetch('https://api.mediraai.com/api/owner/lab/results', {
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
                     'Accept': 'application/json'
@@ -59,7 +59,7 @@ export function LabResultsPage() {
     };
 
     const getFullFileUrl = (path: string) => {
-        return path.startsWith('http') ? path : `http://185.222.163.113:7000${path}`;
+        return path.startsWith('http') ? path : `https://api.mediraai.com${path}`;
     };
 
     return (

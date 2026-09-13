@@ -34,8 +34,8 @@ const statusOptions = [
 ];
 
 // ================== CONSTANTS ==================
-const BASE_URL = 'http://185.222.163.113:7000/api/owner/pharmacy/requests';
-const SEARCH_URL = 'http://185.222.163.113:7000/api/owner/pharmacy/medicines/search';
+const BASE_URL = 'https://api.mediraai.com/api/owner/pharmacy/requests';
+const SEARCH_URL = 'https://api.mediraai.com/api/owner/pharmacy/medicines/search';
 
 // ================== INTERFACES ==================
 interface RequestDetail {

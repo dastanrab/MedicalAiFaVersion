@@ -24,7 +24,7 @@ export default function NurseCoveragePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
-    const BASE_URL = 'http://185.222.163.113:7000/api/owner/medical-center/coverage';
+    const BASE_URL = 'https://api.mediraai.com/api/owner/medical-center/coverage';
 
     // دریافت اطلاعات اولیه (تنظیمات فعلی + لیست مناطق)
     useEffect(() => {

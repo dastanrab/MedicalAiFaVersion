@@ -145,7 +145,7 @@ export function LabRequestDetailPage() {
     const fetchRequestDetails = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`http://185.222.163.113:7000/api/owner/lab/requests/${id}`, {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
                     'Accept': 'application/json'
@@ -189,7 +189,7 @@ export function LabRequestDetailPage() {
     const fetchAvailableTests = async () => {
         try {
             setLoadingTests(true);
-            const response = await fetch(`http://185.222.163.113:7000/api/owner/lab/tests/available`, {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/tests/available`, {
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
                     'Accept': 'application/json'
@@ -215,7 +215,7 @@ export function LabRequestDetailPage() {
     const handleAcceptRequest = async () => {
         setIsAccepting(true);
         try {
-            const response = await fetch(`http://185.222.163.113:7000/api/owner/lab/requests/${id}/accept`, {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/accept`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
@@ -242,7 +242,7 @@ export function LabRequestDetailPage() {
         if (!confirm('آیا از تغییر وضعیت این درخواست اطمینان دارید؟')) return;
         setUpdatingStatus(true);
         try {
-            const response = await fetch(`http://185.222.163.113:7000/api/owner/lab/requests/${id}/status`, {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/status`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
@@ -272,7 +272,7 @@ export function LabRequestDetailPage() {
         formData.append('file', file);
 
         try {
-            const response = await fetch(`http://185.222.163.113:7000/api/owner/lab/requests/${id}/results`, {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/results`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
@@ -314,7 +314,7 @@ export function LabRequestDetailPage() {
 
         setAssigning(true);
         try {
-            const response = await fetch(`http://185.222.163.113:7000/api/owner/lab/requests/${id}/assign-tests`, {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/assign-tests`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
@@ -342,7 +342,7 @@ export function LabRequestDetailPage() {
         if (!window.confirm('آیا از حذف لیست آزمایش‌ها جهت انتخاب مجدد مطمئن هستید؟')) return;
 
         try {
-            const response = await fetch(`http://185.222.163.113:7000/api/owner/lab/requests/${id}/assign-tests`, {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/assign-tests`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,

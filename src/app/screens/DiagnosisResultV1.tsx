@@ -129,7 +129,7 @@ export function DiagnosisResultV1() {
         setStatus('chatting');
 
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/user/diagnosis/chat', {
+            const response = await fetch('https://api.mediraai.com/api/user/diagnosis/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ export function DiagnosisResultV1() {
         setError(null);
 
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/user/diagnosis/chat', {
+            const response = await fetch('https://api.mediraai.com/api/user/diagnosis/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -271,7 +271,7 @@ export function DiagnosisResultV1() {
         setLoading(true);
 
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/user/diagnosis/chat', {
+            const response = await fetch('https://api.mediraai.com/api/user/diagnosis/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

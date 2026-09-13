@@ -41,7 +41,7 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
     const fetchLabProfile = async () => {
         try {
             const token = localStorage.getItem('labSession');
-            const res = await fetch('http://185.222.163.113:7000/api/owner/lab/profile', {
+            const res = await fetch('https://api.mediraai.com/api/owner/lab/profile', {
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
                     'Accept': 'application/json'
@@ -67,7 +67,7 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
     const handleSaveLab = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('http://185.222.163.113:7000/api/owner/lab/profile', {
+            const res = await fetch('https://api.mediraai.com/api/owner/lab/profile', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

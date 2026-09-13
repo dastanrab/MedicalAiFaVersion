@@ -97,7 +97,8 @@ export function DoctorProfile() {
   const [error, setError] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [newReview, setNewReview] = useState('');
-
+  const [discountCode, setDiscountCode] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cash'>('online');
   // وضعیت‌های مربوط به رزرو و پرداخت
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
@@ -168,7 +169,7 @@ export function DoctorProfile() {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await fetch('http://185.222.163.113:7000/api/user/profile', {
+      const response = await fetch('https://api.mediraai.com/api/user/profile', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json'
@@ -189,7 +190,7 @@ export function DoctorProfile() {
       if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
-      const response = await fetch(`http://185.222.163.113:7000/api/user/doctors/${id}/recommendations`, { headers });
+      const response = await fetch(`https://api.mediraai.com/api/user/doctors/${id}/recommendations`, { headers });
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
@@ -206,7 +207,7 @@ export function DoctorProfile() {
     if (!accessToken) return;
     setIsTogglingRecommendation(true);
     try {
-      const response = await fetch(`http://185.222.163.113:7000/api/user/doctors/${id}/recommend`, {
+      const response = await fetch(`https://api.mediraai.com/api/user/doctors/${id}/recommend`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -228,7 +229,7 @@ export function DoctorProfile() {
   const fetchDoctorData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://185.222.163.113:7000/api/user/doctors/${id}/schedule`, {
+      const response = await fetch(`https://api.mediraai.com/api/user/doctors/${id}/schedule`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -268,7 +269,7 @@ export function DoctorProfile() {
     setPaymentError(null);
 
     try {
-      const response = await fetch('http://185.222.163.113:7000/api/user/reservations/reserve-saman', {
+      const response = await fetch('https://api.mediraai.com/api/user/reservations/reserve-saman', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -325,7 +326,7 @@ export function DoctorProfile() {
 
   async function startChat() {
     try {
-      const response = await fetch('http://185.222.163.113:7000/api/user/chat/rooms', {
+      const response = await fetch('https://api.mediraai.com/api/user/chat/rooms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -544,7 +545,7 @@ export function DoctorProfile() {
                             </div>
                         )}
 
-                        {/* خلاصه و مبلغ */}
+                        {/* خلاصه رزرو */}
                         <div className="flex items-center justify-between bg-blue-50/60 p-3.5 rounded-xl border border-blue-100">
                           <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-800">
                             <Check className="w-4 h-4 text-green-600" />
@@ -557,48 +558,131 @@ export function DoctorProfile() {
                           </div>
                         </div>
 
-                        {/* انتخاب درگاه */}
+                        {/* کد تخفیف — فقط ظاهری */}
                         <div>
-                          <label className="block text-xs text-gray-600 mb-2 font-medium">انتخاب درگاه پرداخت:</label>
+                          <label className="block text-xs text-gray-600 mb-2 font-medium">
+                            کد تخفیف (اختیاری):
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={discountCode}
+                                onChange={(e) => setDiscountCode(e.target.value)}
+                                placeholder="کد تخفیف را وارد کنید"
+                                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50"
+                                dir="ltr"
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={!discountCode.trim()}
+                                className="px-4 text-sm rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 whitespace-nowrap"
+                            >
+                              اعمال
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* روش پرداخت */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-2 font-medium">
+                            روش پرداخت:
+                          </label>
                           <div className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
-                                onClick={() => setSelectedGateway('saman')}
+                                onClick={() => setPaymentMethod('online')}
                                 className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all ${
-                                    selectedGateway === 'saman'
+                                    paymentMethod === 'online'
                                         ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20 shadow-sm'
                                         : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                                 }`}
                             >
                               <CreditCard className="w-4 h-4 text-blue-600" />
-                              درگاه سامان (سپ)
+                              پرداخت آنلاین
                             </button>
-
                             <button
                                 type="button"
-                                onClick={() => setSelectedGateway('zarinpal')}
+                                onClick={() => setPaymentMethod('cash')}
                                 className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all ${
-                                    selectedGateway === 'zarinpal'
-                                        ? 'border-yellow-500 bg-yellow-50 text-yellow-800 ring-2 ring-yellow-500/20 shadow-sm'
+                                    paymentMethod === 'cash'
+                                        ? 'border-green-600 bg-green-50 text-green-800 ring-2 ring-green-500/20 shadow-sm'
                                         : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                                 }`}
                             >
-                              <ShieldCheck className="w-4 h-4 text-yellow-600" />
-                              درگاه زرین‌پال
+                              <Wallet className="w-4 h-4 text-green-600" />
+                              پرداخت حضوری
                             </button>
                           </div>
+
+                          {/* توضیح پرداخت حضوری */}
+                          {paymentMethod === 'cash' && (
+                              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2.5 animate-in fade-in duration-150">
+                                <CheckCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs text-amber-800 leading-relaxed">
+                                  با انتخاب پرداخت حضوری، نوبت شما به‌صورت موقت رزرو می‌شود.
+                                  برای قطعی شدن، لطفاً <span className="font-bold">سر وقت مراجعه کنید</span> و
+                                  مبلغ ویزیت را قبل از ورود به اتاق پزشک پرداخت نمایید.
+                                  مراجعه به‌موقع و پرداخت حضوری از لغو شدن نوبت و معطلی سایر بیماران جلوگیری می‌کند.
+                                </p>
+                              </div>
+                          )}
                         </div>
 
-                        {/* دکمه ارسال به پرداخت */}
+                        {/* انتخاب درگاه — فقط برای پرداخت آنلاین */}
+                        {paymentMethod === 'online' && (
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-2 font-medium">
+                                انتخاب درگاه پرداخت:
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedGateway('saman')}
+                                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all ${
+                                        selectedGateway === 'saman'
+                                            ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20 shadow-sm'
+                                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                    }`}
+                                >
+                                  <CreditCard className="w-4 h-4 text-blue-600" />
+                                  درگاه سامان (سپ)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedGateway('zarinpal')}
+                                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all ${
+                                        selectedGateway === 'zarinpal'
+                                            ? 'border-yellow-500 bg-yellow-50 text-yellow-800 ring-2 ring-yellow-500/20 shadow-sm'
+                                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                    }`}
+                                >
+                                  <ShieldCheck className="w-4 h-4 text-yellow-600" />
+                                  درگاه زرین‌پال
+                                </button>
+                              </div>
+                            </div>
+                        )}
+
+                        {/* دکمه نهایی */}
                         <Button
                             onClick={handleProceedToPayment}
                             disabled={isPaying}
-                            className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-sm sm:text-base rounded-xl shadow-md flex items-center justify-center gap-2 transition-all"
+                            className={`w-full h-12 font-bold text-sm sm:text-base rounded-xl shadow-md flex items-center justify-center gap-2 transition-all text-white ${
+                                paymentMethod === 'cash'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
                         >
                           {isPaying ? (
                               <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                در حال اتصال به درگاه بانک...
+                                در حال اتصال به درگاه...
+                              </>
+                          ) : paymentMethod === 'cash' ? (
+                              <>
+                                <CheckCircle className="w-5 h-5" />
+                                ثبت رزرو با پرداخت حضوری
                               </>
                           ) : (
                               <>
@@ -609,6 +693,7 @@ export function DoctorProfile() {
                         </Button>
                       </div>
                   )}
+
                 </>
             ) : (
                 <div className="text-center text-gray-500 py-8">

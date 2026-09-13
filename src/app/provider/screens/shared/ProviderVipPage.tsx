@@ -22,7 +22,7 @@ import { useDoctorAuthStore } from "../../doctor/store/doctorAuthStore";
 import {useEffect, useMemo, useState} from "react";
 import {useNavigate} from "react-router";
 
-const API_BASE_URL = 'http://185.222.163.113:7000/api';
+const API_BASE_URL = 'https://api.mediraai.com/api';
 
 interface ProviderVipPageProps {
     role: ProviderRole;

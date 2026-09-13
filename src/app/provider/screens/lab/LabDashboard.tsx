@@ -65,7 +65,7 @@ export function LabDashboard() {
         if (showLoading) setLoading(true);
         try {
             // جایگزینی fetch با fetchWithAuth
-            const response = await fetchWithAuth('http://185.222.163.113:7000/api/owner/lab/profile', {
+            const response = await fetchWithAuth('https://api.mediraai.com/api/owner/lab/profile', {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     Accept: 'application/json',
@@ -112,7 +112,7 @@ export function LabDashboard() {
 
         setUpdating(true);
         try {
-            const response = await fetchWithAuth('http://185.222.163.113:7000/api/owner/lab/status', {
+            const response = await fetchWithAuth('https://api.mediraai.com/api/owner/lab/status', {
                 method: 'PUT',
                 headers: {
                     Authorization: `Bearer ${token}`,

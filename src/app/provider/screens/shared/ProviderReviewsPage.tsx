@@ -26,7 +26,7 @@ export function ProviderReviewsPage({ role }: ProviderFinancePageProps) {
             if (!medicalCenterSession?.token) return;
 
             try {
-                const response = await fetch('http://185.222.163.113:7000/api/user/provider/reviews', {
+                const response = await fetch('https://api.mediraai.com/api/user/provider/reviews', {
                     headers: {
                         'Authorization': `Bearer ${medicalCenterSession.token}`,
                         'Accept': 'application/json'

@@ -27,7 +27,7 @@ export function LabCatalogPage() {
     const fetchTests = async () => {
         try {
             setLoading(true);
-            const res = await fetch('http://185.222.163.113:7000/api/owner/lab/tests', {
+            const res = await fetch('https://api.mediraai.com/api/owner/lab/tests', {
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
                     'Accept': 'application/json'
@@ -73,8 +73,8 @@ export function LabCatalogPage() {
     const handleSubmit = async (payload: LabTestPayload) => {
         try {
             const url = editing
-                ? `http://185.222.163.113:7000/api/owner/lab/tests/${editing.id}` // مسیر آپدیت (PUT)
-                : 'http://185.222.163.113:7000/api/owner/lab/tests'; // مسیر ذخیره (POST)
+                ? `https://api.mediraai.com/api/owner/lab/tests/${editing.id}` // مسیر آپدیت (PUT)
+                : 'https://api.mediraai.com/api/owner/lab/tests'; // مسیر ذخیره (POST)
 
             const method = editing ? 'PUT' : 'POST';
 

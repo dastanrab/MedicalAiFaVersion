@@ -52,14 +52,14 @@ export function MedicalServices() {
         };
 
         // ۱. دریافت سرویس‌ها
-        const servicesRes = await fetch('http://185.222.163.113:7000/api/user/services', { headers });
+        const servicesRes = await fetch('https://api.mediraai.com/api/user/services', { headers });
         const servicesJson = await servicesRes.json();
         if (servicesJson.status === 'success') {
           setActiveServices(servicesJson.data);
         }
 
         // ۲. دریافت لیست آزمایشگاه‌ها و داروخانه‌ها
-        const providersRes = await fetch('http://185.222.163.113:7000/api/user/providers', { headers });
+        const providersRes = await fetch('https://api.mediraai.com/api/user/providers', { headers });
         const providersJson = await providersRes.json();
 
         if (providersJson.status === 'success') {
@@ -98,7 +98,7 @@ export function MedicalServices() {
   const fetchAndOpenDetails = async (providerId: string | number, type: 'lab' | 'pharmacy') => {
     setIsDetailsLoading(true);
     try {
-      const response = await fetch(`http://185.222.163.113:7000/api/user/providers/${type}/${providerId}`, {
+      const response = await fetch(`https://api.mediraai.com/api/user/providers/${type}/${providerId}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',

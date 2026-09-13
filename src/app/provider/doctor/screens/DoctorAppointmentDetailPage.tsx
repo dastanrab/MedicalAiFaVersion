@@ -18,7 +18,7 @@ import { useDoctorAuthStore } from "../store/doctorAuthStore";
 import { doctorAppointmentStatusLabels, doctorAppointmentStatusStyles } from "../../config/statusOptions";
 import { StatusBadge } from "../../components";
 
-const API_BASE_URL = 'http://185.222.163.113:7000/api';
+const API_BASE_URL = 'https://api.mediraai.com/api';
 
 interface AiDiagnosisDetail {
     notes: string;

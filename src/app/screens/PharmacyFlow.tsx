@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 
-const API_BASE_URL = "http://185.222.163.113:7000";
+const API_BASE_URL = "https://api.mediraai.com";
 
 const stepsData = [
     { id: 1, title: "نسخه", icon: FileText },

@@ -36,7 +36,7 @@ export function NurseCalendarPage() {
 
             try {
                 setLoading(true);
-                const response = await fetch('http://185.222.163.113:7000/api/owner/medical-center/schedule', {
+                const response = await fetch('https://api.mediraai.com/api/owner/medical-center/schedule', {
                     headers: {
                         'Authorization': `Bearer ${medicalCenterSession.token}`,
                         'Accept': 'application/json',

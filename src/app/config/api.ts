@@ -20,7 +20,7 @@ function httpOriginFromWs(wsUrl: string): string {
  * Current backend origin. Override with VITE_API_BASE_URL.
  * Production Android builds should use https:// — do not invent a domain here.
  */
-export const API_ORIGIN = readEnv('VITE_API_BASE_URL', 'http://185.222.163.113:7000');
+export const API_ORIGIN = readEnv('VITE_API_BASE_URL', 'https://api.mediraai.com');
 
 /** REST prefix: `{API_ORIGIN}/api` */
 export const API_BASE_URL = `${API_ORIGIN}/api`;

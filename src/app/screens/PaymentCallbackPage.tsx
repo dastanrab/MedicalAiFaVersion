@@ -60,7 +60,7 @@ export function PaymentCallbackPage() {
       try {
         if (loaded.kind === 'reservation' && loaded.reservationToken) {
           const response = await fetch(
-            'http://185.222.163.113:7000/api/user/reservations/confirm',
+            'https://api.mediraai.com/api/user/reservations/confirm',
             {
               method: 'POST',
               headers: {

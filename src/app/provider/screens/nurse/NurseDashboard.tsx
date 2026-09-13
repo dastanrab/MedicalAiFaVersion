@@ -55,7 +55,7 @@ export function NurseDashboard() {
         if (!medicalCenterSession?.token) return;
         try {
             setLoading(true);
-            const response = await fetch('http://185.222.163.113:7000/api/owner/medical-center/dashboard', {
+            const response = await fetch('https://api.mediraai.com/api/owner/medical-center/dashboard', {
                 headers: {
                     'Accept': 'application/json',
                     'Authorization': `Bearer ${medicalCenterSession?.token}`
@@ -86,7 +86,7 @@ export function NurseDashboard() {
         setIsToggling(true);
 
         try {
-            const response = await fetch('http://185.222.163.113:7000/api/owner/medical-center/toggle-status', {
+            const response = await fetch('https://api.mediraai.com/api/owner/medical-center/toggle-status', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

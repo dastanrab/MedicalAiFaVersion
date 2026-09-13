@@ -99,7 +99,7 @@ export function DoctorList() {
   const fetchDoctors = async (queryStr = '') => {
     setLoading(true);
     try {
-      const url = `http://185.222.163.113:7000/api/user/diagnosis/doctors${queryStr ? `?query=${encodeURIComponent(queryStr)}` : ''}`;
+      const url = `https://api.mediraai.com/api/user/diagnosis/doctors${queryStr ? `?query=${encodeURIComponent(queryStr)}` : ''}`;
 
       const response = await fetch(url, {
         headers: {
@@ -134,7 +134,7 @@ export function DoctorList() {
       return;
     }
     try {
-      const response = await fetch(`http://185.222.163.113:7000/api/user/diagnosis/keywords/suggest?q=${encodeURIComponent(text)}`, {
+      const response = await fetch(`https://api.mediraai.com/api/user/diagnosis/keywords/suggest?q=${encodeURIComponent(text)}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       const result = await response.json();

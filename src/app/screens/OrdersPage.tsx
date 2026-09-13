@@ -246,7 +246,7 @@ export function OrdersPage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('http://185.222.163.113:7000/api/user/orders', {
+            const res = await fetch('https://api.mediraai.com/api/user/orders', {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                     Accept: 'application/json',
@@ -564,11 +564,11 @@ function OrderDetailSheet({
             try {
                 let url = '';
                 if (order.serviceType === 'pharmacy') {
-                    url = `http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}`;
+                    url = `https://api.mediraai.com/api/user/pharmacy-requests/${order.id}`;
                 } else if (order.serviceType === 'nurse') {
-                    url = `http://185.222.163.113:7000/api/user/medical-requests/${order.id}`;
+                    url = `https://api.mediraai.com/api/user/medical-requests/${order.id}`;
                 } else if (order.serviceType === 'lab') {
-                    url = `http://185.222.163.113:7000/api/user/labs-requests/${order.id}`;
+                    url = `https://api.mediraai.com/api/user/labs-requests/${order.id}`;
                 } else {
                     setDetailLoading(false);
                     return;
@@ -608,7 +608,7 @@ function OrderDetailSheet({
         setDetailError(null);
 
         try {
-            const res = await fetch(`http://185.222.163.113:7000/api/payments/initiate`, {
+            const res = await fetch(`https://api.mediraai.com/api/payments/initiate`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -680,7 +680,7 @@ function OrderDetailSheet({
         setPaying(true);
         try {
             // فراخوانی API پرداخت داروخانه
-            const res = await fetch(`http://185.222.163.113:7000/api/user/pharmacy-requests/${order.id}/pay`, {
+            const res = await fetch(`https://api.mediraai.com/api/user/pharmacy-requests/${order.id}/pay`, {
                 method: 'POST', // یا POST اگر در روت‌های لاراول POST تعریف کرده‌اید
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -717,7 +717,7 @@ function OrderDetailSheet({
         if (!order || !labData) return;
         setPaying(true);
         try {
-            const res = await fetch(`http://185.222.163.113:7000/api/user/labs-requests/${order.id}/pay`, {
+            const res = await fetch(`https://api.mediraai.com/api/user/labs-requests/${order.id}/pay`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -756,7 +756,7 @@ function OrderDetailSheet({
         try {
             const apiOrderType = reverseServiceTypeMap[order.serviceType] || order.serviceType;
 
-            const res = await fetch('http://185.222.163.113:7000/api/user/reviews', {
+            const res = await fetch('https://api.mediraai.com/api/user/reviews', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

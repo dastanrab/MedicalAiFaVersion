@@ -250,27 +250,35 @@ export function Home() {
     // اگر اطلاعات کاربر هنوز لود نشده است، منتظر بمان
     if (!user || !user.id) return;
 
-    // ایجاد یک کلید یکتا برای هر کاربر
-    const storageKey = `userHealthScore_${user.id}`;
+    // کلیدهای ذخیره‌سازی اختصاصی برای هر کاربر
+    const scoreStorageKey = `userHealthScore_${user.id}`;
+    const seenPopupKey = `hasSeenHealthPopup_${user.id}`;
 
-    const savedScore = localStorage.getItem(storageKey);
+    const savedScore = localStorage.getItem(scoreStorageKey);
+    const hasSeenPopup = localStorage.getItem(seenPopupKey);
     const score = savedScore ? Number(savedScore) : 0;
 
     setHealthScore(score);
 
-    // اگر امتیاز صفر بود، بعد از ۱.۵ ثانیه پاپ‌آپ را نشان بده
-    if (score === 0) {
-      const timer = setTimeout(() => setShowHealthPopup(true), 400);
+    // فقط در صورتی پاپ‌آپ را نشان بده که امتیاز صفر باشد و قبلاً پاپ‌آپ را ندیده باشد
+    if (score === 0 && !hasSeenPopup) {
+      const timer = setTimeout(() => {
+        setShowHealthPopup(true);
+        // ثبت در حافظه محلی تا در دفعات بعدی مجدداً اجرا نشود
+        localStorage.setItem(seenPopupKey, 'true');
+      }, 400);
+
       return () => clearTimeout(timer);
     }
-  }, [user?.id]); // اضافه کردن user.id به آرایه وابستگی‌ها
+  }, [user?.id]);
+
 
 
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch('http://185.222.163.113:7000/api/user/profile', {
+        const response = await fetch('https://api.mediraai.com/api/user/profile', {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -294,7 +302,7 @@ export function Home() {
       if (!accessToken) return;
       try {
         const response = await fetch(
-            'http://185.222.163.113:7000/api/user/period-tracker/partner/dashboard',
+            'https://api.mediraai.com/api/user/period-tracker/partner/dashboard',
             {
               method: 'GET',
               headers: {

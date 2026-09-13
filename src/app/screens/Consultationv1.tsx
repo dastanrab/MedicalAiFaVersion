@@ -21,8 +21,10 @@ import { PageLoader } from '../components/PageLoader';
 import { useAuthStore } from '../store/authStore';
 
 
-const WS_HOST = '185.222.163.113:4070';
-const API_BASE = 'http://185.222.163.113:7000';
+// const WS_HOST = '185.222.163.113:4070';
+// const API_BASE = 'https://chat.mediraai.com';
+const WS_HOST = 'chat.mediraai.com';
+const API_BASE = 'https://api.mediraai.com';
 
 type Message = {
   id: number;
@@ -93,7 +95,7 @@ export function Consultationv1() {
     try {
       setIsLoadingHistory(true);
       const response = await fetch(
-          `http://${WS_HOST}/api/chat/rooms/${ROOM_ID}/messages?limit=100`,
+          `https://${WS_HOST}/api/chat/rooms/${ROOM_ID}/messages?limit=100`,
           {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -139,7 +141,7 @@ export function Consultationv1() {
   const fetchParticipants = async () => {
     try {
       const response = await fetch(
-          `http://${WS_HOST}/api/chat/rooms/${ROOM_ID}/participants`,
+          `https://${WS_HOST}/api/chat/rooms/${ROOM_ID}/participants`,
           {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -221,7 +223,7 @@ export function Consultationv1() {
     setStatus('connecting');
     setErrorMsg('');
 
-    const url = `ws://${WS_HOST}/ws/chat/${ROOM_ID}?token=${encodeURIComponent(token)}`;
+    const url = `wss://${WS_HOST}/ws/chat/${ROOM_ID}?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
