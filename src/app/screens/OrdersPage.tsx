@@ -8,16 +8,15 @@ import {
     Scan,
     HeartHandshake,
     ChevronLeft,
-    MapPin,
-    CalendarClock,
     Building2,
     PackageOpen,
     Loader2,
     CreditCard,
-    ShoppingBag,
     FileText,
     Download,
-    Star, // اضافه شده برای امتیازدهی
+    Star,
+    CalendarClock,
+    User
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
@@ -47,13 +46,13 @@ const serviceTypeMap: Record<string, UserRequestServiceType> = {
     nurse: 'nurse',
 };
 
-// نگاشت معکوس برای ارسال به API ثبت نظر
 const reverseServiceTypeMap: Record<string, string> = {
     consultation: 'doctor',
     lab: 'lab',
     pharmacy: 'pharmacy',
     nurse: 'nurse',
 };
+
 const doctorStatusLabelMap: Record<string, string> = {
     booked: 'رزرو شده',
     done: 'انجام شده',
@@ -62,9 +61,7 @@ const doctorStatusLabelMap: Record<string, string> = {
     completed: 'تکمیل شده'
 };
 
-
 const mapToStatusGroup = (type: string, rawStatus: string | number): UserRequestStatusGroup => {
-    // تبدیل امن به رشته برای جلوگیری از خطای نوع داده (Type Mismatch)
     const s = String(rawStatus);
 
     switch (type) {
@@ -134,6 +131,16 @@ interface ApiOrdersResponse {
     };
 }
 
+// اینترفیس جزئیات نوبت دکتر
+interface DoctorAppointmentDetail {
+    id: number;
+    slot_date: string;
+    start_time: string;
+    status: string;
+    doctor_name: string;
+    extra_detail: any; // Может быть JSON Object یا String
+}
+
 interface NurseRequestDetail {
     id: number;
     status: number;
@@ -177,7 +184,7 @@ interface LabRequestDetail {
     status: number;
     status_label: string;
     total_price: number;
-    visit_type: number; // 0 = در منزل، 1 = حضوری
+    visit_type: number;
     visit_type_label: string;
     request_date: string;
     lab_name: string;
@@ -260,7 +267,6 @@ export function OrdersPage() {
                 const serviceType = serviceTypeMap[item.type] ?? 'lab';
                 const group = mapToStatusGroup(item.type, item.status);
 
-                // جایگزینی لیبل وضعیت برای دکتر در صورت وجود در مپ
                 let finalStatusLabel = item.status_label;
                 if (item.type === 'doctor') {
                     const rawStatus = String(item.status).toLowerCase();
@@ -268,16 +274,15 @@ export function OrdersPage() {
                 }
 
                 return {
-                    order_id:item.order_id,
+                    order_id: item.order_id,
                     id: item.id,
                     serviceType,
                     status: group,
                     rawStatus: item.status,
-                    status_label: finalStatusLabel, // استفاده از لیبل ترجمه شده
-                    title:
-                        serviceType !== 'consultation'
-                            ? serviceTypeLabels[serviceType]
-                            : `نوبت دکتر ${item.detail}`,
+                    status_label: finalStatusLabel,
+                    title: serviceType !== 'consultation'
+                        ? serviceTypeLabels[serviceType]
+                        : `نوبت دکتر ${item.detail}`,
                     providerName: item.name,
                     summary: item.detail !== '-' ? item.detail : '',
                     amount: item.price,
@@ -535,6 +540,7 @@ function OrderDetailSheet({
 }) {
     const { accessToken } = useAuthStore();
 
+    const [doctorData, setDoctorData] = useState<DoctorAppointmentDetail | null>(null);
     const [detailData, setDetailData] = useState<PharmacyRequestDetail | null>(null);
     const [nurseData, setNurseData] = useState<NurseRequestDetail | null>(null);
     const [labData, setLabData] = useState<LabRequestDetail | null>(null);
@@ -542,9 +548,10 @@ function OrderDetailSheet({
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState<string | null>(null);
     const [paying, setPaying] = useState(false);
-    const [downloadingTestId, setDownloadingTestId] = useState<number | null>(null); // <-- این خط را اضافه کنید
+    const [downloadingTestId, setDownloadingTestId] = useState<number | null>(null);
 
-    // استیت‌های مربوط به ثبت نظر
+    const [selectedGateway, setSelectedGateway] = useState<'saman' | 'zarinpal'>('saman');
+
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [reviewLoading, setReviewLoading] = useState(false);
@@ -553,10 +560,11 @@ function OrderDetailSheet({
     useEffect(() => {
         if (!order) return;
 
-        // ریست کردن استیت نظرات
         setRating(0);
         setComment('');
         setReviewMessage(null);
+        setSelectedGateway('saman');
+        setDetailError(null);
 
         const fetchData = async () => {
             setDetailLoading(true);
@@ -569,6 +577,8 @@ function OrderDetailSheet({
                     url = `https://api.mediraai.com/api/user/medical-requests/${order.id}`;
                 } else if (order.serviceType === 'lab') {
                     url = `https://api.mediraai.com/api/user/labs-requests/${order.id}`;
+                } else if (order.serviceType === 'consultation') {
+                    url = `https://api.mediraai.com/api/user/appointments-requests/${order.id}`;
                 } else {
                     setDetailLoading(false);
                     return;
@@ -581,13 +591,14 @@ function OrderDetailSheet({
                     },
                 });
 
-                if (!res.ok) throw new Error('خطا در دریافت اطلاعات فاکتور');
+                if (!res.ok) throw new Error('خطا در دریافت اطلاعات فاکتور یا نوبت');
                 const json = await res.json();
                 if (!json.success) throw new Error(json.message || 'پاسخ نامعتبر');
 
                 if (order.serviceType === 'pharmacy') setDetailData(json.data);
                 if (order.serviceType === 'nurse') setNurseData(json.data);
                 if (order.serviceType === 'lab') setLabData(json.data);
+                if (order.serviceType === 'consultation') setDoctorData(json.data);
 
             } catch (err: any) {
                 setDetailError(err.message);
@@ -599,16 +610,32 @@ function OrderDetailSheet({
         setDetailData(null);
         setNurseData(null);
         setLabData(null);
+        setDoctorData(null);
         fetchData();
     }, [order?.id, order?.serviceType, accessToken]);
-// داخل کامپوننت OrderDetailSheet
+
+    // استخراج امن اطلاعات بیمار دیگر (در صورت وجود)
+    const getDoctorPatientInfo = () => {
+        if (!doctorData?.extra_detail) return null;
+        let details = doctorData.extra_detail;
+        if (typeof details === 'string') {
+            try {
+                details = JSON.parse(details);
+            } catch (e) {
+                return null;
+            }
+        }
+        // اگر نوبت برای شخص دیگری ثبت شده، دیتای بیمار را برمی‌گردانیم
+        return details?.is_for_other && details?.patient ? details.patient : null;
+    };
+
     const handleDoctorPay = async () => {
         if (!order) return;
         setPaying(true);
         setDetailError(null);
 
         try {
-            const res = await fetch(`https://api.mediraai.com/api/payments/initiate`, {
+            const res = await fetch(`https://api.mediraai.com/api/user/appointments/pay-order`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -617,36 +644,38 @@ function OrderDetailSheet({
                 },
                 body: JSON.stringify({
                     order_id: order.order_id,
+                    gateway: selectedGateway
                 }),
             });
 
             const json = await res.json();
 
             if (!res.ok || !json.success) {
-                throw new Error(json.message || 'خطا در ایجاد لینک پرداخت.');
+                if (refreshOrders) refreshOrders();
+                throw new Error(json.message || 'خطا در ایجاد لینک پرداخت. ممکن است مهلت رزرو تمام شده باشد.');
             }
 
             if (json.payment_url) {
-                window.location.href = json.payment_url; // هدایت کاربر به درگاه پرداخت
+                window.location.href = json.payment_url;
             } else {
-                throw new Error('آدرس پرداخت دریافت نشد.');
+                throw new Error('آدرس پرداخت از سرور دریافت نشد.');
             }
 
         } catch (err: any) {
             setDetailError(err.message);
-            setPaying(false); // فقط در صورت خطا false شود، چون در حالت موفق ریدایرکت می‌شود
+            setPaying(false);
         }
     };
 
     const handleViewResult = async (fileUrl: string, testId: number) => {
         if (!fileUrl) return;
-        setDownloadingTestId(testId); // فعال کردن حالت لودینگ برای این دکمه خاص
+        setDownloadingTestId(testId);
 
         try {
             const response = await fetch(fileUrl, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${accessToken}`, // ارسال توکن احراز هویت
+                    'Authorization': `Bearer ${accessToken}`,
                 }
             });
 
@@ -654,24 +683,16 @@ function OrderDetailSheet({
                 throw new Error('خطا در دریافت فایل نتیجه. دسترسی مجاز نیست.');
             }
 
-            // تبدیل پاسخ به Blob
             const blob = await response.blob();
-
-            // ساخت URL موقت در حافظه مرورگر
             const blobUrl = window.URL.createObjectURL(blob);
-
-            // باز کردن فایل در تب جدید
             window.open(blobUrl, '_blank');
-
-            // بهتر است URL موقت را پس از مدت کوتاهی پاک کنیم تا حافظه آزاد شود
-            // مرورگر فرصت کافی برای بارگذاری آن در تب جدید خواهد داشت
             setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
 
         } catch (error) {
             console.error("Error downloading result file:", error);
             alert('مشکلی در باز کردن فایل نتیجه رخ داد. لطفاً دوباره تلاش کنید.');
         } finally {
-            setDownloadingTestId(null); // غیرفعال کردن حالت لودینگ
+            setDownloadingTestId(null);
         }
     };
 
@@ -679,9 +700,8 @@ function OrderDetailSheet({
         if (!order || !detailData) return;
         setPaying(true);
         try {
-            // فراخوانی API پرداخت داروخانه
             const res = await fetch(`https://api.mediraai.com/api/user/pharmacy-requests/${order.id}/pay`, {
-                method: 'POST', // یا POST اگر در روت‌های لاراول POST تعریف کرده‌اید
+                method: 'POST',
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                     Accept: 'application/json',
@@ -692,7 +712,6 @@ function OrderDetailSheet({
                 throw new Error(json.message || 'پرداخت ناموفق بود');
             }
 
-            // به‌روزرسانی وضعیت سفارش در استیت محلی (طبق کنترلر بک‌اند: وضعیت ۲ = در حال آماده‌سازی)
             const updatedOrder: UserRequestOrder = {
                 ...order,
                 status: 'active',
@@ -700,10 +719,8 @@ function OrderDetailSheet({
             };
             if (onOrderUpdate) onOrderUpdate(updatedOrder);
 
-            // به‌روزرسانی دیتای داخل شیت
             setDetailData((prev) => prev ? { ...prev, status: 2, status_label: 'در حال آماده‌سازی' } : null);
 
-            // رفرش کردن لیست کل سفارش‌ها در پس‌زمینه
             if (refreshOrders) refreshOrders();
 
         } catch (err: any) {
@@ -747,7 +764,6 @@ function OrderDetailSheet({
         }
     };
 
-    // تابع ارسال نظر به سرور
     const handleSubmitReview = async () => {
         if (!order || rating === 0) return;
         setReviewLoading(true);
@@ -787,15 +803,15 @@ function OrderDetailSheet({
     if (!order) return null;
 
     const Icon = serviceIcons[order.serviceType];
-    console.log(order)
     const statusClass = getStatusClass(order.status);
+
     const showLabPayButton = order.serviceType === 'lab' && labData && labData.status === 1;
     const showPharmacyPayButton = order.serviceType === 'pharmacy' && detailData && detailData.status === 1;
     const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
 
-    console.log(order.status,'coplete status')
-    const isCompleted = order.status === 'completed'; // بررسی تکمیل بودن سفارش برای ثبت نظر
-   console.log(isCompleted,'coplete status')
+    const isCompleted = order.status === 'completed';
+    const patientInfo = getDoctorPatientInfo();
+
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -836,9 +852,55 @@ function OrderDetailSheet({
                         </div>
                     )}
 
-                    {order.summary && <DetailRow label="خلاصه درخواست" value={order.summary} />}
+                    {/* مخفی کردن summary پیش‌فرض برای نوبت دکتر */}
+                    {order.summary && order.serviceType !== 'consultation' && (
+                        <DetailRow label="خلاصه درخواست" value={order.summary} />
+                    )}
                     <DetailRow label="کد پیگیری" value={order.code} />
                     <DetailRow label="تاریخ ثبت" value={order.createdAt} />
+
+                    {/* === بخش اختصاصی دکتر === */}
+                    {order.serviceType === 'consultation' && doctorData && !detailLoading && (
+                        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-3 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                                <CalendarClock className="h-4 w-4 text-blue-600" />
+                                <h4 className="font-semibold text-gray-800">جزئیات نوبت</h4>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                                    <span className="block text-[11px] text-gray-500 mb-1">تاریخ مراجعه</span>
+                                    <span className="font-semibold text-gray-900">{toJalaliDate(doctorData.slot_date) || '-'}</span>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                                    <span className="block text-[11px] text-gray-500 mb-1">ساعت نوبت</span>
+                                    <span className="font-semibold text-blue-700" dir="ltr">{doctorData.start_time ? doctorData.start_time.substring(0, 5) : '-'}</span>
+                                </div>
+                            </div>
+
+                            {patientInfo && (
+                                <div className="mt-4 pt-3 border-t border-gray-100 space-y-2.5">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <User className="h-4 w-4 text-gray-500" />
+                                        <h4 className="font-semibold text-gray-700 text-xs">اطلاعات بیمار</h4>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-gray-500">نام بیمار:</span>
+                                            <span className="font-medium text-gray-900">{patientInfo.last_name || '-'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-gray-500">کد ملی:</span>
+                                            <span className="font-medium text-gray-900">{patientInfo.national_code || '-'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-gray-500">شماره تماس:</span>
+                                            <span className="font-medium text-gray-900">{patientInfo.phone || '-'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* === بخش اختصاصی پرستاری === */}
                     {order.serviceType === 'nurse' && nurseData && !detailLoading && (
@@ -905,7 +967,6 @@ function OrderDetailSheet({
                                                 </button>
                                             </div>
                                         )}
-
                                     </div>
                                 ))}
                             </div>
@@ -915,8 +976,8 @@ function OrderDetailSheet({
 
                     {/* مبلغ کل (عمومی) */}
                     {order.amount != null && !detailLoading && (
-                        <div className="flex items-center justify-between rounded-2xl bg-blue-50 px-3 py-3 mt-4">
-                            <span className="text-xs font-medium text-blue-700">مبلغ نهایی</span>
+                        <div className="flex items-center justify-between rounded-2xl bg-blue-50 px-3 py-3 mt-4 border border-blue-100">
+                            <span className="text-xs font-medium text-blue-700">مبلغ نهایی پرداخت</span>
                             <span className="text-sm font-bold text-blue-800">
                                 {formatOrderPrice(
                                     order.serviceType === 'pharmacy' && detailData
@@ -931,24 +992,42 @@ function OrderDetailSheet({
                         </div>
                     )}
 
+                    {/* === دکمه پرداخت اختصاصی نوبت دکتر === */}
                     {showDoctorPayButton && (
-                        <button
-                            onClick={handleDoctorPay}
-                            disabled={paying}
-                            className="mt-4 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2"
-                        >
-                            {paying ? (
-                                <>
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    <span>در حال اتصال به درگاه پرداخت…</span>
-                                </>
-                            ) : (
-                                <>
-                                    <CreditCard className="h-5 w-5" />
-                                    <span>پرداخت و نهایی کردن نوبت</span>
-                                </>
-                            )}
-                        </button>
+                        <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                                    انتخاب درگاه پرداخت:
+                                </label>
+                                <select
+                                    className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                    value={selectedGateway}
+                                    onChange={(e) => setSelectedGateway(e.target.value as 'saman' | 'zarinpal')}
+                                    disabled={paying}
+                                >
+                                    <option value="saman">پرداخت آنلاین با کارت بانکی (سامان کیش)</option>
+                                    <option value="zarinpal">زرین‌پال</option>
+                                </select>
+                            </div>
+
+                            <button
+                                onClick={handleDoctorPay}
+                                disabled={paying}
+                                className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors"
+                            >
+                                {paying ? (
+                                    <>
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>در حال بررسی و اتصال…</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CreditCard className="h-5 w-5" />
+                                        <span>پرداخت و نهایی کردن نوبت</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     )}
 
                     {/* دکمه پرداخت برای آزمایشگاه */}
@@ -956,7 +1035,7 @@ function OrderDetailSheet({
                         <button
                             onClick={handleLabPay}
                             disabled={paying}
-                            className="mt-4 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2"
+                            className="mt-4 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors"
                         >
                             {paying ? (
                                 <>
@@ -977,8 +1056,7 @@ function OrderDetailSheet({
                         <button
                             onClick={handlePharmacyPay}
                             disabled={paying}
-                            // استفاده از رنگ سبز (emerald) برای هماهنگی با تم داروخانه
-                            className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 flex items-center justify-center gap-2"
+                            className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors"
                         >
                             {paying ? (
                                 <>
@@ -993,7 +1071,6 @@ function OrderDetailSheet({
                             )}
                         </button>
                     )}
-
 
                     {/* === فرم ثبت نظر برای سفارشات تکمیل شده === */}
                     {isCompleted && !detailLoading && (
@@ -1040,7 +1117,7 @@ function OrderDetailSheet({
                                         disabled={rating === 0 || reviewLoading}
                                         className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center gap-2"
                                     >
-                                        {reviewLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                        {reviewLoading && <Loader2 className="h-4 w-4 animate-spin" /> }
                                         ارسال نظر
                                     </button>
                                 </div>

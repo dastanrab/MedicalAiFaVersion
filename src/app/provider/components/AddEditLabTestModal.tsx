@@ -44,7 +44,7 @@ export function AddEditLabTestModal({ open, onClose, onSubmit, initial }: AddEdi
             const fetchTestPacks = async () => {
                 setLoadingPacks(true);
                 try {
-                    const res = await fetch('http://185.222.163.113:7000/api/owner/lab/test-packs', {
+                    const res = await fetch('https://api.mediraai.com/api/owner/lab/test-packs', {
                         headers: {
                             'Authorization': `Bearer ${labSession?.token}`,
                             'Accept': 'application/json'

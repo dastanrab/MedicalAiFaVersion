@@ -1,10 +1,9 @@
-// DoctorProfileV1.tsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import {
     Star, MapPin, Clock, Video, MessageSquare, Calendar,
     CheckCircle, Heart, Loader2, CreditCard, ShieldCheck,
-    Check, ThumbsUp, Phone, ChevronRight, Info, X, User, AlertCircle
+    Check, ThumbsUp, Phone, ChevronRight, Info, X, User, AlertCircle, AlertTriangle
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -48,6 +47,9 @@ interface TimeSlot {
     end_time: string;
     datetime: string;
     status: string;
+    is_my_temp_reservation?: boolean;
+    temp_order_id?: number;
+    expires_at?: string;
 }
 
 interface UserProfile {
@@ -79,7 +81,7 @@ interface OtherPatient {
 type ViewState = 'profile' | 'patient_info' | 'payment';
 type Gateway = 'saman' | 'zarinpal';
 
-// ─── Validation helpers ───────────────────────────────────────────────────────
+// ─── Validation & Format Helpers ─────────────────────────────────────────────
 
 function isValidNationalCode(code: string): boolean {
     if (!/^\d{10}$/.test(code)) return false;
@@ -94,8 +96,6 @@ function isValidNationalCode(code: string): boolean {
 function isValidIranPhone(phone: string): boolean {
     return /^09[0-9]{9}$/.test(phone.replace(/\s/g, ''));
 }
-
-// ─── Formatting helpers ───────────────────────────────────────────────────────
 
 const formatPrice = (price: number) =>
     `${new Intl.NumberFormat('fa-IR').format(price)} تومان`;
@@ -166,6 +166,50 @@ function StepBubble({ label, state, number }: { label: string; state: BubbleStat
     );
 }
 
+function CountdownTimer({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) {
+    const [timeLeft, setTimeLeft] = useState('...');
+    const hasExpired = useRef(false);
+
+    useEffect(() => {
+        let safeExpiresAt = expiresAt.replace(' ', 'T');
+
+        if (!safeExpiresAt.endsWith('Z') && !safeExpiresAt.includes('+')) {
+            safeExpiresAt += 'Z';
+        }
+
+        const targetTime = new Date(safeExpiresAt).getTime();
+
+        const calculate = () => {
+            const now = new Date().getTime();
+            const diff = targetTime - now;
+
+            if (isNaN(diff)) {
+                setTimeLeft('--:--');
+                return;
+            }
+
+            if (diff <= 0) {
+                setTimeLeft('00:00');
+                if (!hasExpired.current) {
+                    hasExpired.current = true;
+                    setTimeout(onExpire, 500);
+                }
+                return;
+            }
+
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+        };
+
+        calculate();
+        const timer = setInterval(calculate, 1000);
+        return () => clearInterval(timer);
+    }, [expiresAt, onExpire]);
+
+    return <span className="font-mono font-bold mx-1 text-red-600" dir="ltr">{timeLeft}</span>;
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function DoctorProfileV1() {
@@ -188,16 +232,36 @@ export function DoctorProfileV1() {
     const [isTimeModalOpen, setIsTimeModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+
+    const [showConflictModal, setShowConflictModal] = useState(false);
+    const [targetNewSlot, setTargetNewSlot] = useState<TimeSlot | null>(null);
+    const [isCanceling, setIsCanceling] = useState(false);
+
+    const [orderId, setOrderId] = useState<number | null>(null);
     const [bookingFor, setBookingFor] = useState<'myself' | 'other'>('myself');
     const [otherPatient, setOtherPatient] = useState<OtherPatient>({
         fullName: '', nationalCode: '', phone: '',
     });
 
     const [patientErrors, setPatientErrors] = useState<Partial<OtherPatient>>({});
+    const [orderError, setOrderError] = useState<string | null>(null);
+    const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
     const [selectedGateway, setSelectedGateway] = useState<Gateway>('saman');
     const [isPaying, setIsPaying] = useState(false);
     const [paymentError, setPaymentError] = useState<string | null>(null);
+
+    const activeTempReservation = useMemo(() => {
+        let tempActiveSlot: TimeSlot | null = null;
+        Object.values(availableSlots).forEach((daySlots) => {
+            daySlots.forEach((s) => {
+                if (s.is_my_temp_reservation) {
+                    tempActiveSlot = s;
+                }
+            });
+        });
+        return tempActiveSlot;
+    }, [availableSlots]);
 
     useEffect(() => {
         let sid = (location.state as { sessionId?: string } | null)?.sessionId ?? null;
@@ -238,22 +302,21 @@ export function DoctorProfileV1() {
 
             const result: ApiResponse = await res.json();
 
-            setSelectedSlot(null);
-            setSelectedDate('');
-            setView('profile');
-
             setDoctorData(result.data.doctor);
             const slots = result.data.available_slots ?? {};
             setAvailableSlots(slots);
-            const firstDate = Object.keys(slots)[0];
-            if (firstDate) setSelectedDate(firstDate);
+
+            if (!selectedDate) {
+                const firstDate = Object.keys(slots)[0];
+                if (firstDate) setSelectedDate(firstDate);
+            }
         } catch (err) {
             if ((err as Error).name === 'AbortError') return;
             setError(err instanceof Error ? err.message : 'خطای ارتباط با سرور');
         } finally {
             setLoading(false);
         }
-    }, [id, accessToken]);
+    }, [id, accessToken, selectedDate]);
 
     useEffect(() => {
         fetchDoctorData();
@@ -275,6 +338,79 @@ export function DoctorProfileV1() {
         })();
     }, [accessToken]);
 
+    // ─── Handlers ────────────────────────────────────────────────────────────────
+
+    // تغییر یافته: همیشه مودال تقویم را باز می‌کند تا کاربر بتواند ابتدا لیست ساعت‌ها را ببیند
+    const handleMainBookClick = () => {
+        setIsTimeModalOpen(true);
+    };
+
+    const handleSlotClick = (slot: TimeSlot) => {
+        if (activeTempReservation) {
+            if (slot.id === activeTempReservation.id) {
+                // کلیک روی نوبت رزرو شده خودش -> مستقیم به پرداخت
+                handleContinueOld();
+            } else {
+                // کلیک روی نوبت دیگر درحالی که رزرو دارد -> نمایش مودال پرسش برای لغو و جایگزینی
+                setTargetNewSlot(slot);
+                setShowConflictModal(true);
+            }
+        } else {
+            // روند عادی: انتخاب نوبت جدید
+            setSelectedSlot(slot);
+            setView('patient_info');
+            setIsTimeModalOpen(false);
+        }
+    };
+
+    const handleCancelAndNew = async () => {
+        if (!activeTempReservation || !accessToken) return;
+        setIsCanceling(true);
+        try {
+            const res = await fetch('https://api.mediraai.com/api/user/appointments/cancel-temp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({ slot_id: activeTempReservation.id })
+            });
+
+            if (!res.ok) throw new Error();
+
+            // پس از لغو موفقیت‌آمیز، کل دیتای صفحه رو دوباره می‌گیریم
+            await fetchDoctorData();
+            setShowConflictModal(false);
+
+            if (targetNewSlot) {
+                setSelectedSlot(targetNewSlot);
+                setView('patient_info');
+                setIsTimeModalOpen(false);
+            } else {
+                setIsTimeModalOpen(true);
+            }
+        } catch (error) {
+            alert('خطا در لغو نوبت قبلی. لطفاً مجدداً تلاش کنید.');
+        } finally {
+            setIsCanceling(false);
+        }
+    };
+
+    const handleContinueOld = () => {
+        if (!activeTempReservation) return;
+
+        let slotDateStr = '';
+        Object.keys(availableSlots).forEach(date => {
+            if (availableSlots[date].find(s => s.id === activeTempReservation.id)) {
+                slotDateStr = date;
+            }
+        });
+
+        if (slotDateStr) setSelectedDate(slotDateStr);
+        setSelectedSlot(activeTempReservation);
+        setOrderId(activeTempReservation.temp_order_id!);
+        setShowConflictModal(false);
+        setIsTimeModalOpen(false);
+        setView('payment');
+    };
+
     const handleStartChat = async () => {
         if (!accessToken) { alert('لطفاً ابتدا وارد حساب کاربری خود شوید'); return; }
         setIsStartingChat(true);
@@ -284,7 +420,6 @@ export function DoctorProfileV1() {
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${accessToken}`,
-                    Accept: 'application/json',
                 },
                 body: JSON.stringify({ doctor_id: id }),
             });
@@ -310,72 +445,106 @@ export function DoctorProfileV1() {
         return Object.keys(errs).length === 0;
     };
 
-    const handleProceedToPayment = async () => {
+    const handleCreateOrder = async () => {
+        if (!validatePatient()) return;
         if (!selectedSlot || !accessToken) {
             if (!accessToken) alert('لطفاً ابتدا وارد حساب کاربری خود شوید');
             return;
         }
 
-        setIsPaying(true);
-        setPaymentError(null);
-
-        const idempotencyKey = `${selectedSlot.id}-${Date.now()}`;
-
-        const endpoint = selectedGateway === 'zarinpal'
-            ? 'https://api.mediraai.com/api/user/reservations/reserve-zarinpal'
-            : 'https://api.mediraai.com/api/user/reservations/reserve-saman';
-
-        const payload: Record<string, unknown> = {
-            slot_id: selectedSlot.id,
-            session_id: sessionId,
-            gateway: selectedGateway,
-            for_other: bookingFor === 'other',
-        };
-
-        if (bookingFor === 'other') {
-            payload.patient_name = otherPatient.fullName.trim();
-            payload.patient_national_code = otherPatient.nationalCode;
-            payload.patient_phone = otherPatient.phone.replace(/\s/g, '');
-        }
+        setIsCreatingOrder(true);
+        setOrderError(null);
 
         try {
-            const res = await fetch(endpoint, {
+            const reservePayload: Record<string, any> = {
+                slot_id: selectedSlot.id,
+                session_id: sessionId,
+                is_for_other: bookingFor === 'other',
+            };
+
+            if (bookingFor === 'other') {
+                reservePayload.other_patient = {
+                    last_name: otherPatient.fullName.trim(),
+                    national_code: otherPatient.nationalCode,
+                    phone: otherPatient.phone.replace(/\s/g, ''),
+                };
+            }
+
+            const reserveResponse = await fetch('https://api.mediraai.com/api/user/appointments/reserve', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${accessToken}`,
                     Accept: 'application/json',
-                    'Idempotency-Key': idempotencyKey,
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(reservePayload),
             });
 
-            const result = await res.json();
-            if (!res.ok || !result.success) {
-                throw new Error(result.message ?? 'خطا در اتصال به درگاه پرداخت');
+            const reserveResult = await reserveResponse.json();
+            if (!reserveResponse.ok || !reserveResult.success) {
+                throw new Error(reserveResult.message ?? 'خطا در رزرو موقت نوبت');
             }
 
-            const paymentUrl =
-                result.data?.payment?.payment_url ?? result.data?.payment_url;
+            const generatedOrderId = reserveResult.data?.order_id;
+            if (!generatedOrderId) {
+                throw new Error('شناسه سفارش از سرور دریافت نشد');
+            }
+
+            await fetchDoctorData();
+
+            setOrderId(generatedOrderId);
+            setView('payment');
+        } catch (err) {
+            setOrderError(err instanceof Error ? err.message : 'خطا در ثبت نوبت');
+            await fetchDoctorData();
+        } finally {
+            setIsCreatingOrder(false);
+        }
+    };
+
+    const handleProceedToPayment = async () => {
+        if (!orderId || !accessToken) return;
+
+        setIsPaying(true);
+        setPaymentError(null);
+
+        try {
+            const paymentPayload = {
+                order_id: orderId,
+                gateway: selectedGateway,
+            };
+
+            const paymentResponse = await fetch('https://api.mediraai.com/api/user/payments/initiate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify(paymentPayload),
+            });
+
+            const paymentResult = await paymentResponse.json();
+            if (!paymentResponse.ok || !paymentResult.success) {
+                throw new Error(paymentResult.message ?? 'خطا در اتصال به درگاه پرداخت');
+            }
+
+            const paymentUrl = paymentResult.data?.payment_url;
             if (paymentUrl) {
                 window.location.href = paymentUrl;
             } else {
                 throw new Error('آدرس درگاه پرداخت دریافت نشد');
             }
         } catch (err) {
-            setPaymentError(
-                err instanceof Error ? err.message : 'خطا در عملیات پرداخت'
-            );
+            setPaymentError(err instanceof Error ? err.message : 'خطا در عملیات پرداخت');
+            await fetchDoctorData();
+        } finally {
             setIsPaying(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-full flex items-center justify-center bg-gray-50">
-                <PageLoader />
-            </div>
-        );
+    if (loading && Object.keys(availableSlots).length === 0) {
+        return <div className="min-h-full flex items-center justify-center bg-gray-50"><PageLoader /></div>;
     }
 
     if (error || !doctorData) {
@@ -391,35 +560,53 @@ export function DoctorProfileV1() {
     }
 
     const firstAvailableDate = Object.keys(availableSlots)[0];
-    const firstAvailableSlot = firstAvailableDate
-        ? availableSlots[firstAvailableDate][0]
-        : null;
-
-    const displayTax = Math.round(doctorData.visit_price * 0.1);
-    const displayTotal = doctorData.visit_price + displayTax;
+    const firstAvailableSlot = firstAvailableDate ? availableSlots[firstAvailableDate][0] : null;
 
     return (
-        <div
-            className="min-h-full bg-[#f8f9fa] text-gray-800 pb-28 font-[YekanBakhFaNum]"
-            dir="rtl"
-        >
+        <div className="min-h-full bg-[#f8f9fa] text-gray-800 pb-28 font-[YekanBakhFaNum]" dir="rtl">
             <AppBar backTo="/doctors" />
+
+            {/* ── بنر نمایش رزرو فعال در بالای صفحه (سراسری) ── */}
+            {activeTempReservation && (
+                <div className="pt-20 pb-2 px-4 sm:px-6 lg:px-8 max-w-6xl xl:max-w-[1400px] mx-auto animate-in fade-in slide-in-from-top-4">
+                    <div className="bg-pink-50 border border-pink-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                        <div className="flex items-center gap-3 text-pink-800">
+                            <Clock className="w-6 h-6 animate-pulse flex-shrink-0" />
+                            <div>
+                                <p className="font-bold text-sm">شما یک نوبت رزرو شده دارید!</p>
+                                <p className="text-xs mt-0.5 flex items-center">
+                                    زمان باقیمانده برای تکمیل پرداخت:
+                                    {activeTempReservation.expires_at && (
+                                        <CountdownTimer
+                                            expiresAt={activeTempReservation.expires_at}
+                                            onExpire={() => fetchDoctorData()}
+                                        />
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                        {view !== 'payment' && (
+                            <Button
+                                onClick={handleContinueOld}
+                                className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs rounded-xl"
+                            >
+                                تکمیل پرداخت نوبت
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* ══════════════════════════════════════════════════════════════════════
                 مرحله ۱: پروفایل پزشک
             ══════════════════════════════════════════════════════════════════════ */}
             {view === 'profile' && (
-                <div className="pt-20 pb-6 px-4 sm:px-6 lg:px-8
-                        max-w-6xl xl:max-w-[1400px] mx-auto
-                        flex flex-col lg:flex-row gap-6 lg:gap-8
-                        animate-in fade-in duration-200">
-
+                <div className={`pb-6 px-4 sm:px-6 lg:px-8 max-w-6xl xl:max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8 animate-in fade-in duration-200 ${activeTempReservation ? 'pt-2' : 'pt-20'}`}>
                     {/* ستون راست (اطلاعات پزشک) */}
                     <div className="w-full lg:w-[62%] xl:w-[65%] space-y-6 order-1 lg:order-none">
                         <Card className="bg-white p-6 lg:p-7 shadow-sm border border-gray-100 rounded-2xl relative">
                             <button
                                 onClick={() => setIsFavorite(f => !f)}
-                                aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
                                 className="absolute top-4 left-4 text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-50 transition"
                             >
                                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
@@ -455,9 +642,7 @@ export function DoctorProfileV1() {
                                         <span>{doctorData.rating ?? '۵.۰'}</span>
                                         <Star className="w-4 h-4 lg:w-5 lg:h-5 fill-amber-400 mr-1" />
                                     </div>
-                                    <span className="text-[11px] lg:text-xs text-gray-500 mt-0.5">
-                                        ({doctorData.reviews ?? 0} نظر)
-                                    </span>
+                                    <span className="text-[11px] lg:text-xs text-gray-500 mt-0.5">({doctorData.reviews ?? 0} نظر)</span>
                                 </div>
                                 <div className="text-center flex flex-col items-center">
                                     <div className="flex items-center text-emerald-600 font-black text-base lg:text-lg">
@@ -468,11 +653,7 @@ export function DoctorProfileV1() {
                                 </div>
                                 <div className="text-center flex flex-col items-center">
                                     <div className="flex items-center text-blue-600 font-black text-base lg:text-lg">
-                                        <span>
-                                            {new Intl.NumberFormat('fa-IR').format(
-                                                doctorData.visit_count || doctorData.appointments || 0
-                                            )}
-                                        </span>
+                                        <span>{new Intl.NumberFormat('fa-IR').format(doctorData.visit_count || doctorData.appointments || 0)}</span>
                                         <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1" />
                                     </div>
                                     <span className="text-[11px] lg:text-xs text-gray-500 mt-0.5">نوبت موفق</span>
@@ -481,9 +662,7 @@ export function DoctorProfileV1() {
                         </Card>
 
                         <Card className="bg-white p-6 lg:p-7 shadow-sm border border-gray-100 rounded-2xl space-y-3">
-                            <h2 className="text-base lg:text-lg font-bold text-gray-900">
-                                درباره دکتر {doctorData.name}
-                            </h2>
+                            <h2 className="text-base lg:text-lg font-bold text-gray-900">درباره دکتر {doctorData.name}</h2>
                             <div className="bg-blue-50/70 p-4 rounded-xl border border-blue-100 text-xs lg:text-sm text-blue-900 leading-relaxed">
                                 <strong className="font-bold">تذکر مهم:</strong> زمان انتخابی شما ساعت مراجعه به مطب است، نه زمان ملاقات فوری با پزشک. زمان دقیق ملاقات توسط منشی تعیین می‌شود.
                             </div>
@@ -495,7 +674,6 @@ export function DoctorProfileV1() {
 
                     {/* ستون چپ (کارت‌های رزرو) */}
                     <div className="w-full lg:w-[38%] xl:w-[35%] space-y-4 order-2 lg:order-none">
-                        {/* رزرو مطب */}
                         <Card className="bg-white p-5 lg:p-6 shadow-sm border border-gray-100 rounded-2xl">
                             <div className="flex items-center gap-2 mb-3 text-gray-900">
                                 <Calendar className="w-5 h-5 text-blue-600" />
@@ -512,22 +690,20 @@ export function DoctorProfileV1() {
                                         <span>
                                             اولین نوبت: {getShortDay(firstAvailableDate)}{' '}
                                             {getShortDate(firstAvailableDate)}
-                                            {firstAvailableSlot?.start_time &&
-                                                ` - ساعت ${firstAvailableSlot.start_time}`}
+                                            {firstAvailableSlot?.start_time && ` - ساعت ${firstAvailableSlot.start_time}`}
                                         </span>
                                     </div>
                                 )}
                             </div>
                             <Button
-                                onClick={() => setIsTimeModalOpen(true)}
+                                onClick={handleMainBookClick}
                                 className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs lg:text-sm shadow flex items-center justify-center gap-1"
                             >
-                                نوبت بگیرید
+                                {activeTempReservation ? 'مشاهده و تغییر نوبت' : 'نوبت بگیرید'}
                                 <ChevronRight className="w-4 h-4 rotate-180" />
                             </Button>
                         </Card>
 
-                        {/* مشاوره آنلاین */}
                         <Card className="bg-white p-5 lg:p-6 shadow-sm border border-gray-100 rounded-2xl">
                             <div className="flex items-center justify-between mb-3 gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -541,37 +717,65 @@ export function DoctorProfileV1() {
                             <p className="text-xs lg:text-sm text-gray-500 mb-4 leading-relaxed">
                                 پاسخ‌گویی سریع، ارسال تصویر آزمایش و نسخه الکترونیک
                             </p>
-
                             <div className="grid grid-cols-2 gap-2.5">
                                 <Button
                                     onClick={handleStartChat}
                                     disabled={isStartingChat}
                                     variant="outline"
-                                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50
-                                               py-2.5 min-h-[42px] lg:min-h-[48px] px-3 rounded-xl
-                                               text-xs lg:text-sm font-bold
-                                               flex items-center justify-center gap-1.5
-                                               whitespace-nowrap overflow-hidden"
+                                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 py-2.5 min-h-[42px] lg:min-h-[48px] px-3 rounded-xl text-xs lg:text-sm font-bold flex items-center justify-center gap-1.5 whitespace-nowrap overflow-hidden"
                                 >
-                                    {isStartingChat
-                                        ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
-                                        : <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />}
+                                    {isStartingChat ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />}
                                     <span className="truncate">چت متنی</span>
                                 </Button>
                                 <Button
                                     onClick={() => navigate(`/consultation/${id}`)}
                                     variant="outline"
-                                    className="border-blue-200 text-blue-700 hover:bg-blue-50
-                                               py-2.5 min-h-[42px] lg:min-h-[48px] px-3 rounded-xl
-                                               text-xs lg:text-sm font-bold
-                                               flex items-center justify-center gap-1.5
-                                               whitespace-nowrap overflow-hidden"
+                                    className="border-blue-200 text-blue-700 hover:bg-blue-50 py-2.5 min-h-[42px] lg:min-h-[48px] px-3 rounded-xl text-xs lg:text-sm font-bold flex items-center justify-center gap-1.5 whitespace-nowrap overflow-hidden"
                                 >
                                     <Video className="w-3.5 h-3.5 flex-shrink-0" />
                                     <span className="truncate">تصویری</span>
                                 </Button>
                             </div>
                         </Card>
+                    </div>
+                </div>
+            )}
+
+            {/* ── مودال اخطار تداخل رزرو (وقتی باز می‌شود که روی یک ساعت جدید کلیک شود) ── */}
+            {showConflictModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" dir="rtl">
+                    <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl animate-in zoom-in-95">
+                        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <AlertTriangle className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <h3 className="text-center font-bold text-gray-900 text-lg mb-2">شما یک نوبت در حال انتظار دارید!</h3>
+                        <p className="text-center text-sm text-gray-600 mb-6 leading-relaxed">
+                            شما قبلاً ساعت <strong className="text-gray-900" dir="ltr">{activeTempReservation?.start_time}</strong> را رزرو کرده‌اید که منتظر پرداخت است. آیا می‌خواهید همان نوبت را ادامه دهید یا آن را لغو کرده و نوبت <strong className="text-gray-900">{targetNewSlot?.start_time}</strong> را جایگزین کنید؟
+                        </p>
+
+                        <div className="space-y-2">
+                            <Button
+                                onClick={handleContinueOld}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11"
+                            >
+                                ادامه و پرداخت نوبت قبلی
+                            </Button>
+                            <Button
+                                onClick={handleCancelAndNew}
+                                disabled={isCanceling}
+                                variant="outline"
+                                className="w-full border-red-200 text-red-600 hover:bg-red-50 rounded-xl h-11"
+                            >
+                                {isCanceling ? <Loader2 className="w-4 h-4 animate-spin" /> : 'لغو قبلی و انتخاب نوبت جدید'}
+                            </Button>
+                            <Button
+                                onClick={() => setShowConflictModal(false)}
+                                variant="ghost"
+                                className="w-full text-gray-500 rounded-xl h-10"
+                            >
+                                انصراف
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -585,12 +789,7 @@ export function DoctorProfileV1() {
                     dir="rtl"
                     onClick={(e) => { if (e.target === e.currentTarget) setIsTimeModalOpen(false); }}
                 >
-                    <div
-                        className="bg-white w-full sm:max-w-xl lg:max-w-2xl
-                                   rounded-t-2xl sm:rounded-2xl shadow-2xl
-                                   flex flex-col
-                                   h-[90dvh] sm:h-auto sm:max-h-[88vh]"
-                    >
+                    <div className="bg-white w-full sm:max-w-xl lg:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col h-[90dvh] sm:h-auto sm:max-h-[88vh]">
                         <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
                             <h3 className="text-sm sm:text-base font-bold text-gray-900 flex items-center gap-2 min-w-0">
                                 <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -598,7 +797,6 @@ export function DoctorProfileV1() {
                             </h3>
                             <button
                                 onClick={() => setIsTimeModalOpen(false)}
-                                aria-label="بستن"
                                 className="p-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition flex-shrink-0"
                             >
                                 <X className="w-4 h-4 text-gray-600" />
@@ -608,18 +806,12 @@ export function DoctorProfileV1() {
                         <div className="p-5 overflow-y-auto flex-1 overscroll-contain">
                             <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-100 mb-5 text-xs lg:text-sm text-blue-900 leading-relaxed flex items-start gap-2">
                                 <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <strong className="font-bold">تذکر مهم:</strong> زمان انتخابی ساعت مراجعه به مطب است. زمان ملاقات با پزشک توسط منشی تعیین می‌شود.
-                                </div>
+                                <div><strong className="font-bold">تذکر مهم:</strong> زمان انتخابی ساعت مراجعه به مطب است. زمان ملاقات با پزشک توسط منشی تعیین می‌شود.</div>
                             </div>
 
                             {Object.keys(availableSlots).length > 0 ? (
                                 <>
-                                    <div
-                                        className="flex gap-2 overflow-x-auto pb-3 mb-2
-                                                   [-webkit-overflow-scrolling:touch]
-                                                   [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                                    >
+                                    <div className="flex gap-2 overflow-x-auto pb-3 mb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                         {Object.keys(availableSlots).map((date) => {
                                             const slotsForDate = availableSlots[date];
                                             const isSelected = selectedDate === date;
@@ -636,14 +828,8 @@ export function DoctorProfileV1() {
                                                     <span className={`text-xs font-bold ${isSelected ? 'text-blue-600' : 'text-gray-700'}`}>
                                                         {getShortDay(date)}
                                                     </span>
-                                                    <span className="text-[11px] text-gray-500 my-1">
-                                                        {getShortDate(date)}
-                                                    </span>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                                        isSelected
-                                                            ? 'bg-blue-50 text-blue-600 font-bold'
-                                                            : 'bg-gray-200 text-gray-600'
-                                                    }`}>
+                                                    <span className="text-[11px] text-gray-500 my-1">{getShortDate(date)}</span>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${isSelected ? 'bg-blue-50 text-blue-600 font-bold' : 'bg-gray-200 text-gray-600'}`}>
                                                         {slotsForDate.length} نوبت
                                                     </span>
                                                 </button>
@@ -652,24 +838,26 @@ export function DoctorProfileV1() {
                                     </div>
 
                                     <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 pt-2 border-t border-gray-100">
-                                        {availableSlots[selectedDate]?.map((slot) => (
-                                            <button
-                                                key={slot.id}
-                                                onClick={() => {
-                                                    setSelectedSlot(slot);
-                                                    setIsTimeModalOpen(false);
-                                                    setView('patient_info');
-                                                }}
-                                                className="py-2.5 rounded-xl border border-teal-500 text-teal-700
-                                                           font-bold text-xs lg:text-sm bg-teal-50/40
-                                                           hover:bg-teal-600 hover:text-white
-                                                           active:scale-95
-                                                           transition-all text-center flex items-center justify-center gap-1"
-                                            >
-                                                <Clock className="w-3 h-3 flex-shrink-0" />
-                                                <span dir="ltr">{slot.start_time}</span>
-                                            </button>
-                                        ))}
+                                        {availableSlots[selectedDate]?.map((slot) => {
+                                            const isMine = slot.is_my_temp_reservation;
+                                            return (
+                                                <button
+                                                    key={slot.id}
+                                                    onClick={() => handleSlotClick(slot)}
+                                                    className={`py-2.5 rounded-xl border font-bold text-xs lg:text-sm flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95 text-center
+                                                        ${isMine
+                                                        ? 'border-pink-500 bg-pink-50 text-pink-700 hover:bg-pink-600 hover:text-white shadow-sm ring-1 ring-pink-500'
+                                                        : 'border-teal-500 bg-teal-50/40 text-teal-700 hover:bg-teal-600 hover:text-white'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-1">
+                                                        <Clock className="w-3 h-3 flex-shrink-0" />
+                                                        <span dir="ltr">{slot.start_time}</span>
+                                                    </div>
+                                                    {isMine && <span className="text-[9px] opacity-90 font-medium">رزرو شما</span>}
+                                                </button>
+                                            )
+                                        })}
                                     </div>
                                 </>
                             ) : (
@@ -686,7 +874,7 @@ export function DoctorProfileV1() {
                 مرحله ۲: اطلاعات مراجعه‌کننده
             ══════════════════════════════════════════════════════════════════════ */}
             {view === 'patient_info' && (
-                <div className="pt-20 pb-6 animate-in fade-in duration-200">
+                <div className={`pb-6 animate-in fade-in duration-200 ${activeTempReservation ? 'pt-2' : 'pt-20'}`}>
                     <Stepper step={2} />
                     <div className="max-w-xl mx-auto px-4 space-y-4">
                         <Card className="border-0 shadow-sm rounded-2xl bg-white flex items-center justify-between p-4 gap-3">
@@ -702,7 +890,7 @@ export function DoctorProfileV1() {
                                     </h3>
                                     <p className="text-[11px] text-gray-500 mt-0.5 truncate">
                                         {formatDate(selectedDate)} - ساعت{' '}
-                                        <strong className="text-blue-700 font-mono text-xs">
+                                        <strong className="text-blue-700 font-mono text-xs" dir="ltr">
                                             {selectedSlot?.start_time}
                                         </strong>
                                     </p>
@@ -727,56 +915,34 @@ export function DoctorProfileV1() {
                                 <label
                                     onClick={() => setBookingFor('myself')}
                                     className={`flex items-center justify-between p-3.5 border rounded-xl cursor-pointer transition-all gap-3 ${
-                                        bookingFor === 'myself'
-                                            ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-400'
-                                            : 'border-gray-200'
+                                        bookingFor === 'myself' ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-400' : 'border-gray-200'
                                     }`}
                                 >
                                     <div className="min-w-0">
-                                        <p className="text-xs font-bold text-gray-900 truncate">
-                                            {currentUser?.name || 'خودم'}
-                                        </p>
-                                        <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                                            {currentUser?.phone || 'شماره تلفن حساب'}
-                                        </p>
+                                        <p className="text-xs font-bold text-gray-900 truncate">{currentUser?.name || 'خودم'}</p>
+                                        <p className="text-[11px] text-gray-500 mt-0.5 truncate">{currentUser?.phone || 'شماره تلفن حساب'}</p>
                                     </div>
-                                    <input
-                                        type="radio"
-                                        readOnly
-                                        checked={bookingFor === 'myself'}
-                                        className="text-blue-600 flex-shrink-0"
-                                    />
+                                    <input type="radio" readOnly checked={bookingFor === 'myself'} className="text-blue-600 flex-shrink-0" />
                                 </label>
 
                                 <label
                                     onClick={() => setBookingFor('other')}
                                     className={`flex items-center justify-between p-3.5 border rounded-xl cursor-pointer transition-all gap-3 ${
-                                        bookingFor === 'other'
-                                            ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-400'
-                                            : 'border-gray-200'
+                                        bookingFor === 'other' ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-400' : 'border-gray-200'
                                     }`}
                                 >
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold text-gray-900">شخص دیگر</p>
-                                        <p className="text-[11px] text-gray-500 mt-0.5">
-                                            ثبت نوبت برای آشنایان یا اعضای خانواده
-                                        </p>
+                                        <p className="text-[11px] text-gray-500 mt-0.5">ثبت نوبت برای آشنایان یا اعضای خانواده</p>
                                     </div>
-                                    <input
-                                        type="radio"
-                                        readOnly
-                                        checked={bookingFor === 'other'}
-                                        className="text-blue-600 flex-shrink-0"
-                                    />
+                                    <input type="radio" readOnly checked={bookingFor === 'other'} className="text-blue-600 flex-shrink-0" />
                                 </label>
                             </div>
 
                             {bookingFor === 'other' && (
                                 <div className="pt-3 border-t border-gray-100 space-y-3">
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            نام و نام خانوادگی بیمار:
-                                        </label>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">نام و نام خانوادگی بیمار:</label>
                                         <input
                                             type="text"
                                             value={otherPatient.fullName}
@@ -785,19 +951,12 @@ export function DoctorProfileV1() {
                                                 setPatientErrors(err => ({ ...err, fullName: undefined }));
                                             }}
                                             placeholder="مثال: سارا محمدی"
-                                            className={`w-full px-3 py-2 text-xs border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                patientErrors.fullName ? 'border-red-400' : ''
-                                            }`}
+                                            className={`w-full px-3 py-2 text-xs border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 ${patientErrors.fullName ? 'border-red-400' : ''}`}
                                         />
-                                        {patientErrors.fullName && (
-                                            <p className="text-red-500 text-[11px] mt-1">{patientErrors.fullName}</p>
-                                        )}
+                                        {patientErrors.fullName && <p className="text-red-500 text-[11px] mt-1">{patientErrors.fullName}</p>}
                                     </div>
-
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            کد ملی بیمار:
-                                        </label>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">کد ملی بیمار:</label>
                                         <input
                                             type="text"
                                             dir="ltr"
@@ -810,19 +969,12 @@ export function DoctorProfileV1() {
                                                 setPatientErrors(err => ({ ...err, nationalCode: undefined }));
                                             }}
                                             placeholder="1234567890"
-                                            className={`w-full px-3 py-2 text-xs border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
-                                                patientErrors.nationalCode ? 'border-red-400' : ''
-                                            }`}
+                                            className={`w-full px-3 py-2 text-xs border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono ${patientErrors.nationalCode ? 'border-red-400' : ''}`}
                                         />
-                                        {patientErrors.nationalCode && (
-                                            <p className="text-red-500 text-[11px] mt-1">{patientErrors.nationalCode}</p>
-                                        )}
+                                        {patientErrors.nationalCode && <p className="text-red-500 text-[11px] mt-1">{patientErrors.nationalCode}</p>}
                                     </div>
-
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            شماره تماس بیمار:
-                                        </label>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">شماره تماس بیمار:</label>
                                         <input
                                             type="tel"
                                             dir="ltr"
@@ -833,14 +985,16 @@ export function DoctorProfileV1() {
                                                 setPatientErrors(err => ({ ...err, phone: undefined }));
                                             }}
                                             placeholder="09123456789"
-                                            className={`w-full px-3 py-2 text-xs border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
-                                                patientErrors.phone ? 'border-red-400' : ''
-                                            }`}
+                                            className={`w-full px-3 py-2 text-xs border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono ${patientErrors.phone ? 'border-red-400' : ''}`}
                                         />
-                                        {patientErrors.phone && (
-                                            <p className="text-red-500 text-[11px] mt-1">{patientErrors.phone}</p>
-                                        )}
+                                        {patientErrors.phone && <p className="text-red-500 text-[11px] mt-1">{patientErrors.phone}</p>}
                                     </div>
+                                </div>
+                            )}
+
+                            {orderError && (
+                                <div className="text-red-600 text-xs text-center bg-red-50 p-3 rounded-xl border border-red-100">
+                                    {orderError}
                                 </div>
                             )}
 
@@ -853,9 +1007,11 @@ export function DoctorProfileV1() {
                                     بازگشت
                                 </Button>
                                 <Button
-                                    onClick={() => { if (validatePatient()) setView('payment'); }}
-                                    className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 text-xs font-bold"
+                                    onClick={handleCreateOrder}
+                                    disabled={isCreatingOrder}
+                                    className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 text-xs font-bold flex items-center justify-center gap-2"
                                 >
+                                    {isCreatingOrder && <Loader2 className="w-4 h-4 animate-spin" />}
                                     مرحله بعد (پرداخت)
                                 </Button>
                             </div>
@@ -868,16 +1024,12 @@ export function DoctorProfileV1() {
                 مرحله ۳: فاکتور و پرداخت
             ══════════════════════════════════════════════════════════════════════ */}
             {view === 'payment' && (
-                <div className="pt-20 pb-6 animate-in fade-in duration-200">
+                <div className={`pb-6 animate-in fade-in duration-200 ${activeTempReservation ? 'pt-2' : 'pt-20'}`}>
                     <Stepper step={3} />
                     <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row gap-5">
 
+                        {/* ستون راست: خلاصه نوبت */}
                         <div className="w-full md:w-1/2 space-y-4 order-1 md:order-none">
-                            <div className="bg-amber-50 text-amber-900 p-3.5 rounded-xl border border-amber-200 flex items-start gap-2 text-xs font-medium">
-                                <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                                <span>نوبت شما هنوز قطعی نشده؛ برای تکمیل فرآیند روی دکمه پرداخت کلیک کنید.</span>
-                            </div>
-
                             <Card className="bg-white p-5 shadow-sm border-0 rounded-2xl space-y-3 text-xs">
                                 <h3 className="font-bold text-gray-900 text-sm border-b pb-2">خلاصه اطلاعات نوبت</h3>
                                 {[
@@ -885,7 +1037,7 @@ export function DoctorProfileV1() {
                                     ['تخصص', doctorData.specialty_name],
                                     ['نوع ویزیت', 'حضوری در مطب'],
                                     ['زمان نوبت', `${formatDate(selectedDate)} - ${selectedSlot?.start_time}`],
-                                    ['بیمار', bookingFor === 'myself' ? (currentUser?.name ?? 'حساب اصلی') : otherPatient.fullName],
+                                    ['بیمار', bookingFor === 'myself' ? (currentUser?.name ?? 'حساب اصلی') : (otherPatient.fullName || 'ثبت شده در سفارش قبلی')],
                                     ['آدرس', doctorData.address],
                                 ].map(([label, value]) => (
                                     <div key={label} className="flex justify-between gap-3 py-1">
@@ -896,50 +1048,54 @@ export function DoctorProfileV1() {
                                     </div>
                                 ))}
                             </Card>
-
-                            <Card className="bg-emerald-50/60 p-4 border border-emerald-100 rounded-2xl text-xs text-emerald-900 flex items-start gap-2.5">
-                                <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                                <div>
-                                    <h4 className="font-bold mb-1">با اطمینان نوبت خود را ثبت کنید</h4>
-                                    <p className="text-emerald-700 text-[11px] leading-relaxed">
-                                        بازگشت ۱۰۰٪ وجه در صورت عدم حضور پزشک یا لغو نوبت تا ۲۴ ساعت قبل از ویزیت.
-                                    </p>
-                                </div>
-                            </Card>
                         </div>
 
+                        {/* ستون چپ: جزئیات پرداخت */}
                         <div className="w-full md:w-1/2 space-y-4 order-2 md:order-none">
+                            {/* هشدار وضعیت نوبت با تایمر - مخصوص صفحه پرداخت */}
+                            <div className="bg-amber-50 text-amber-900 p-3.5 rounded-xl border border-amber-200 flex flex-col gap-2 text-xs font-medium">
+                                <div className="flex items-start gap-2">
+                                    <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <span>نوبت شما هنوز قطعی نشده؛ برای تکمیل فرآیند روی دکمه پرداخت کلیک کنید.</span>
+                                </div>
+                                {activeTempReservation?.expires_at && (
+                                    <div className="text-amber-700 bg-amber-100/50 py-1.5 px-3 rounded-lg w-fit">
+                                        زمان باقیمانده تا لغو خودکار:
+                                        <CountdownTimer
+                                            expiresAt={activeTempReservation.expires_at}
+                                            onExpire={() => fetchDoctorData()}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
                             <Card className="bg-white p-5 shadow-sm border-0 rounded-2xl space-y-4">
-                                <h3 className="font-bold text-xs sm:text-sm text-gray-900 border-b border-gray-100 pb-2.5">
-                                    جزئیات پرداخت
-                                </h3>
+                                <h3 className="font-bold text-xs sm:text-sm text-gray-900 border-b border-gray-100 pb-2.5">جزئیات پرداخت</h3>
 
                                 <div className="space-y-2.5 text-xs text-gray-600">
                                     <div className="flex justify-between">
-                                        <span>هزینه ویزیت:</span>
-                                        <span className="font-bold text-gray-900">
-                                            {formatPrice(doctorData.visit_price)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>۱۰٪ مالیات بر ارزش افزوده (تخمینی):</span>
-                                        <span>{formatPrice(displayTax)}</span>
+                                        <span>هزینه خدمات زیرساخت:</span>
+                                        <span className="font-bold text-gray-900">۱۵,۰۰۰ تومان</span>
                                     </div>
                                     <div className="pt-3 border-t border-gray-100 flex justify-between font-bold text-sm text-gray-900">
-                                        <span>مبلغ تقریبی:</span>
-                                        <span className="text-blue-700 font-extrabold">
-                                            {formatPrice(displayTotal)}
-                                        </span>
+                                        <span>مبلغ قابل پرداخت الان:</span>
+                                        <span className="text-blue-700 font-extrabold">۱۵,۰۰۰ تومان</span>
                                     </div>
-                                    <p className="text-[10px] text-gray-400">
-                                        * مبلغ نهایی پس از اتصال به درگاه توسط سرور تأیید می‌شود.
-                                    </p>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                                        درگاه پرداخت:
-                                    </label>
+                                {/* کارت توضیحات مالی زیر شرح مبالغ */}
+                                <div className="bg-emerald-50/60 p-4 border border-emerald-100 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5 mt-4">
+                                    <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-bold mb-1">با اطمینان نوبت خود را ثبت کنید</h4>
+                                        <p className="text-emerald-700 text-[11px] leading-relaxed">
+                                            مبلغ ویزیت پزشک (معادل <strong>{doctorData.visit_price.toLocaleString('fa-IR')} تومان</strong>) را باید به صورت حضوری در مطب پرداخت نمایید. مبلغ پرداختی در این مرحله صرفاً بابت هزینه زیرساخت و خدمات است.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">درگاه پرداخت:</label>
                                     <select
                                         className="w-full p-2.5 border border-gray-200 rounded-xl bg-gray-50 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                                         value={selectedGateway}
@@ -959,7 +1115,7 @@ export function DoctorProfileV1() {
                                 <div className="pt-2 flex items-center gap-3">
                                     <Button
                                         variant="outline"
-                                        onClick={() => setView('patient_info')}
+                                        onClick={() => setView('profile')}
                                         className="w-1/3 rounded-xl h-11 text-xs"
                                     >
                                         بازگشت
@@ -969,15 +1125,12 @@ export function DoctorProfileV1() {
                                         disabled={isPaying}
                                         className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 text-xs font-bold shadow flex items-center justify-center gap-1.5"
                                     >
-                                        {isPaying
-                                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                                            : <CreditCard className="w-4 h-4" />}
+                                        {isPaying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
                                         پرداخت و ثبت نوبت
                                     </Button>
                                 </div>
                             </Card>
                         </div>
-
                     </div>
                 </div>
             )}

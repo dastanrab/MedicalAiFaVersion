@@ -16,6 +16,11 @@ import {
   Crown,
   Bookmark,
   Heart,
+  AlertCircle,
+  CheckCircle,
+  X,
+  Loader2,
+  CreditCard
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,68 +32,10 @@ import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../admin/store/settingsStore';
 import { todayJalali, PERSIAN_MONTHS, toFaDigits } from '../provider/utils/jalali';
 
-// مسیر ایمپورت را بسته به پوشه‌بندی پروژه خود اصلاح کنید
 import NotificationBellWidget from '../components/NotificationBellWidget';
 import { useUserStore } from "../store/useUserStore";
 
-const blogPosts = [
-  {
-    id: 1,
-    title: '۱۰ نکته برای سلامت بهتر قلب',
-    excerpt: 'با این تغییرات ساده قلبی سالم‌تر داشته باشید.',
-    image: '/scan.jpg',
-    date: '۲۸ اسفند ۱۴۰۴',
-    readTime: '۵ دقیقه مطالعه',
-    tag: 'قلب و عروق',
-  },
-  {
-    id: 2,
-    title: 'راهنمای تغذیه متعادل',
-    excerpt: 'با مواد مغذی ضروری عملکرد سالم بدن خود آشنا شوید.',
-    image: '/scan.jpg',
-    date: '۲۵ اسفند ۱۴۰۴',
-    readTime: '۷ دقیقه مطالعه',
-    tag: 'تغذیه',
-  },
-  {
-    id: 3,
-    title: 'مزایای ورزش منظم',
-    excerpt: 'فعال ماندن چرا برای سلامت جسم و روان ضروری است.',
-    image: '/scan.jpg',
-    date: '۲۰ اسفند ۱۴۰۴',
-    readTime: '۶ دقیقه مطالعه',
-    tag: 'ورزش',
-  },
-  {
-    id: 4,
-    title: 'سلامت روان: شکستن تابوها',
-    excerpt: 'اهمیت سلامت روان در تندرستی کلی بدن را بشناسید.',
-    image: '/scan.jpg',
-    date: '۱۵ اسفند ۱۴۰۴',
-    readTime: '۸ دقیقه مطالعه',
-    tag: 'سلامت روان',
-  },
-];
-
-const recentActivities = [
-  {
-    id: 1,
-    title: 'دکتر سارا محمدی',
-    subtitle: 'مشاوره — تکمیل شده',
-    time: '۲ روز پیش',
-    tone: 'blue' as const,
-    icon: Stethoscope,
-  },
-  {
-    id: 2,
-    title: 'بررسی علائم',
-    subtitle: 'تحلیل سردرد خفیف',
-    time: '۵ روز پیش',
-    tone: 'emerald' as const,
-    icon: Activity,
-  },
-];
-
+// ─── Types ────────────────────────────────────────────────────────
 type QuickAction = {
   title: string;
   desc: string;
@@ -115,40 +62,43 @@ type PartnerDashboardData = {
   } | null;
 };
 
-// نگاشت حالت‌های روحی به ایموجی و متن فارسی مناسب
+interface ActiveAppointment {
+  id: number;
+  doctor_name: string;
+  doctor_image: string | null;
+  specialty_name: string;
+  date: string;
+  time: string;
+  is_temporary: boolean;
+  expires_at: string | null;
+  status: string;
+}
+
+// ─── Constants & Mock Data ────────────────────────────────────────
+const blogPosts = [
+  { id: 1, title: '۱۰ نکته برای سلامت بهتر قلب', excerpt: 'با این تغییرات ساده قلبی سالم‌تر داشته باشید.', image: '/scan.jpg', date: '۲۸ اسفند ۱۴۰۴', readTime: '۵ دقیقه مطالعه', tag: 'قلب و عروق' },
+  { id: 2, title: 'راهنمای تغذیه متعادل', excerpt: 'با مواد مغذی ضروری عملکرد سالم بدن خود آشنا شوید.', image: '/scan.jpg', date: '۲۵ اسفند ۱۴۰۴', readTime: '۷ دقیقه مطالعه', tag: 'تغذیه' },
+  { id: 3, title: 'مزایای ورزش منظم', excerpt: 'فعال ماندن چرا برای سلامت جسم و روان ضروری است.', image: '/scan.jpg', date: '۲۰ اسفند ۱۴۰۴', readTime: '۶ دقیقه مطالعه', tag: 'ورزش' },
+  { id: 4, title: 'سلامت روان: شکستن تابوها', excerpt: 'اهمیت سلامت روان در تندرستی کلی بدن را بشناسید.', image: '/scan.jpg', date: '۱۵ اسفند ۱۴۰۴', readTime: '۸ دقیقه مطالعه', tag: 'سلامت روان' },
+];
+
+const recentActivities = [
+  { id: 1, title: 'دکتر سارا محمدی', subtitle: 'مشاوره — تکمیل شده', time: '۲ روز پیش', tone: 'blue' as const, icon: Stethoscope },
+  { id: 2, title: 'بررسی علائم', subtitle: 'تحلیل سردرد خفیف', time: '۵ روز پیش', tone: 'emerald' as const, icon: Activity },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────
 function getMoodEmojiAndLabel(mood?: string | null): { emoji: string; label: string } {
   if (!mood) return { emoji: '😶', label: 'ثبت نشده' };
-
   const normalized = mood.toLowerCase().trim();
-
   switch (normalized) {
-    case 'happy':
-    case 'خوشحال':
-    case 'شاد':
-      return { emoji: '😊', label: 'خوشحال و شاد' };
-    case 'calm':
-    case 'آرام':
-    case 'خوب':
-      return { emoji: '😌', label: 'آرام و خوب' };
-    case 'sad':
-    case 'غمگین':
-    case 'ناراحت':
-      return { emoji: '😔', label: 'غمگین و ناراحت' };
-    case 'tired':
-    case 'خسته':
-    case 'بی‌انرژی':
-      return { emoji: '😴', label: 'خسته و کم‌انرژی' };
-    case 'angry':
-    case 'irritated':
-    case 'عصبی':
-    case 'بی‌حوصله':
-      return { emoji: '😠', label: 'بی‌حوصله یا عصبی' };
-    case 'stressed':
-    case 'استرس':
-    case 'مضطرب':
-      return { emoji: '😰', label: 'مضطرب' };
-    default:
-      return { emoji: '👤', label: mood };
+    case 'happy': case 'خوشحال': case 'شاد': return { emoji: '😊', label: 'خوشحال و شاد' };
+    case 'calm': case 'آرام': case 'خوب': return { emoji: '😌', label: 'آرام و خوب' };
+    case 'sad': case 'غمگین': case 'ناراحت': return { emoji: '😔', label: 'غمگین و ناراحت' };
+    case 'tired': case 'خسته': case 'بی‌انرژی': return { emoji: '😴', label: 'خسته و کم‌انرژی' };
+    case 'angry': case 'irritated': case 'عصبی': case 'بی‌حوصله': return { emoji: '😠', label: 'بی‌حوصله یا عصبی' };
+    case 'stressed': case 'استرس': case 'مضطرب': return { emoji: '😰', label: 'مضطرب' };
+    default: return { emoji: '👤', label: mood };
   }
 }
 
@@ -166,6 +116,15 @@ function getJalaliDateLabel(): string {
   return `${toFaDigits(d.jd)} ${PERSIAN_MONTHS[d.jm - 1]} ${toFaDigits(d.jy)}`;
 }
 
+const formatDateWithDay = (dateString: string) => {
+  try {
+    return new Intl.DateTimeFormat('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(dateString));
+  } catch {
+    return dateString;
+  }
+};
+
+// ─── Components ───────────────────────────────────────────────────
 function HealthScoreRing({ value }: { value: number }) {
   const size = 56;
   const stroke = 5;
@@ -183,19 +142,9 @@ function HealthScoreRing({ value }: { value: number }) {
   return (
       <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
         <svg width={size} height={size} className="-rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} className="fill-none stroke-white/20" />
           <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              strokeWidth={stroke}
-              className="fill-none stroke-white/20"
-          />
-          <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              strokeWidth={stroke}
-              strokeLinecap="round"
+              cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} strokeLinecap="round"
               className="fill-none stroke-white transition-all duration-1000 ease-out"
               style={{ strokeDasharray: circumference, strokeDashoffset: offset }}
           />
@@ -213,12 +162,8 @@ function QuickActionCard({ action, onClick }: { action: QuickAction; onClick: ()
           onClick={onClick}
           className="group relative overflow-hidden rounded-3xl border border-gray-100 bg-white p-4 text-right shadow-[0_2px_16px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-[0_18px_36px_-12px_rgba(15,23,42,0.18)] active:scale-[0.97]"
       >
-        <div
-            className={`pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br ${action.gradient} opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-25`}
-        />
-        <div
-            className={`relative mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${action.iconBg} transition-transform duration-300 group-hover:scale-110`}
-        >
+        <div className={`pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br ${action.gradient} opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-25`} />
+        <div className={`relative mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${action.iconBg} transition-transform duration-300 group-hover:scale-110`}>
           <Icon className="h-5 w-5" />
         </div>
         <h3 className="relative text-sm font-bold text-gray-900">{action.title}</h3>
@@ -231,96 +176,116 @@ function QuickActionCard({ action, onClick }: { action: QuickAction; onClick: ()
   );
 }
 
+function DashboardCountdownTimer({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) {
+  const [timeLeft, setTimeLeft] = useState('...');
+  const hasExpired = useRef(false);
+
+  useEffect(() => {
+    let safeExpiresAt = expiresAt.replace(' ', 'T');
+    if (!safeExpiresAt.endsWith('Z') && !safeExpiresAt.includes('+')) safeExpiresAt += 'Z';
+    const targetTime = new Date(safeExpiresAt).getTime();
+
+    const calculate = () => {
+      const diff = targetTime - new Date().getTime();
+      if (isNaN(diff)) return setTimeLeft('--:--');
+      if (diff <= 0) {
+        setTimeLeft('00:00');
+        if (!hasExpired.current) {
+          hasExpired.current = true;
+          setTimeout(onExpire, 500);
+        }
+        return;
+      }
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    };
+
+    calculate();
+    const timer = setInterval(calculate, 1000);
+    return () => clearInterval(timer);
+  }, [expiresAt, onExpire]);
+
+  return <span className="font-mono" dir="ltr">{timeLeft}</span>;
+}
+
+// ─── Main View ────────────────────────────────────────────────────
 export function Home() {
   const user = useUserStore((state) => state.user);
   const subscriberId = user?.novu_subscriber_id;
   const navigate = useNavigate();
   const { accessToken } = useAuthStore();
   const faq = useSettingsStore((s) => s.content.faq);
+
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
   const [userData, setUserData] = useState<{ name?: string; gender?: number } | null>(null);
   const [partnerData, setPartnerData] = useState<PartnerDashboardData | null>(null);
-  const blogScrollRef = useRef<HTMLDivElement>(null);
-  const blogCardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [activeBlogIndex, setActiveBlogIndex] = useState(0);
+  const [activeAppointment, setActiveAppointment] = useState<ActiveAppointment | null>(null);
   const [healthScore, setHealthScore] = useState<number>(0);
   const [showHealthPopup, setShowHealthPopup] = useState<boolean>(false);
+  const [activeBlogIndex, setActiveBlogIndex] = useState(0);
+
+  // استیت مربوط به دکمه لغو نوبت موقت
+  const [isCanceling, setIsCanceling] = useState(false);
+
+  const blogScrollRef = useRef<HTMLDivElement>(null);
+  const blogCardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    // اگر اطلاعات کاربر هنوز لود نشده است، منتظر بمان
     if (!user || !user.id) return;
-
-    // کلیدهای ذخیره‌سازی اختصاصی برای هر کاربر
     const scoreStorageKey = `userHealthScore_${user.id}`;
     const seenPopupKey = `hasSeenHealthPopup_${user.id}`;
-
     const savedScore = localStorage.getItem(scoreStorageKey);
     const hasSeenPopup = localStorage.getItem(seenPopupKey);
     const score = savedScore ? Number(savedScore) : 0;
 
     setHealthScore(score);
 
-    // فقط در صورتی پاپ‌آپ را نشان بده که امتیاز صفر باشد و قبلاً پاپ‌آپ را ندیده باشد
     if (score === 0 && !hasSeenPopup) {
       const timer = setTimeout(() => {
         setShowHealthPopup(true);
-        // ثبت در حافظه محلی تا در دفعات بعدی مجدداً اجرا نشود
         localStorage.setItem(seenPopupKey, 'true');
       }, 400);
-
       return () => clearTimeout(timer);
     }
   }, [user?.id]);
 
-
-
+  const fetchActiveAppointment = async () => {
+    try {
+      const res = await fetch('https://api.mediraai.com/api/user/appointments/active', {
+        headers: { Authorization: `Bearer ${accessToken}`, 'Accept': 'application/json' },
+      });
+      const json = await res.json();
+      if (json.success) setActiveAppointment(json.data);
+    } catch (err) {}
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch('https://api.mediraai.com/api/user/profile', {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
+        const res = await fetch('https://api.mediraai.com/api/user/profile', {
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         });
-        const data = await response.json();
-        if (data.success) {
-          setUserData(data.data.user);
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      }
+        const data = await res.json();
+        if (data.success) setUserData(data.data.user);
+      } catch (err) {}
     };
 
-    if (accessToken) fetchProfile();
-  }, [accessToken]);
-
-  useEffect(() => {
     const fetchPartnerDashboard = async () => {
-      if (!accessToken) return;
       try {
-        const response = await fetch(
-            'https://api.mediraai.com/api/user/period-tracker/partner/dashboard',
-            {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-            }
-        );
-        const data = await response.json();
-        if (data.status && data.data) {
-          setPartnerData(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching partner dashboard:', error);
-      }
+        const res = await fetch('https://api.mediraai.com/api/user/period-tracker/partner/dashboard', {
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.status && data.data) setPartnerData(data.data);
+      } catch (err) {}
     };
 
-    if (accessToken) fetchPartnerDashboard();
+    if (accessToken) {
+      fetchProfile();
+      fetchPartnerDashboard();
+      fetchActiveAppointment();
+    }
   }, [accessToken]);
 
   useEffect(() => {
@@ -343,59 +308,49 @@ export function Home() {
     return () => observer.disconnect();
   }, []);
 
+  // ─── هندلر لغو نوبت موقت ──────────────────────────────────────────
+  const handleCancelTempReservation = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // جلوگیری از کلیک‌شدن کارت (کارت ناوبری به orders دارد)
+    if (!activeAppointment || !accessToken) return;
+
+    if (!window.confirm('آیا از لغو این نوبت اطمینان دارید؟')) return;
+
+    setIsCanceling(true);
+    try {
+      const res = await fetch('https://api.mediraai.com/api/user/appointments/cancel-temp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ slot_id: activeAppointment.id }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      // حذف نوبت از استیت (مخفی کردن کارت)
+      setActiveAppointment(null);
+    } catch (error) {
+      alert('خطا در لغو نوبت. لطفاً مجدداً تلاش کنید.');
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
   const firstName = userData?.name?.split(' ')[0] || 'کاربر';
 
   const quickActions: QuickAction[] = [
-    {
-      title: 'تشخیص هوشمند',
-      desc: 'تحلیل علائم با AI',
-      path: '/symptoms',
-      icon: Sparkles,
-      gradient: 'from-blue-400 to-blue-600',
-      iconBg: 'bg-blue-100 text-blue-600',
-      featured: true,
-    },
-    {
-      title: 'پزشکان',
-      desc: 'رزرو نوبت آنلاین',
-      path: '/doctors',
-      icon: Stethoscope,
-      gradient: 'from-blue-500 to-blue-600',
-      iconBg: 'bg-blue-100 text-blue-600',
-    },
-    {
-      title: 'بررسی علائم',
-      desc: 'ثبت و پیگیری',
-      path: '/symptoms',
-      icon: Activity,
-      gradient: 'from-emerald-500 to-teal-600',
-      iconBg: 'bg-emerald-100 text-emerald-600',
-    },
-    {
-      title: 'تناسب و تغذیه',
-      desc: 'اندازه‌گیری تا پیگیری کالری',
-      path: '/body-measurement',
-      icon: UtensilsCrossed,
-      gradient: 'from-orange-500 to-amber-600',
-      iconBg: 'bg-orange-100 text-orange-600',
-    },
-    {
-      title: 'بینش سلامت',
-      desc: 'نکات شخصی‌سازی‌شده',
-      path: '/health-insights',
-      icon: Brain,
-      gradient: 'from-indigo-500 to-indigo-700',
-      iconBg: 'bg-indigo-100 text-indigo-600',
-    },
+    { title: 'تشخیص هوشمند', desc: 'تحلیل علائم با AI', path: '/symptoms', icon: Sparkles, gradient: 'from-blue-400 to-blue-600', iconBg: 'bg-blue-100 text-blue-600', featured: true },
+    { title: 'پزشکان', desc: 'رزرو نوبت آنلاین', path: '/doctors', icon: Stethoscope, gradient: 'from-blue-500 to-blue-600', iconBg: 'bg-blue-100 text-blue-600' },
+    { title: 'بررسی علائم', desc: 'ثبت و پیگیری', path: '/symptoms', icon: Activity, gradient: 'from-emerald-500 to-teal-600', iconBg: 'bg-emerald-100 text-emerald-600' },
+    { title: 'تناسب و تغذیه', desc: 'اندازه‌گیری تا پیگیری کالری', path: '/body-measurement', icon: UtensilsCrossed, gradient: 'from-orange-500 to-amber-600', iconBg: 'bg-orange-100 text-orange-600' },
+    { title: 'بینش سلامت', desc: 'نکات شخصی‌سازی‌شده', path: '/health-insights', icon: Brain, gradient: 'from-indigo-500 to-indigo-700', iconBg: 'bg-indigo-100 text-indigo-600' },
   ];
 
   const moodInfo = partnerData?.latest_log ? getMoodEmojiAndLabel(partnerData.latest_log.mood) : getMoodEmojiAndLabel(null);
 
   return (
-      <div
-          className="relative h-full overflow-x-hidden overflow-y-auto bg-[#F6F8FC] pb-16 font-[YekanBakhFaNum]"
-          dir="rtl"
-      >
+      <div className="relative h-full overflow-x-hidden overflow-y-auto bg-[#F6F8FC] pb-16 font-[YekanBakhFaNum]" dir="rtl">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[420px] overflow-hidden">
           <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
           <div className="absolute -top-10 left-0 h-56 w-56 rounded-full bg-indigo-200/40 blur-3xl" />
@@ -441,16 +396,11 @@ export function Home() {
                     </div>
                   </div>
 
-                  {/* ======================================================== */}
-                  {/* جایگذاری کامپوننت NotificationBellWidget به جای دکمه قبلی */}
-                  {/* ======================================================== */}
                   <div className="relative flex shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25 backdrop-blur-sm transition-colors hover:bg-white/25 [&_svg]:text-white">
                     <NotificationBellWidget subscriberId={subscriberId ?? 'e481d666-914e-4f24-9475-3d76a7369c58'} />
                   </div>
-
                 </div>
 
-                {/* کدهای قبلی دکمه کارت سلامت... */}
                 <button
                     type="button"
                     onClick={() => navigate(healthScore === 0 ? '/results' : '/results')}
@@ -458,7 +408,6 @@ export function Home() {
                 >
                   <HealthScoreRing  value={healthScore > 0 ? toFaDigits(healthScore) : 0}/>
                   <div className="min-w-0 flex-1">
-                    {/* متن داینامیک شد */}
                     <p className="text-sm font-bold text-white">
                       {healthScore === 0 ? 'ارزیابی سلامت خود را شروع کنید' : 'امتیاز سلامت شما'}
                     </p>
@@ -468,11 +417,9 @@ export function Home() {
                   </div>
                   <ChevronLeft className="h-4.5 w-4.5 shrink-0 text-white/70 transition-transform group-hover:-translate-x-1" />
                 </button>
-
               </div>
             </div>
 
-            {/* بقیه المان‌های صفحه بدون تغییر مانده است ... */}
             <div className="relative z-10 -mt-8 grid grid-cols-3 gap-2 px-1">
               {[
                 { label: 'معاینه', value: '۱۲', icon: Stethoscope },
@@ -502,7 +449,7 @@ export function Home() {
               transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
               type="button"
               onClick={() => navigate('/symptoms')}
-              className="group relative mb-6 w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-l from-blue-700 via-blue-500 to-blue-400 p-5 text-right shadow-[0_16px_40px_-8px_rgba(33,150,205,0.45)] transition-all duration-300 hover:shadow-[0_20px_48px_-8px_rgba(33,150,205,0.55)] active:scale-[0.99]"
+              className="group relative mb-4 w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-l from-blue-700 via-blue-500 to-blue-400 p-5 text-right shadow-[0_16px_40px_-8px_rgba(33,150,205,0.45)] transition-all duration-300 hover:shadow-[0_20px_48px_-8px_rgba(33,150,205,0.55)] active:scale-[0.99]"
           >
             <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 blur-md transition-transform duration-700 ease-out group-hover:translate-x-[260%]" />
             <div className="relative flex items-center gap-4">
@@ -523,6 +470,87 @@ export function Home() {
               </div>
             </div>
           </motion.button>
+
+          {/* ======================================================== */}
+          {/* بخش نمایش نوبت فعال همراه با نوار دکمه‌ها */}
+          {/* ======================================================== */}
+          {activeAppointment && (
+              <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  onClick={() => navigate('/orders')}
+                  className={`group relative mb-6 w-full cursor-pointer overflow-hidden rounded-[1.75rem] border p-4 shadow-sm transition-all duration-300 active:scale-[0.99] ${
+                      activeAppointment.is_temporary
+                          ? 'border-amber-100 bg-gradient-to-l from-amber-50 to-orange-50/50 hover:shadow-orange-500/10 hover:border-amber-200'
+                          : 'border-emerald-100 bg-gradient-to-l from-emerald-50 to-teal-50/50 hover:shadow-emerald-500/10 hover:border-emerald-200'
+                  }`}
+              >
+                <div className="flex items-center justify-between mb-3 border-b border-gray-900/5 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${activeAppointment.is_temporary ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                      {activeAppointment.is_temporary ? <AlertCircle className="h-4.5 w-4.5" /> : <CheckCircle className="h-4.5 w-4.5" />}
+                    </div>
+                    <span className={`text-xs font-extrabold ${activeAppointment.is_temporary ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {activeAppointment.is_temporary ? 'نوبت در انتظار پرداخت' : 'نوبت قطعی آینده'}
+                    </span>
+                  </div>
+                  {activeAppointment.is_temporary && activeAppointment.expires_at && (
+                      <div className="flex items-center gap-1.5 rounded-full bg-amber-100/80 px-2 py-1 text-[10px] font-bold text-amber-700">
+                        <Clock className="h-3 w-3 animate-pulse" />
+                        <DashboardCountdownTimer
+                            expiresAt={activeAppointment.expires_at}
+                            onExpire={() => fetchActiveAppointment()} // رفرش نوبت به جای فقط مخفی کردن
+                        />
+                      </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12 shrink-0 ring-2 ring-white">
+                    <AvatarFallback className="bg-gray-200 text-gray-600 text-xs">Dr</AvatarFallback>
+                    {activeAppointment.doctor_image && <img src={activeAppointment.doctor_image} alt={activeAppointment.doctor_name} />}
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-gray-900 text-sm truncate">دکتر {activeAppointment.doctor_name}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{activeAppointment.specialty_name}</p>
+                    <div className="flex items-center gap-3 mt-1.5 text-[11px] font-medium text-gray-600">
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDateWithDay(activeAppointment.date)}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> ساعت {activeAppointment.time}</span>
+                    </div>
+                  </div>
+                  {!activeAppointment.is_temporary && (
+                      <ChevronLeft className="h-5 w-5 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                  )}
+                </div>
+
+                {/* نوار ابزار (فقط برای نوبت موقت) */}
+                {activeAppointment.is_temporary && (
+                    <div className="mt-4 flex items-center justify-end gap-2 border-t border-amber-900/5 pt-3">
+                      <button
+                          type="button"
+                          onClick={handleCancelTempReservation}
+                          disabled={isCanceling}
+                          className="flex items-center justify-center gap-1 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-70"
+                      >
+                        {isCanceling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                        لغو نوبت
+                      </button>
+                      <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation(); // جلوگیری از اجرای onClick اصلی کارت
+                            navigate('/orders');
+                          }}
+                          className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-amber-500/30 transition-colors hover:bg-amber-600"
+                      >
+                        <CreditCard className="h-3.5 w-3.5" />
+                        تکمیل پرداخت
+                      </button>
+                    </div>
+                )}
+              </motion.div>
+          )}
 
           {partnerData && (
               <motion.div

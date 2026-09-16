@@ -26,6 +26,7 @@ import {
 import { Card } from '../components/ui/card';
 import { AppBar } from '../components/AppBar';
 import { toFaDigits } from '../provider/utils/jalali';
+import { useUserStore } from "../store/useUserStore";
 
 // نوع داده‌های فرم
 interface FormData {
@@ -74,13 +75,22 @@ const TOTAL_STEPS = 6;
 
 export function HealthAssessment() {
     const navigate = useNavigate();
+    const user = useUserStore((state) => state.user);
+    const userId = user?.id;
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [score, setScore] = useState<number | null>(null);
     const [warnings, setWarnings] = useState<string[]>([]);
 
+    // تابعی برای تولید کلیدهای لوکال استوریج بر اساس شناسه کاربر
+    const getStorageKey = (baseKey: string) => {
+        return `${baseKey}_${userId || 'guest'}`;
+    };
+
     useEffect(() => {
-        const savedData = localStorage.getItem('userHealthData');
+        // خواندن اطلاعات مختص به همین کاربر
+        const savedData = localStorage.getItem(getStorageKey('userHealthData'));
+
         if (savedData) {
             try {
                 const parsed = JSON.parse(savedData);
@@ -92,7 +102,6 @@ export function HealthAssessment() {
                     const k = key as keyof FormData;
                     if (parsed[k] !== undefined) {
                         if (k === 'familyHistory' || k === 'medicalConditions' || k === 'redFlags') {
-                            // این فیلدها باید آرایه باشند؛ اگر بولین یا مقدار غیر آرایه‌ای بود، آرایه خالی در نظر بگیر
                             migrated[k] = Array.isArray(parsed[k]) ? parsed[k] : [];
                         } else {
                             migrated[k] = parsed[k];
@@ -100,7 +109,7 @@ export function HealthAssessment() {
                     }
                 });
 
-                // انتقال علائم هشدار قدیمی (که به صورت بولین بودند) به آرایه redFlags
+                // انتقال علائم هشدار قدیمی به آرایه redFlags
                 const oldRedFlags: string[] = [];
                 if (parsed.chestPain === true) oldRedFlags.push('chestPain');
                 if (parsed.shortnessOfBreath === true) oldRedFlags.push('shortnessOfBreath');
@@ -113,16 +122,29 @@ export function HealthAssessment() {
             } catch (error) {
                 console.error('خطا در خواندن اطلاعات:', error);
             }
+        } else {
+            // اگر کاربر دیتایی نداشت، فرم را به حالت اولیه برمی‌گردانیم
+            // (جلوگیری از نمایش دیتای کاربر قبلی)
+            setFormData(initialFormData);
         }
 
-        const savedScore = localStorage.getItem('userHealthScore');
-        const savedWarnings = localStorage.getItem('userHealthWarnings');
+        const savedScore = localStorage.getItem(getStorageKey('userHealthScore'));
+        const savedWarnings = localStorage.getItem(getStorageKey('userHealthWarnings'));
 
-        if (savedScore) setScore(Number(savedScore));
+        if (savedScore) {
+            setScore(Number(savedScore));
+        } else {
+            setScore(null);
+        }
+
         if (savedWarnings) {
             try { setWarnings(JSON.parse(savedWarnings)); } catch (e) {}
+        } else {
+            setWarnings([]);
         }
-    }, []);
+
+        // با تغییر کاربر (userId)، این هوک مجدداً اجرا می‌شود
+    }, [userId]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -321,18 +343,24 @@ export function HealthAssessment() {
         setScore(finalScore);
         setWarnings(newWarnings);
 
-        localStorage.setItem('userHealthScore', finalScore.toString());
-        localStorage.setItem('userHealthData', JSON.stringify(d));
-        localStorage.setItem('userHealthWarnings', JSON.stringify(newWarnings));
+        // ذخیره اطلاعات مختص به همین کاربر
+        localStorage.setItem(getStorageKey('userHealthScore'), finalScore.toString());
+        localStorage.setItem(getStorageKey('userHealthData'), JSON.stringify(d));
+        localStorage.setItem(getStorageKey('userHealthWarnings'), JSON.stringify(newWarnings));
     };
 
     const resetAssessment = () => {
         setScore(null);
         setWarnings([]);
         setStep(1);
-        // برای شروع کاملاً تازه، فرم را پاک کنید:
-        // setFormData(initialFormData);
-        // localStorage.removeItem('userHealthData');
+
+        // ریست کردن فرم به حالت اولیه
+        setFormData(initialFormData);
+
+        // پاک کردن دیتای مختص به این کاربر از لوکال استوریج
+        localStorage.removeItem(getStorageKey('userHealthScore'));
+        localStorage.removeItem(getStorageKey('userHealthData'));
+        localStorage.removeItem(getStorageKey('userHealthWarnings'));
     };
 
     const getScoreInfo = (s: number) => {

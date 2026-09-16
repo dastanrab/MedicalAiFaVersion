@@ -73,7 +73,12 @@ export function DoctorList() {
   const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
   const [favoriteDoctors, setFavoriteDoctors] = useState<number[]>([]);
 
-  const specialties = ['پزشک عمومی', 'متخصص قلب', 'متخصص کودکان', 'متخصص پوست', 'جراح ارتوپد'];
+  const specialties = [
+    'قلب و عروق', 'گوارش', 'ریه', 'مغز و اعصاب', 'ارتوپدی',
+    'پوست و مو', 'کلیه و مجاری ادراری', 'غدد', 'چشم پزشکی',
+    'گوش و حلق و بینی', 'زنان و زایمان', 'روانپزشکی', 'داخلی',
+    'عفونی', 'اطفال'
+  ];
   const provinces = ['خراسان رضوی', 'تهران', 'اصفهان', 'شیراز'];
   const cities = ['مشهد', 'تهران', 'اصفهان', 'شیراز'];
   const ranks = ['پزشک', 'پزشک ارشد', 'متخصص', 'متخصص ارشد'];
@@ -304,6 +309,7 @@ export function DoctorList() {
                             className="pr-10 text-right"
                         />
                       </div>
+
                     </div>
 
                     <div>
@@ -403,8 +409,40 @@ export function DoctorList() {
                 </SheetContent>
               </Sheet>
             </div>
-          </div>
 
+          </div>
+          <div className="mt-5 -mx-6 px-6">
+            <div className="flex overflow-x-auto gap-2.5 pb-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {specialties.map((specialty) => {
+                // بررسی می‌کنیم که آیا متن جستجو دقیقاً برابر با این تخصص است یا خیر
+                const isActive = searchQuery === specialty;
+                return (
+                    <button
+                        key={specialty}
+                        onClick={() => {
+                          if (isActive) {
+                            // اگر تخصص قبلاً انتخاب شده بود و دوباره کلیک شد، جستجو را پاک کن و لیست کامل را بگیر
+                            setSearchQuery('');
+                            fetchDoctors('');
+                          } else {
+                            // در غیر این صورت، نام تخصص را در سرچ قرار بده و جستجو را اجرا کن
+                            setSearchQuery(specialty);
+                            handleSearchSubmit(specialty);
+                          }
+                        }}
+                        className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 border shadow-sm
+                      ${
+                            isActive
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600'
+                        }`}
+                    >
+                      {specialty}
+                    </button>
+                );
+              })}
+            </div>
+          </div>
           {(selectedProvince !== 'all' ||
               selectedCity !== 'all' ||
               selectedGender !== 'all' ||

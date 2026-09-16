@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Send, ArrowRight, Stethoscope, Calendar } from 'lucide-react';
 import {useAuthStore} from "../store/authStore";
 
-const API_URL = 'http://185.222.163.113:7000/api/user/diagnosis/chat';
+const API_URL = 'https://api.mediraai.com/api/user/diagnosis/chat';
 
 interface Message {
     role: 'user' | 'assistant';
