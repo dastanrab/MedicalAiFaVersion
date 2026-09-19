@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router';
 import { useEffect, useState } from 'react';
 import { Login } from './screens/Login';
 import { OTPVerification } from './screens/OTPVerification';
@@ -14,7 +14,8 @@ import { BodyMeasurement } from './screens/BodyMeasurement';
 import { MealPlan } from './screens/MealPlan';
 import HealthInsights from './screens/HealthInsights';
 import { AppContainer } from './components/AppContainer';
-import { Spinner } from './components/PageLoader';
+import { PageLoader } from './components/PageLoader';
+import type { PageSkeletonVariant } from './components/PageSkeleton';
 import { useAuthStore } from './store/authStore';
 import {DiagnosisResult} from "./screens/DiagnosisResult";
 import {QuestionnaireV1} from "./screens/QuestionnaireV1";
@@ -110,9 +111,9 @@ function PartnerInviteHandler() {
     }, [code, accessToken, navigate]);
 
     return (
-        <div className="flex h-screen items-center justify-center bg-[#F6F8FC]">
-            <Spinner />
-        </div>
+        <AppContainer>
+            <PageLoader variant="home" showAppBar />
+        </AppContainer>
     );
 }
 
@@ -127,9 +128,20 @@ function ProtectedRoute({ children }) {
     return children;
 }
 
+function pageLoaderVariantForPath(pathname: string): PageSkeletonVariant {
+    if (pathname.startsWith('/doctors')) return 'doctors';
+    if (pathname.startsWith('/symptoms') || pathname.startsWith('/diagnosis')) return 'diagnosis';
+    if (pathname.startsWith('/home')) return 'home';
+    if (pathname.startsWith('/profile')) return 'profile';
+    if (pathname.startsWith('/orders')) return 'orders';
+    if (pathname.startsWith('/plans')) return 'plans';
+    return 'default';
+}
+
 // Protected route with profile verification
 function VerifiedRoute({ children }) {
     const accessToken = useAuthStore((state) => state.accessToken);
+    const location = useLocation();
 
     const fetchProfile = useUserStore((state) => state.fetchProfile);
     const isVerified = useUserStore((state) => state.isVerified);
@@ -148,10 +160,16 @@ function VerifiedRoute({ children }) {
 
     // loading
     if (isLoading || isVerified === null) {
+        const variant = pageLoaderVariantForPath(location.pathname);
         return (
-            <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-                <Spinner />
-            </div>
+            <AppContainer showNavbar>
+                <PageLoader
+                    variant={variant}
+                    showAppBar
+                    showChat={variant === 'home'}
+                    backTo={variant === 'home' ? undefined : '/home'}
+                />
+            </AppContainer>
         );
     }
 

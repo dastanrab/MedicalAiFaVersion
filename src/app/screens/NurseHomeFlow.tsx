@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AppBar } from "../components/AppBar";
+import { CardGridSkeleton } from "../components/PageSkeleton";
 import { Button } from "../components/ui/button";
 import {
     ProviderDetailsDialog,
@@ -333,9 +334,7 @@ export function NurseHomeFlow() {
                             <p className="text-xs text-slate-500 mb-4">می‌توانید بیش از یک خدمت انتخاب کنید</p>
 
                             {isLoadingServices ? (
-                                <div className="flex items-center justify-center py-10">
-                                    <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
-                                </div>
+                                <CardGridSkeleton count={6} />
                             ) : (
                                 <div className="grid grid-cols-2 gap-3 mb-6">
                                     {servicesList.map((svc) => {

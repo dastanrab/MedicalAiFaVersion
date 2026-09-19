@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { BadgeCheck, Check, X, Eye, Loader2, RefreshCw } from 'lucide-react';
+import { BadgeCheck, Check, X, Eye, RefreshCw } from 'lucide-react';
 import { useAdminAuthStore } from '../store/adminAuthStore';
 import { useAdminDataStore } from '../store/adminDataStore';
 import { fetchAdminUsers, verifyAdminUser, type UsersListResponse } from '../services/adminApi';
 import { userTypeLabels, userTypeStyles, type AdminUserRow } from '../config/userOptions';
+import { TableRowsSkeleton } from '../../components/PageSkeleton';
 
 const PROVIDER_TYPES = ['doctor', 'pharmacy', 'lab', 'nurse'];
 
@@ -80,7 +81,11 @@ export function AdminVerifications() {
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 {loading ? (
-                    <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>
+                    <table className="w-full text-sm">
+                        <tbody>
+                            <TableRowsSkeleton rows={6} cols={5} />
+                        </tbody>
+                    </table>
                 ) : rows.length === 0 ? (
                     <p className="py-16 text-center text-slate-400">درخواست معلقی وجود ندارد</p>
                 ) : (

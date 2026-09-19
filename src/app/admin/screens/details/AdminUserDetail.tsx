@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { ArrowRight, BadgeCheck, Loader2, Save, ShieldBan, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Save, ShieldBan, ShieldCheck } from 'lucide-react';
+import { AdminPageSkeleton } from '../../components/AdminPageSkeleton';
 import { useAdminAuthStore } from '../../store/adminAuthStore';
 import { useAdminDataStore } from '../../store/adminDataStore';
 import { fetchAdminUser, updateAdminUser, verifyAdminUser } from '../../services/adminApi';
@@ -79,7 +80,7 @@ export function AdminUserDetail() {
     };
 
     if (loading) {
-        return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>;
+        return <AdminPageSkeleton />;
     }
 
     if (!user) {

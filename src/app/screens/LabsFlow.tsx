@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../store/authStore";
 import { AppBar } from "../components/AppBar";
+import { CardGridSkeleton, ListRowsSkeleton } from "../components/PageSkeleton";
+import { Skeleton } from "../components/ui/skeleton";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -554,9 +556,7 @@ export function LabsFlow() {
                 <div className="mb-2 flex justify-center">
                     <div ref={addressDropdownRef}  className="relative w-full max-w-md">
                         {loadingAddresses ? (
-                            <div className="text-center text-sm text-slate-500">
-                                در حال دریافت آدرس‌ها...
-                            </div>
+                            <Skeleton className="mx-auto h-12 w-full max-w-md rounded-2xl bg-slate-200/70" />
                         ) : addresses.length === 0 ? (
                             <div className="text-center">
                                 <p className="text-sm font-bold text-amber-700">آدرسی ثبت نشده است</p>
@@ -811,9 +811,7 @@ export function LabsFlow() {
                             </h2>
 
                             {loadingTests ? (
-                                <div className="flex items-center justify-center py-10">
-                                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                </div>
+                                <CardGridSkeleton count={6} />
                             ) : (
                                 <div className="mb-6 grid grid-cols-2 gap-3">
                                     {testPacks.map((test) => {
@@ -859,7 +857,7 @@ export function LabsFlow() {
                             <p className="mb-4 text-xs text-slate-500">لیست آزمایشگاه‌های فعال همکار سیستم</p>
 
                             {loadingLabs ? (
-                                <div className="py-8 text-center text-sm text-slate-500">در حال جستجوی آزمایشگاه‌های مناسب...</div>
+                                <ListRowsSkeleton rows={4} />
                             ) : labs.length === 0 ? (
                                 <div className="py-8 text-center text-sm text-slate-500">
                                     آزمایشگاهی با پوشش تمامی آزمایش‌های انتخابی شما یافت نشد.

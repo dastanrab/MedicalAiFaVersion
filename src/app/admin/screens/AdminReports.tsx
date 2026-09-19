@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BarChart3, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { BarChart3, Download, FileSpreadsheet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../../components/ui/chart';
 import { useAdminAuthStore } from '../store/adminAuthStore';
@@ -7,6 +7,7 @@ import { useAdminDataStore } from '../store/adminDataStore';
 import { fetchAllAdminUsers, buildSignupTrend, buildAppointmentTrend } from '../services/adminApi';
 import { fetchAppointments, setTokenGetter } from '../../services/api';
 import { computeUserStats, computePaymentStats, formatFaNumber } from '../utils/dashboardStats';
+import { AdminPageSkeleton } from '../components/AdminPageSkeleton';
 import type { AdminAppointmentRow } from '../config/appointmentOptions';
 import { appointmentStatusLabels, type AppointmentStatus } from '../config/appointmentOptions';
 
@@ -91,7 +92,7 @@ export function AdminReports() {
     ];
 
     if (loading) {
-        return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>;
+        return <AdminPageSkeleton />;
     }
 
     return (

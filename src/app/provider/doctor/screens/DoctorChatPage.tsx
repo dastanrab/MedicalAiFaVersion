@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Send, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { ListRowsSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
 
 // const API_BASE = 'http://185.222.163.113:4070';
@@ -325,9 +326,7 @@ export function DoctorChatPage() {
             <div className="flex-1 overflow-y-auto px-4 py-6">
                 <div className="mx-auto max-w-4xl space-y-4">
                     {isLoadingHistory ? (
-                        <div className="flex justify-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                        </div>
+                        <ListRowsSkeleton rows={6} />
                     ) : messages.length === 0 ? (
                         <div className="py-12 text-center text-gray-500">هنوز پیامی ارسال نشده</div>
                     ) : (

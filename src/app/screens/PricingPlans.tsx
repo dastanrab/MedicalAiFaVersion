@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Crown, Check, Sparkles } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
-import { PageLoader } from '../components/PageLoader';
+import { PlansPageSkeleton } from '../components/PageSkeleton';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
 import { pricingPlans, type PricingPlan } from '../data/pricingPlans';
@@ -51,7 +51,8 @@ export function PricingPlans() {
   if (loading) {
     return (
       <div className={pageClass}>
-        <PageLoader />
+        <AppBar backTo="/home" />
+        <PlansPageSkeleton />
       </div>
     );
   }
@@ -60,7 +61,7 @@ export function PricingPlans() {
     <div className={pageClass}>
       <AppBar backTo="/home" />
 
-      <div className="mx-auto max-w-md px-6 pb-8 pt-24">
+      <div className="w-full px-6 pb-8 pt-24">
         <PlansHero />
 
         <div className="space-y-4">
@@ -111,7 +112,7 @@ function PlanCard({ plan, currentPlan }: { plan: PricingPlan; currentPlan: strin
   return (
     <Card
       dir="rtl"
-      className={`relative overflow-hidden rounded-2xl border p-5 shadow-[0_2px_16px_rgba(0,0,0,0.06)] text-right ${
+      className={`relative rounded-2xl border p-5 shadow-[0_2px_16px_rgba(0,0,0,0.06)] text-right ${
         plan.popular
           ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'
           : plan.id === 'premium'

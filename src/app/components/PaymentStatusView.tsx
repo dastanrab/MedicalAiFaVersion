@@ -4,9 +4,9 @@ import {
   Check,
   CheckCircle2,
   Copy,
-  Loader2,
   XCircle,
 } from 'lucide-react';
+import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
 
 export type PaymentStatusKind = 'loading' | 'success' | 'failed' | 'cancelled';
@@ -89,7 +89,7 @@ const toneByStatus: Record<
 function StatusIcon({ status }: { status: PaymentStatusKind }) {
   const tone = toneByStatus[status];
   if (status === 'loading') {
-    return <Loader2 className={cn('h-11 w-11 animate-spin', tone.icon)} strokeWidth={2.2} />;
+    return <Skeleton className={cn('h-11 w-11 rounded-2xl bg-sky-100', tone.icon)} />;
   }
   if (status === 'success') {
     return <CheckCircle2 className={cn('h-11 w-11', tone.icon)} strokeWidth={2.2} />;

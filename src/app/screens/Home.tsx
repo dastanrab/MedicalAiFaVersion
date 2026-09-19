@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Card } from '../components/ui/card';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { AppBar } from '../components/AppBar';
+import { HomePageSkeleton } from '../components/PageSkeleton';
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../admin/store/settingsStore';
@@ -227,6 +228,7 @@ export function Home() {
 
   // استیت مربوط به دکمه لغو نوبت موقت
   const [isCanceling, setIsCanceling] = useState(false);
+  const [booting, setBooting] = useState(true);
 
   const blogScrollRef = useRef<HTMLDivElement>(null);
   const blogCardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -282,9 +284,11 @@ export function Home() {
     };
 
     if (accessToken) {
-      fetchProfile();
-      fetchPartnerDashboard();
-      fetchActiveAppointment();
+      Promise.all([fetchProfile(), fetchPartnerDashboard(), fetchActiveAppointment()]).finally(() => {
+        setBooting(false);
+      });
+    } else {
+      setBooting(false);
     }
   }, [accessToken]);
 
@@ -348,6 +352,19 @@ export function Home() {
   ];
 
   const moodInfo = partnerData?.latest_log ? getMoodEmojiAndLabel(partnerData.latest_log.mood) : getMoodEmojiAndLabel(null);
+
+  if (booting) {
+    return (
+      <div className="relative h-full overflow-x-hidden overflow-y-auto bg-[#F6F8FC] pb-16 font-[YekanBakhFaNum]" dir="rtl">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[420px] overflow-hidden">
+          <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
+          <div className="absolute -top-10 left-0 h-56 w-56 rounded-full bg-indigo-200/40 blur-3xl" />
+        </div>
+        <AppBar showChat />
+        <HomePageSkeleton />
+      </div>
+    );
+  }
 
   return (
       <div className="relative h-full overflow-x-hidden overflow-y-auto bg-[#F6F8FC] pb-16 font-[YekanBakhFaNum]" dir="rtl">

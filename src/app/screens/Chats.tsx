@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { PageLoader } from '../components/PageLoader';
+import { ListRowsSkeleton } from '../components/PageSkeleton';
 import { useAuthStore } from '../store/authStore';
 
 const ROOM_ID = 1;
@@ -560,8 +561,8 @@ export function Chats() {
 
   if (isLoadingProfile)
     return (
-        <div className="min-h-screen flex items-center justify-center">
-          <PageLoader />
+        <div className="min-h-screen bg-white">
+          <PageLoader variant="chat" showAppBar backTo="/home" />
         </div>
     );
 
@@ -605,11 +606,7 @@ export function Chats() {
           )}
 
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50/40">
-            {isLoadingHistory && (
-                <div className="flex justify-center py-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
-                </div>
-            )}
+            {isLoadingHistory && <ListRowsSkeleton rows={5} />}
             {!isLoadingHistory && messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-gray-300 gap-2">
                   <Send className="w-8 h-8" />
@@ -836,11 +833,7 @@ export function Chats() {
                     )}
 
                     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-                      {isLoadingHistory && (
-                          <div className="flex justify-center py-4">
-                            <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
-                          </div>
-                      )}
+                      {isLoadingHistory && <ListRowsSkeleton rows={6} />}
 
                       {!isLoadingHistory && messages.length === 0 && (
                           <div className="flex flex-col items-center justify-center h-full text-gray-300 gap-2">

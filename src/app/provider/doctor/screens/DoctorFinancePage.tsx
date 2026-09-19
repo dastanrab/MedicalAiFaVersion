@@ -9,6 +9,7 @@ import {
     ChartTooltip,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, formatPrice } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from "../store/doctorAuthStore";
 
 interface TransactionRow {
@@ -162,7 +163,7 @@ export function DoctorFinancePage() {
             </div>
 
             {loading ? (
-                <div className="text-center text-slate-500 py-10">در حال دریافت اطلاعات...</div>
+                <PanelPageSkeleton />
             ) : (
                 <>
                     {chartData.length > 0 && (

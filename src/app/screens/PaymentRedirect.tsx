@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Skeleton } from '../components/ui/skeleton';
 
 interface PaymentResponse {
     success: boolean;
@@ -106,7 +107,7 @@ export const PaymentRedirect: React.FC<PaymentPageProps> = ({
                 {loading && (
                     <div className="space-y-5">
                         <div className="relative flex justify-center items-center">
-                            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                            <Skeleton className="h-16 w-16 rounded-2xl bg-blue-100" />
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">

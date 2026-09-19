@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ArrowRight, Ban, Headphones, Loader2, Lock } from 'lucide-react';
+import { ArrowRight, Ban, Headphones, Lock } from 'lucide-react';
 import { fetchChatDetails, updateChatStatus, markChatViolation, referToSupport, setTokenGetter } from '../../../services/api';
 import { useAdminAuthStore } from '../../store/adminAuthStore';
+import { AdminPageSkeleton } from '../../components/AdminPageSkeleton';
 import { useAdminDataStore } from '../../store/adminDataStore';
 import { maskPhone, maskSensitiveText, type AdminChatMessage } from '../../config/chatOptions';
 
@@ -60,7 +61,7 @@ export function AdminChatDetail() {
         addActivity({ type: 'chat', message: `ارجاع گفتگو #${roomId} به پشتیبانی` });
     };
 
-    if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>;
+    if (loading) return <AdminPageSkeleton />;
 
     return (
         <div className="space-y-6">

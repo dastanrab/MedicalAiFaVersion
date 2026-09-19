@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AppBar } from "../components/AppBar";
+import { Skeleton } from "../components/ui/skeleton";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -442,7 +443,10 @@ export function PharmacyFlow() {
                                         آدرس تحویل
                                     </label>
                                     {isLoadingAddresses ? (
-                                        <div className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">در حال بارگیری آدرس‌ها...</div>
+                                        <div className="space-y-2 rounded-2xl bg-slate-50 p-4">
+                                            <Skeleton className="h-4 w-32 bg-slate-200/70" />
+                                            <Skeleton className="h-11 w-full rounded-xl bg-slate-200/60" />
+                                        </div>
                                     ) : addresses.length === 0 ? (
                                         <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-700 ring-1 ring-amber-200">
                                             هیچ آدرسی ثبت نشده است. لطفاً ابتدا در پروفایل خود آدرس اضافه کنید.

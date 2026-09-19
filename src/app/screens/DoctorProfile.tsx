@@ -361,8 +361,8 @@ export function DoctorProfile() {
 
   if (loading) {
     return (
-        <div className="h-full flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
-          <PageLoader />
+        <div className="h-full bg-gradient-to-b from-blue-50 to-white">
+          <PageLoader variant="form" showAppBar backTo="/doctors" />
         </div>
     );
   }

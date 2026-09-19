@@ -4,6 +4,7 @@ import { useDoctorAuthStore } from '../doctor/store/doctorAuthStore';
 import { useProviderAuthStore } from '../store/providerAuthStore';
 import type { ProviderRole } from '../config/providerNav';
 import {AppRole, fetchWithAuth} from "../utils/apiClient";
+import { PanelPageSkeleton } from '../../components/PageSkeleton';
 
 interface ProfileGuardProps {
     role: ProviderRole;
@@ -94,12 +95,8 @@ export function ProfileGuard({ role, children }: ProfileGuardProps) {
     // تا زمانی که وضعیت بررسی نشده، کامپوننت‌های داخلی را رندر نکن و لودینگ نشان بده
     if (!isReady) {
         return (
-            <div className="flex h-screen w-full items-center justify-center bg-gray-50/50">
-                <div className="flex flex-col items-center gap-3">
-                    {/* می‌توانید از کامپوننت Spinner اختصاصی خودتان استفاده کنید */}
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                    <span className="text-sm font-medium text-gray-600">در حال احراز هویت...</span>
-                </div>
+            <div className="h-screen w-full overflow-y-auto bg-gray-50/50 p-6">
+                <PanelPageSkeleton />
             </div>
         );
     }

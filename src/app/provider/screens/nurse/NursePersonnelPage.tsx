@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, X } from 'lucide-react';
 import { PageHeader, EmptyState } from '../../components';
-import { Spinner } from '../../../components/PageLoader';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { AddPersonnelModal } from '../../components/AddPersonnelModal';
 import {
     createNursePersonnel,
@@ -346,9 +346,7 @@ export function NursePersonnelPage() {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-12">
-                    <Spinner />
-                </div>
+                <PanelPageSkeleton />
             ) : transformedItems.length === 0 ? (
                 <EmptyState message="پرسنلی ثبت نشده است." />
             ) : filtered.length === 0 ? (

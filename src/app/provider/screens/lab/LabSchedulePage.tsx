@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Eye } from 'lucide-react';
 import { JalaliCalendar } from '../../components/JalaliCalendar';
 import { EmptyState, PageHeader, StatusBadge } from '../../components';
+import { Skeleton } from '../../../components/ui/skeleton';
 import { useLabStore } from '../../store/labStore';
 import { useProviderSession } from '../../store/providerAuthStore';
 import { labStatusLabels, labStatusStyles } from '../../config/statusOptions';
@@ -107,8 +108,12 @@ export function LabSchedulePage() {
             <div className="grid gap-6 lg:grid-cols-2">
                 <div className="relative">
                     {loading && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-sm">
-                            <p className="text-sm font-medium text-slate-600">در حال دریافت تقویم...</p>
+                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70">
+                            <div className="w-full max-w-xs space-y-3 p-6">
+                                <Skeleton className="h-8 w-full rounded-xl bg-slate-200/80" />
+                                <Skeleton className="h-40 w-full rounded-2xl bg-slate-200/60" />
+                                <Skeleton className="h-8 w-2/3 rounded-xl bg-slate-200/70" />
+                            </div>
                         </div>
                     )}
                     <JalaliCalendar

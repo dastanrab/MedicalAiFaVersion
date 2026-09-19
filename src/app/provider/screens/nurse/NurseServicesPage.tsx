@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Pencil } from 'lucide-react';
 import { PageHeader, EmptyState, formatPrice } from '../../components';
-import { Spinner } from '../../../components/PageLoader';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { AddEditServiceModal } from '../../components/AddEditServiceModal';
 import {
     createNurseService,
@@ -88,9 +88,7 @@ export function NurseServicesPage() {
             />
 
             {loading ? (
-                <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-12">
-                    <Spinner />
-                </div>
+                <PanelPageSkeleton />
             ) : items.length === 0 ? (
                 <EmptyState message="خدمتی ثبت نشده است." />
             ) : (

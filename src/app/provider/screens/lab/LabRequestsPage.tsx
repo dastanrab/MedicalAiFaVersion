@@ -8,6 +8,7 @@ import {
     EmptyState,
     formatPrice,
 } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { AddLabResultModal } from '../../components/AddLabResultModal';
 import { useLabStore } from '../../store/labStore';
 import { useProviderSession } from '../../store/providerAuthStore';
@@ -198,11 +199,7 @@ export function LabRequestsPage() {
     }, [requests, search, status, type]);
 
     if (loading) {
-        return (
-            <div className="flex h-40 items-center justify-center text-slate-500">
-                در حال دریافت اطلاعات...
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     return (

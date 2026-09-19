@@ -5,6 +5,7 @@ import { useAdminAuthStore } from '../store/adminAuthStore';
 import { useAdminDataStore, type AdminProvider } from '../store/adminDataStore';
 import { fetchAllAdminUsers } from '../services/adminApi';
 import { userTypeLabels } from '../config/userOptions';
+import { CardGridSkeleton } from '../../components/PageSkeleton';
 
 const typeLabels: Record<AdminProvider['type'], string> = {
     doctor: 'پزشک',
@@ -93,8 +94,12 @@ export function AdminProviders() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {syncing && <p className="col-span-full text-sm text-slate-400">در حال همگام‌سازی با API کاربران...</p>}
-                {filtered.map((p) => (
+                {syncing && filtered.length === 0 ? (
+                    <div className="col-span-full">
+                        <CardGridSkeleton count={6} />
+                    </div>
+                ) : (
+                    filtered.map((p) => (
                     <div key={p.id} className="rounded-2xl border border-slate-200 bg-white p-5">
                         <div className="flex items-start justify-between">
                             <div>
@@ -120,7 +125,8 @@ export function AdminProviders() {
                             </button>
                         </div>
                     </div>
-                ))}
+                ))
+                )}
             </div>
         </div>
     );

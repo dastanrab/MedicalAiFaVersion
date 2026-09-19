@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { AppBar } from '../components/AppBar';
-import { PageLoader } from '../components/PageLoader';
+import { DoctorListSkeleton } from '../components/PageSkeleton';
 import { useAuthStore } from "../store/authStore";
 
 interface Doctor {
@@ -214,8 +214,9 @@ export function DoctorList() {
 
   if (loading) {
     return (
-        <div className="h-full bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-          <PageLoader />
+        <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto pb-24 text-right font-[YekanBakhFaNum]">
+          <AppBar backTo="/home" />
+          <DoctorListSkeleton />
         </div>
     );
   }

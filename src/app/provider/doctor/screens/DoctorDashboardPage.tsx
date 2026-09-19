@@ -17,6 +17,7 @@ import {
     type ChartConfig,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, StatusBadge, formatPrice } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import {
     doctorAppointmentStatusLabels,
     doctorAppointmentStatusStyles,
@@ -149,11 +150,7 @@ export function DoctorDashboardPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (error || !data) {

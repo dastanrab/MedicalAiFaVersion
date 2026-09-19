@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toGregorian, toJalaali } from 'jalaali-js';
 import { PageHeader } from '../../components';
+import { Skeleton } from '../../../components/ui/skeleton';
 import { JalaliCalendar } from '../../components/JalaliCalendar';
 import {
     formatJalali,
@@ -314,9 +315,11 @@ export function DoctorSchedulePage() {
                         </div>
 
                         {loadingSlots ? (
-                            <p className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
-                                در حال دریافت اسلات‌ها...
-                            </p>
+                            <div className="flex flex-wrap gap-2 rounded-xl bg-slate-50 px-4 py-3">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <Skeleton key={i} className="h-8 w-16 rounded-lg bg-slate-200/70" />
+                                ))}
+                            </div>
                         ) : slots.length === 0 ? (
                             <p className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
                                 برای این روز اسلاتی ثبت نشده است
@@ -362,7 +365,11 @@ export function DoctorSchedulePage() {
                         <p className="mb-4 text-sm font-semibold text-slate-700">نوبت‌های این روز</p>
 
                         {loadingSlots ? (
-                            <p className="text-sm text-slate-500">در حال دریافت نوبت‌ها...</p>
+                            <div className="space-y-2">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <Skeleton key={i} className="h-10 w-full rounded-xl bg-slate-200/70" />
+                                ))}
+                            </div>
                         ) : dayAppointments.length === 0 ? (
                             <p className="text-sm text-slate-500">نوبتی ثبت نشده</p>
                         ) : (

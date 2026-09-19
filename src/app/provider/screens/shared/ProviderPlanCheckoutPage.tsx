@@ -10,6 +10,7 @@ import {
     X,
 } from 'lucide-react';
 import { PageHeader, formatPrice } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import type { ProviderRole } from '../../config/providerNav';
 import { providerPath } from '../../config/providerNav';
 import {
@@ -157,11 +158,7 @@ export function ProviderPlanCheckoutPage({ role }: ProviderPlanCheckoutPageProps
     };
 
     if (!plan && !vipPackage) {
-        return (
-            <div className="flex min-h-[40vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     return (

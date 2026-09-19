@@ -18,6 +18,7 @@ import {
     FileSpreadsheet,
 } from 'lucide-react';
 import { iranProvinces, iranCitiesByProvince } from '../../data/iranLocations';
+import { TableRowsSkeleton } from '../../components/PageSkeleton';
 import {
     appointmentStatusLabels,
     appointmentStatusStyles,
@@ -536,11 +537,7 @@ export function AdminAppointments() {
                         </thead>
                         <tbody>
                         {loading ? (
-                            <tr>
-                                <td colSpan={7} className="px-4 py-12 text-center">
-                                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-500" />
-                                </td>
-                            </tr>
+                            <TableRowsSkeleton rows={8} cols={7} />
                         ) : appointments.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-4 py-12 text-center text-slate-400">

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router';
-import { Eye, Loader2, List, Calendar as CalendarIcon } from 'lucide-react';
+import { Eye, List, Calendar as CalendarIcon } from 'lucide-react';
 import { toGregorian, toJalaali } from 'jalaali-js';
 import {
     FilterSelect,
@@ -20,6 +20,7 @@ import {
     doctorAppointmentStatusStyles,
 } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from "../store/doctorAuthStore";
 import {fetchWithAuth} from "../../utils/apiClient";
 
@@ -174,11 +175,7 @@ export function DoctorAppointmentsPage() {
     }, [appointments, search, filter, viewMode, selectedGregorianDate]);
 
     if (isLoading) {
-        return (
-            <div className="flex min-h-[400px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (error) {

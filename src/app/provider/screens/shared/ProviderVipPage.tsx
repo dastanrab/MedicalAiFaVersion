@@ -11,6 +11,7 @@ import {
 } from '../../../components/ui/chart';
 import { Sparkles, Power, Wallet, Search, Trash2, ShieldCheck, CreditCard, CheckCircle2 } from 'lucide-react';
 import { PageHeader, formatPrice } from '../../components';
+import { ListRowsSkeleton, CardGridSkeleton } from '../../../components/PageSkeleton';
 import { ProviderModal } from '../../components/ProviderModal';
 import type { ProviderRole } from '../../config/providerNav';
 import { providerPath } from '../../config/providerNav';
@@ -386,9 +387,7 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                     <div>
                         <h3 className="mb-3 mt-6 text-sm font-bold text-slate-800">کمپین‌های کلمات کلیدی من</h3>
                         {isLoading ? (
-                            <p className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                                در حال دریافت اطلاعات...
-                            </p>
+                            <ListRowsSkeleton rows={4} />
                         ) : myKeywords.length === 0 ? (
                             <p className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                                 هنوز کلمه‌ای انتخاب نکرده‌اید.
@@ -451,7 +450,7 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                     <div className="rounded-2xl border border-slate-200 bg-white p-5">
                         <h3 className="mb-3 text-sm font-bold text-slate-800">ارتقای سطح VIP</h3>
                         {plans.length === 0 ? (
-                            <p className="text-xs text-slate-500">در حال دریافت سطوح...</p>
+                            <CardGridSkeleton count={4} />
                         ) : (
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                 {plans.map((plan) => {

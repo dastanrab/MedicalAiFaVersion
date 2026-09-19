@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
+import { ListRowsSkeleton, OrdersPageSkeleton } from '../components/PageSkeleton';
 import { Card } from '../components/ui/card';
 import {
     Sheet,
@@ -327,10 +328,7 @@ export function OrdersPage() {
         return (
             <div className={pageClass}>
                 <AppBar backTo="/home" />
-                <div className="flex flex-col items-center justify-center h-full pt-24">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                    <p className="mt-3 text-sm text-gray-500">در حال بارگذاری سفارش‌ها…</p>
-                </div>
+                <OrdersPageSkeleton />
             </div>
         );
     }
@@ -841,11 +839,7 @@ function OrderDetailSheet({
                 </SheetHeader>
 
                 <div className="mt-5 space-y-3">
-                    {detailLoading && (
-                        <div className="flex items-center justify-center py-4">
-                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                        </div>
-                    )}
+                    {detailLoading && <ListRowsSkeleton rows={4} />}
                     {detailError && (
                         <div className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">
                             {detailError}

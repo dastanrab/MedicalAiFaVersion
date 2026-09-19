@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { PageHeader } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import {useProviderSession} from "../../store/providerAuthStore";
 import type {ProviderRole} from "../../config/providerNav";
 
@@ -60,7 +61,7 @@ export function ProviderReviewsPage({ role }: ProviderFinancePageProps) {
         : 0;
 
     if (loading) {
-        return <div className="p-6 text-center text-slate-500">در حال بارگذاری نظرات...</div>;
+        return <PanelPageSkeleton />;
     }
 
     return (

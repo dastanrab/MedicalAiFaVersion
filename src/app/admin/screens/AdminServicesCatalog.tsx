@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { HeartPulse, Plus, Trash2, Loader2 } from 'lucide-react';
+import { HeartPulse, Plus, Trash2 } from 'lucide-react';
 import { Switch } from '../../components/ui/switch';
+import { CardGridSkeleton } from '../../components/PageSkeleton';
 import {useAdminAuthStore} from "../store/adminAuthStore";
 
 
@@ -116,9 +117,7 @@ export function AdminServicesCatalog() {
             </div>
 
             {isLoading ? (
-                <div className="flex justify-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                </div>
+                <CardGridSkeleton count={4} />
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                     {catalog.map((item) => (

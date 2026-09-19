@@ -16,6 +16,8 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { LocationMap, MASHHAD_FALLBACK } from "./LocationMap";
+import { DialogSkeleton } from "./PageSkeleton";
+import { Skeleton } from "./ui/skeleton";
 
 export type ProviderReview = {
   author: string;
@@ -30,6 +32,7 @@ export type ProviderServiceItem = {
 };
 
 export type ProviderDetails = {
+  id?: string | number;
   name: string;
   address: string;
   description: string;
@@ -79,6 +82,7 @@ export function ProviderDetailsDialog({
                                         open,
                                         onOpenChange,
                                         details,
+                                        loading = false,
                                         accent = "emerald",
                                         infoTitle,
                                         servicesTitle,
@@ -87,6 +91,7 @@ export function ProviderDetailsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   details: ProviderDetails | null;
+  loading?: boolean;
   accent?: Accent;
   infoTitle: string;
   servicesTitle: string;
@@ -104,7 +109,19 @@ export function ProviderDetailsDialog({
             dir="rtl"
             className="flex max-h-[90dvh] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-3xl border-0 bg-white p-0 text-right shadow-2xl [&>button]:left-4 [&>button]:right-auto [&>button]:text-white [&>button]:opacity-100 sm:max-w-md"
         >
-          {details && (
+          {loading || !details ? (
+              <>
+                <div className={`bg-gradient-to-l ${styles.header} px-6 py-6 text-white`}>
+                  <Skeleton className="mb-4 h-12 w-12 rounded-2xl bg-white/25" />
+                  <DialogHeader className="text-right sm:text-right">
+                    <DialogTitle className="sr-only">{infoTitle}</DialogTitle>
+                    <Skeleton className="h-5 w-40 bg-white/30" />
+                    <Skeleton className="mt-2 h-3 w-56 bg-white/20" />
+                  </DialogHeader>
+                </div>
+                <DialogSkeleton />
+              </>
+          ) : (
               <>
                 <div className={`bg-gradient-to-l ${styles.header} px-6 py-6 text-white`}>
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30">

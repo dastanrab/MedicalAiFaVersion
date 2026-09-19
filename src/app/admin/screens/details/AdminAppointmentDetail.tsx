@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ArrowRight, Loader2, Save } from 'lucide-react';
+import { ArrowRight, Save } from 'lucide-react';
 import {
     getAppointmentDetails,
     updateAppointmentStatus,
@@ -8,6 +8,7 @@ import {
     setTokenGetter,
 } from '../../../services/api';
 import { useAdminAuthStore } from '../../store/adminAuthStore';
+import { AdminPageSkeleton } from '../../components/AdminPageSkeleton';
 import { useAdminDataStore } from '../../store/adminDataStore';
 import { saveAppointmentNotes } from '../../services/adminApi';
 import {
@@ -203,11 +204,7 @@ export function AdminAppointmentDetail() {
     };
 
     if (loading) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-            </div>
-        );
+        return <AdminPageSkeleton />;
     }
 
     if (!row) {

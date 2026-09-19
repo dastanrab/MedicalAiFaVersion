@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useAuthStore } from '../store/authStore';
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Skeleton } from '../components/ui/skeleton';
 
 const API_BASE_URL = "https://api.mediraai.com/api/user";
 
@@ -72,8 +73,12 @@ export default function PartnerJoin() {
         <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-pink-50 to-[#FFF9FA] px-6 text-right font-[YekanBakhFaNum]" dir="rtl">
             <div className="w-full max-w-sm rounded-[2.5rem] bg-white p-8 shadow-2xl text-center">
                 {status === 'loading' && (
-                    <div className="flex flex-col items-center py-6">
-                        <Loader2 className="mb-4 h-12 w-12 animate-spin text-pink-500" />
+                    <div className="flex flex-col items-center py-6" aria-busy="true">
+                        <div className="mb-4 w-full space-y-3">
+                            <Skeleton className="mx-auto h-14 w-14 rounded-2xl bg-pink-100" />
+                            <Skeleton className="mx-auto h-5 w-40 bg-slate-200/80" />
+                            <Skeleton className="mx-auto h-4 w-56 bg-slate-200/60" />
+                        </div>
                         <h3 className="text-lg font-bold text-gray-800">لطفاً منتظر بمانید</h3>
                         <p className="mt-2 text-sm text-gray-500">{message}</p>
                     </div>

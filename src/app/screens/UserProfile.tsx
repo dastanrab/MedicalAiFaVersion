@@ -21,7 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
-import { PageLoader } from '../components/PageLoader';
+import { ListRowsSkeleton, ProfilePageSkeleton } from '../components/PageSkeleton';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
@@ -554,7 +554,12 @@ function ProfileScrollShell({ children }: { children: ReactNode }) {
 }
 
 function LoadingSpinner() {
-  return <PageLoader />;
+  return (
+      <>
+        <AppBar backTo="/home" />
+        <ProfilePageSkeleton />
+      </>
+  );
 }
 
 function ProfileHero() {
@@ -945,11 +950,7 @@ function AddressesSection({
           </button>
         </div>
 
-        {loading && (
-            <p className="mt-3 rounded-xl bg-gray-50/80 px-3 py-4 text-center text-xs text-gray-400">
-              در حال دریافت آدرس‌ها...
-            </p>
-        )}
+        {loading && <div className="mt-3"><ListRowsSkeleton rows={3} /></div>}
 
         {!loading && addresses.length === 0 && !showForm && (
             <p className="mt-3 rounded-xl bg-gray-50/80 px-3 py-4 text-center text-xs text-gray-400">
