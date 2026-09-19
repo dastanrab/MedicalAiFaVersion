@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { Home, RotateCcw } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
-import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
+import {
+  PaymentStatusView,
+  paymentActionClass,
+  type PaymentDetailRow,
+} from '../components/PaymentStatusView';
 import { getGatewayById } from '../data/paymentGateways';
 import { formatPrice } from '../data/userFinanceMockData';
 import { useAuthStore } from '../store/authStore';
@@ -15,7 +18,7 @@ import {
 } from '../lib/checkoutSession';
 
 const pageClass =
-  'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
+  'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-[radial-gradient(ellipse_at_top,_#e0f2fe_0%,_#f8fafc_45%,_#ffffff_100%)] pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
 
 type CallbackState = 'loading' | 'success' | 'failed';
 
@@ -90,7 +93,6 @@ export function PaymentCallbackPage() {
             setState('success');
           }
         } else {
-          // سفارش / شارژ کیف پول — فعلاً شبیه‌سازی موفق
           await new Promise((r) => setTimeout(r, 700));
           if (!cancelled) {
             setRefId(createMockRefId());
@@ -121,104 +123,88 @@ export function PaymentCallbackPage() {
     navigate(session?.returnPath || '/finance', { replace: true });
   };
 
+  const returnPath = session?.returnPath || '/finance';
+
+  const details = useMemo(() => {
+    const rows: PaymentDetailRow[] = [];
+    if (state === 'success' && refId) {
+      rows.push({ label: 'شماره پیگیری', value: refId, mono: true, copyValue: refId, emphasize: true });
+    }
+    if (authority) {
+      rows.push({ label: 'کد مرجع', value: authority, mono: true });
+    }
+    if (gateway) {
+      rows.push({
+        label: 'درگاه',
+        value: `${gateway.name}${gateway.isSample ? ' (نمونه)' : ''}`,
+      });
+    }
+    if (amount > 0) {
+      rows.push({
+        label: 'مبلغ',
+        value: `${formatPrice(amount)} تومان`,
+        emphasize: true,
+      });
+    }
+    return rows;
+  }, [amount, authority, gateway, refId, state]);
+
   return (
     <div className={pageClass}>
-      <AppBar backTo={session?.returnPath || '/finance'} />
+      <AppBar backTo={returnPath} />
 
-      <div className="mx-auto w-full max-w-lg px-3 pb-6 pt-24 sm:px-4" dir="rtl">
-        <Card className="gap-0 rounded-3xl border border-gray-100 bg-white p-6 text-center shadow-sm">
-          {state === 'loading' && (
-            <>
-              <Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-500" />
-              <h1 className="mt-4 text-lg font-bold text-gray-900">در حال تأیید پرداخت...</h1>
-              <p className="mt-2 text-sm text-gray-500">لطفاً چند لحظه صبر کنید</p>
-            </>
-          )}
+      <div className="mx-auto w-full max-w-lg px-3 pb-6 pt-24 sm:px-4">
+        {state === 'loading' && (
+          <PaymentStatusView
+            status="loading"
+            title="در حال تأیید پرداخت..."
+            subtitle="لطفاً چند لحظه صبر کنید؛ نتیجه تراکنش در حال بررسی است."
+          />
+        )}
 
-          {state === 'success' && (
-            <>
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-                <CheckCircle2 className="h-9 w-9 text-emerald-600" />
-              </div>
-              <h1 className="mt-4 text-lg font-bold text-gray-900">پرداخت با موفقیت انجام شد</h1>
-              <p className="mt-2 text-sm text-gray-500">
-                {session?.title ?? 'سفارش شما ثبت و پرداخت شد'}
-              </p>
-
-              <div className="mt-5 space-y-2 rounded-2xl bg-gray-50 p-4 text-sm text-gray-700">
-                {refId && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">شماره پیگیری</span>
-                    <span className="font-bold" dir="ltr">
-                      {refId}
-                    </span>
-                  </div>
-                )}
-                {authority && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">Authority</span>
-                    <span className="truncate font-mono text-xs" dir="ltr">
-                      {authority}
-                    </span>
-                  </div>
-                )}
-                {gateway && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">درگاه</span>
-                    <span>
-                      {gateway.name}
-                      {gateway.isSample ? ' (نمونه)' : ''}
-                    </span>
-                  </div>
-                )}
-                {amount > 0 && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">مبلغ</span>
-                    <span className="font-bold">{formatPrice(amount)} تومان</span>
-                  </div>
-                )}
-              </div>
-
-              <Button type="button" onClick={goHome} className="mt-6 h-11 w-full">
+        {state === 'success' && (
+          <PaymentStatusView
+            status="success"
+            title="پرداخت با موفقیت انجام شد"
+            subtitle={session?.title ?? 'سفارش شما ثبت و پرداخت شد'}
+            details={details}
+            primaryAction={
+              <button type="button" onClick={goHome} className={paymentActionClass.success}>
+                <Home className="h-4 w-4" />
                 بازگشت
-              </Button>
-            </>
-          )}
+              </button>
+            }
+          />
+        )}
 
-          {state === 'failed' && (
-            <>
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
-                <XCircle className="h-9 w-9 text-red-600" />
-              </div>
-              <h1 className="mt-4 text-lg font-bold text-gray-900">پرداخت ناموفق بود</h1>
-              <p className="mt-2 text-sm text-gray-500">{errorMessage}</p>
-              <div className="mt-6 flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => navigate(session?.returnPath || '/finance', { replace: true })}
-                >
-                  انصراف
-                </Button>
-                <Button
-                  type="button"
-                  className="flex-1"
-                  onClick={() => {
-                    if (session) {
-                      // session cleared — user should re-enter from source
-                      navigate(session.returnPath || '/finance', { replace: true });
-                    } else {
-                      navigate('/finance', { replace: true });
-                    }
-                  }}
-                >
-                  بازگشت
-                </Button>
-              </div>
-            </>
-          )}
-        </Card>
+        {state === 'failed' && (
+          <PaymentStatusView
+            status="failed"
+            title="پرداخت ناموفق بود"
+            subtitle={errorMessage ?? 'تراکنش تکمیل نشد'}
+            details={details.length > 0 ? details : undefined}
+            notice="اگر مبلغی از حساب شما کسر شده، معمولاً تا ۷۲ ساعت توسط بانک مبدأ برگشت داده می‌شود."
+            primaryAction={
+              <button
+                type="button"
+                onClick={() => navigate(returnPath, { replace: true })}
+                className={paymentActionClass.danger}
+              >
+                <RotateCcw className="h-4 w-4" />
+                تلاش مجدد
+              </button>
+            }
+            secondaryAction={
+              <button
+                type="button"
+                onClick={() => navigate(returnPath, { replace: true })}
+                className={paymentActionClass.secondary}
+              >
+                انصراف
+              </button>
+            }
+          />
+        )}
       </div>
     </div>
   );
