@@ -562,10 +562,12 @@ export function LabsFlow() {
                                 <p className="text-sm font-bold text-amber-700">آدرسی ثبت نشده است</p>
                                 <button
                                     type="button"
-                                    onClick={() => navigate("/profile")}
+                                    onClick={() =>
+                                        navigate("/addresses", { state: { from: "/services/labs" } })
+                                    }
                                     className="mt-2 text-sm font-bold text-blue-600"
                                 >
-                                    رفتن به پروفایل
+                                    ثبت آدرس
                                 </button>
                             </div>
                         ) : (
@@ -625,7 +627,9 @@ export function LabsFlow() {
 
                                             <button
                                                 type="button"
-                                                onClick={() => navigate("/profile")}
+                                                onClick={() =>
+                                                    navigate("/addresses", { state: { from: "/services/labs" } })
+                                                }
                                                 className="mt-1 text-sm font-bold text-blue-600"
                                             >
                                                 مدیریت آدرس‌ها

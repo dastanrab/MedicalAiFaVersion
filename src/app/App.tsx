@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Login } from './screens/Login';
 import { OTPVerification } from './screens/OTPVerification';
 import { UserProfile } from './screens/UserProfile';
+import { UserAddresses } from './screens/UserAddresses';
 import { SymptomSelection } from './screens/SymptomSelection';
 import { Questionnaire } from './screens/Questionnaire';
 import { AIResults } from './screens/AIResults';
@@ -134,6 +135,7 @@ function pageLoaderVariantForPath(pathname: string): PageSkeletonVariant {
     if (pathname.startsWith('/symptoms') || pathname.startsWith('/diagnosis')) return 'diagnosis';
     if (pathname.startsWith('/home')) return 'home';
     if (pathname.startsWith('/profile')) return 'profile';
+    if (pathname.startsWith('/addresses')) return 'addresses';
     if (pathname.startsWith('/orders')) return 'orders';
     if (pathname.startsWith('/plans')) return 'plans';
     return 'default';
@@ -382,6 +384,16 @@ function App() {
                         <ProtectedRoute>
                             <AppContainer showNavbar>
                                 <UserProfile />
+                            </AppContainer>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/addresses"
+                    element={
+                        <ProtectedRoute>
+                            <AppContainer showNavbar>
+                                <UserAddresses />
                             </AppContainer>
                         </ProtectedRoute>
                     }

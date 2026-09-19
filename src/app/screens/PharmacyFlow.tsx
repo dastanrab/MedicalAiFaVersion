@@ -449,20 +449,40 @@ export function PharmacyFlow() {
                                         </div>
                                     ) : addresses.length === 0 ? (
                                         <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-700 ring-1 ring-amber-200">
-                                            هیچ آدرسی ثبت نشده است. لطفاً ابتدا در پروفایل خود آدرس اضافه کنید.
+                                            <p>هیچ آدرسی ثبت نشده است. لطفاً ابتدا آدرس خود را اضافه کنید.</p>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    navigate("/addresses", { state: { from: "/services/pharmacy" } })
+                                                }
+                                                className="mt-2 text-sm font-bold text-emerald-700"
+                                            >
+                                                ثبت آدرس
+                                            </button>
                                         </div>
                                     ) : (
-                                        <select
-                                            value={selectedAddressId || ""}
-                                            onChange={(e) => setSelectedAddressId(Number(e.target.value))}
-                                            className="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none"
-                                        >
-                                            {addresses.map((addr) => (
-                                                <option key={addr.id} value={addr.id}>
-                                                    {addr.title || addr.address}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="space-y-2">
+                                            <select
+                                                value={selectedAddressId || ""}
+                                                onChange={(e) => setSelectedAddressId(Number(e.target.value))}
+                                                className="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none"
+                                            >
+                                                {addresses.map((addr) => (
+                                                    <option key={addr.id} value={addr.id}>
+                                                        {addr.title || addr.address}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    navigate("/addresses", { state: { from: "/services/pharmacy" } })
+                                                }
+                                                className="text-xs font-bold text-emerald-700"
+                                            >
+                                                مدیریت آدرس‌ها
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             )}

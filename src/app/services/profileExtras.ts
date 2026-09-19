@@ -3,6 +3,7 @@
 
 export type UserAddress = {
     id: string;
+    serverId?: number;
     title: string;
     details: string;
     isDefault: boolean;

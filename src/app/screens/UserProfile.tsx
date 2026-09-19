@@ -1,12 +1,10 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  LogOut,
   Scale,
   Ruler,
   Calendar,
   MapPin,
-  MapPinned,
   Check,
   Sparkles,
   UserRound,
@@ -15,13 +13,10 @@ import {
   HeartPulse,
   IdCard,
   ShieldCheck,
-  Plus,
-  Trash2,
-  Star,
   type LucideIcon,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
-import { ListRowsSkeleton, ProfilePageSkeleton } from '../components/PageSkeleton';
+import { ProfilePageSkeleton } from '../components/PageSkeleton';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
@@ -30,11 +25,8 @@ import { useUserStore } from '../store/useUserStore';
 import { isValidNationalCode, toEnglishDigits } from '../provider/utils/validation';
 import {
   INSURANCE_TYPES,
-  createAddressId,
   loadProfileExtras,
   saveProfileExtras,
-  type ProfileExtras,
-  type UserAddress,
 } from '../services/profileExtras';
 
 const pageClass =
@@ -47,16 +39,6 @@ const selectClass =
     'w-full h-11 rounded-xl px-3 bg-gray-50/80 border-0 text-gray-700 text-sm text-right ring-1 ring-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all cursor-pointer';
 
 const API_BASE_URL = 'https://api.mediraai.com';
-
-type ServerAddress = {
-  id: number;
-  title: string | null;
-  address: string;
-  lat: number | null;
-  lng: number | null;
-  created_at?: string;
-  updated_at?: string;
-};
 
 type ProfileFormData = {
   firstName: string;
@@ -142,15 +124,12 @@ export function UserProfile() {
   const refreshUserProfile = useUserStore((state) => state.fetchProfile);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
-  const { accessToken, logout } = useAuthStore();
+  const { accessToken } = useAuthStore();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [addressLoading, setAddressLoading] = useState(false);
-  const [addressSaving, setAddressSaving] = useState(false);
 
   const [userId, setUserId] = useState<number | null>(null);
-  const [addresses, setAddresses] = useState<UserAddress[]>([]);
 
   const [formData, setFormData] = useState<ProfileFormData>({
     firstName: '',
@@ -176,88 +155,16 @@ export function UserProfile() {
     Accept: 'application/json',
   });
 
-  const serverToLocal = (sa: ServerAddress, isDefault = false): UserAddress => ({
-    id: String(sa.id),
-    serverId: sa.id,
-    title: sa.title ?? 'آدرس',
-    details: sa.address,
-    isDefault,
-  });
+  const persistProfileExtras = () => {
+    if (userId == null) return;
 
-  const buildProfileExtras = (nextAddresses: UserAddress[] = addresses): ProfileExtras | null => {
-    if (userId == null) return null;
-
-    return {
+    const existing = loadProfileExtras(userId);
+    saveProfileExtras(userId, {
+      ...existing,
       nationalCode: toEnglishDigits(formData.nationalCode).replace(/\D/g, ''),
       insuranceType: formData.insuranceType,
       insuranceNumber: toEnglishDigits(formData.insuranceNumber),
-      addresses: nextAddresses,
-    };
-  };
-
-  const persistProfileExtras = (nextAddresses: UserAddress[] = addresses) => {
-    const extras = buildProfileExtras(nextAddresses);
-    if (userId != null && extras) {
-      saveProfileExtras(userId, extras);
-    }
-  };
-
-  const mergeServerAddressesWithLocalDefaults = (
-      serverAddresses: ServerAddress[],
-      savedAddresses: UserAddress[]
-  ) => {
-    const defaultServerId =
-        savedAddresses.find((addr) => addr.isDefault && addr.serverId != null)?.serverId ?? null;
-
-    const mapped = serverAddresses.map((address, index) =>
-        serverToLocal(
-            address,
-            defaultServerId != null ? address.id === defaultServerId : index === 0
-        )
-    );
-
-    if (mapped.length > 0 && !mapped.some((addr) => addr.isDefault)) {
-      mapped[0] = { ...mapped[0], isDefault: true };
-    }
-
-    return mapped;
-  };
-
-  const fetchAddresses = async (savedAddresses: UserAddress[] = []) => {
-    if (!accessToken) return;
-
-    try {
-      setAddressLoading(true);
-
-      const response = await fetch(`${API_BASE_URL}/api/user/addresses`, {
-        method: 'GET',
-        headers: authHeaders(),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'خطا در دریافت آدرس‌ها');
-      }
-
-      const serverAddresses: ServerAddress[] = data.data?.addresses ?? [];
-      const mergedAddresses = mergeServerAddressesWithLocalDefaults(serverAddresses, savedAddresses);
-
-      setAddresses(mergedAddresses);
-
-      if (userId != null) {
-        const extras = buildProfileExtras(mergedAddresses);
-        if (extras) {
-          saveProfileExtras(userId, extras);
-        }
-      }
-    } catch (error) {
-      console.error('خطا در دریافت آدرس‌ها:', error);
-      setErrorMessage('خطا در دریافت آدرس‌ها');
-      setAddresses(savedAddresses);
-    } finally {
-      setAddressLoading(false);
-    }
+    });
   };
 
   const fetchProfile = async () => {
@@ -295,8 +202,6 @@ export function UserProfile() {
           insuranceType: user.insurance_type ?? extras?.insuranceType ?? '',
           insuranceNumber: user.insurance_number ?? extras?.insuranceNumber ?? '',
         });
-
-        await fetchAddresses(extras?.addresses ?? []);
       }
     } catch (error) {
       console.error('خطا در دریافت پروفایل:', error);
@@ -338,7 +243,7 @@ export function UserProfile() {
       const data = await response.json();
 
       if (data.success) {
-        persistProfileExtras(addresses);
+        persistProfileExtras();
         await refreshUserProfile(true);
         const pendingInvite = localStorage.getItem('pending_partner_invite_code');
         if (pendingInvite) {
@@ -391,95 +296,6 @@ export function UserProfile() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const addAddress = async (title: string, details: string) => {
-    if (!accessToken) return;
-    if (!details.trim()) return;
-
-    try {
-      setAddressSaving(true);
-      setErrorMessage('');
-
-      const response = await fetch(`${API_BASE_URL}/api/user/addresses`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({
-          title: title.trim() || 'آدرس جدید',
-          address: details.trim(),
-          lat: null,
-          lng: null,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        const errorMsg = data.errors
-            ? Object.values(data.errors).flat().join('\n')
-            : data.message;
-        setErrorMessage(errorMsg || 'خطا در ثبت آدرس');
-        return false;
-      }
-
-      const createdAddress: ServerAddress = data.data.address;
-      const nextAddress = serverToLocal(createdAddress, addresses.length === 0);
-      const nextAddresses = [...addresses, nextAddress];
-
-      setAddresses(nextAddresses);
-      persistProfileExtras(nextAddresses);
-      return true;
-    } catch (error) {
-      console.error('خطا در ثبت آدرس:', error);
-      setErrorMessage('خطا در ثبت آدرس');
-      return false;
-    } finally {
-      setAddressSaving(false);
-    }
-  };
-
-  const removeAddress = async (id: string) => {
-    if (!accessToken) return;
-
-    const target = addresses.find((a) => a.id === id);
-    if (!target?.serverId) return;
-
-    try {
-      setAddressSaving(true);
-      setErrorMessage('');
-
-      const response = await fetch(`${API_BASE_URL}/api/user/addresses/${target.serverId}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setErrorMessage(data.message || 'خطا در حذف آدرس');
-        return;
-      }
-
-      const remaining = addresses.filter((a) => a.id !== id);
-
-      if (remaining.length > 0 && !remaining.some((a) => a.isDefault)) {
-        remaining[0] = { ...remaining[0], isDefault: true };
-      }
-
-      setAddresses(remaining);
-      persistProfileExtras(remaining);
-    } catch (error) {
-      console.error('خطا در حذف آدرس:', error);
-      setErrorMessage('خطا در حذف آدرس');
-    } finally {
-      setAddressSaving(false);
-    }
-  };
-
-  const setDefaultAddress = (id: string) => {
-    const nextAddresses = addresses.map((a) => ({ ...a, isDefault: a.id === id }));
-    setAddresses(nextAddresses);
-    persistProfileExtras(nextAddresses);
-  };
-
   const availableCities =
       formData.province !== '' ? (iranCitiesByProvince[Number(formData.province)] ?? []) : [];
 
@@ -526,15 +342,6 @@ export function UserProfile() {
               <SaveProfileButton saving={saving} onClick={handleSubmit} />
             </div>
           </Card>
-
-          <AddressesSection
-              addresses={addresses}
-              loading={addressLoading}
-              saving={addressSaving}
-              onAdd={addAddress}
-              onRemove={removeAddress}
-              onSetDefault={setDefaultAddress}
-          />
 
           {/*<button*/}
           {/*    type="button"*/}
@@ -894,170 +701,6 @@ function IdentityInsuranceSection({
           </Field>
         </div>
       </div>
-  );
-}
-
-function AddressesSection({
-                            addresses,
-                            loading,
-                            saving,
-                            onAdd,
-                            onRemove,
-                            onSetDefault,
-                          }: {
-  addresses: UserAddress[];
-  loading: boolean;
-  saving: boolean;
-  onAdd: (title: string, details: string) => Promise<boolean | void>;
-  onRemove: (id: string) => Promise<void>;
-  onSetDefault: (id: string) => void;
-}) {
-  const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState('');
-  const [details, setDetails] = useState('');
-
-  const handleAdd = async () => {
-    if (!details.trim()) return;
-
-    const success = await onAdd(title, details);
-    if (success) {
-      setTitle('');
-      setDetails('');
-      setShowForm(false);
-    }
-  };
-
-  return (
-      <Card
-          dir="rtl"
-          className="mt-3 gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 text-right shadow-[0_2px_16px_rgba(0,0,0,0.06)] sm:p-5"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-            <MapPinned className="h-4 w-4" />
-          </span>
-            <span className="text-sm font-bold text-gray-800">آدرس‌های منتخب</span>
-          </div>
-
-          <button
-              type="button"
-              onClick={() => setShowForm((s) => !s)}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            افزودن آدرس
-          </button>
-        </div>
-
-        {loading && <div className="mt-3"><ListRowsSkeleton rows={3} /></div>}
-
-        {!loading && addresses.length === 0 && !showForm && (
-            <p className="mt-3 rounded-xl bg-gray-50/80 px-3 py-4 text-center text-xs text-gray-400">
-              هنوز آدرسی ثبت نکرده‌اید. آدرس‌های پرکاربرد خود را ذخیره کنید.
-            </p>
-        )}
-
-        {addresses.length > 0 && (
-            <ul className="mt-3 space-y-2">
-              {addresses.map((addr) => (
-                  <li
-                      key={addr.id}
-                      className={`rounded-xl border px-3 py-2.5 transition-colors ${
-                          addr.isDefault ? 'border-blue-200 bg-blue-50/50' : 'border-gray-100 bg-gray-50/60'
-                      }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gray-800">{addr.title}</span>
-                          {addr.isDefault && (
-                              <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600">
-                        <Star className="h-2.5 w-2.5 fill-current" />
-                        پیش‌فرض
-                      </span>
-                          )}
-                        </div>
-                        <p className="mt-1 break-words text-[11px] leading-relaxed text-gray-500">
-                          {addr.details}
-                        </p>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1">
-                        {!addr.isDefault && (
-                            <button
-                                type="button"
-                                onClick={() => onSetDefault(addr.id)}
-                                title="انتخاب به‌عنوان پیش‌فرض"
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                            >
-                              <Star className="h-3.5 w-3.5" />
-                            </button>
-                        )}
-
-                        <button
-                            type="button"
-                            onClick={() => onRemove(addr.id)}
-                            disabled={saving}
-                            title="حذف آدرس"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-              ))}
-            </ul>
-        )}
-
-        {showForm && (
-            <div className="mt-3 space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/30 p-3">
-              <Field label="عنوان آدرس">
-                <Input
-                    placeholder="مثلاً منزل، محل کار"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className={inputClass}
-                />
-              </Field>
-
-              <Field label="نشانی کامل">
-            <textarea
-                rows={3}
-                placeholder="استان، شهر، خیابان، کوچه، پلاک..."
-                value={details}
-                onChange={(e) => setDetails(e.target.value)}
-                className="w-full resize-none rounded-xl border-0 bg-gray-50/80 px-3 py-2.5 text-right text-sm text-gray-800 ring-1 ring-gray-100 placeholder:text-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-            />
-              </Field>
-
-              <div className="flex items-center justify-end gap-2">
-                <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setTitle('');
-                      setDetails('');
-                    }}
-                    className="rounded-full px-4 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100"
-                >
-                  انصراف
-                </button>
-
-                <button
-                    type="button"
-                    onClick={handleAdd}
-                    disabled={!details.trim() || saving}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-500/30 transition-all hover:from-blue-600 hover:to-blue-700 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  {saving ? 'در حال ثبت...' : 'ثبت آدرس'}
-                </button>
-              </div>
-            </div>
-        )}
-      </Card>
   );
 }
 

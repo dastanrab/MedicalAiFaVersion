@@ -13,6 +13,7 @@ export type PageSkeletonVariant =
   | 'doctors'
   | 'doctor-profile'
   | 'profile'
+  | 'addresses'
   | 'orders'
   | 'plans';
 
@@ -630,8 +631,38 @@ export function ProfilePageSkeleton({ className }: { className?: string }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="mt-3 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)] sm:p-5">
+export function AddressesPageSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'mx-auto h-full w-full bg-gradient-to-b from-blue-50 to-white px-3 pb-6 pt-24 font-[YekanBakhFaNum] sm:px-4',
+        className
+      )}
+      dir="rtl"
+      aria-busy="true"
+      aria-label="در حال بارگذاری آدرس‌ها"
+    >
+      <div className="relative mb-4 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-600 to-blue-600 px-4 py-5 shadow-[0_12px_40px_rgba(13,148,136,0.35)] sm:px-5">
+        <div className="pointer-events-none absolute -top-14 -left-14 h-44 w-44 rounded-full bg-white/10 blur-sm" />
+        <div className="pointer-events-none absolute -bottom-12 -right-10 h-36 w-36 rounded-full bg-blue-400/25 blur-sm" />
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="relative shrink-0">
+            <Bone className="h-16 w-16 rounded-2xl bg-white/25 ring-2 ring-white/40" />
+            <Bone className="absolute -bottom-0.5 -left-0.5 h-6 w-6 rounded-full bg-white/40" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <Bone className="h-5 w-24 rounded-full bg-white/20" />
+            <Bone className="h-4 w-36 bg-white/35" />
+            <Bone className="h-3 w-full max-w-[16rem] bg-white/20" />
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)] sm:p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bone className="h-7 w-7 rounded-lg" />
@@ -640,8 +671,14 @@ export function ProfilePageSkeleton({ className }: { className?: string }) {
           <Bone className="h-7 w-24 rounded-full" />
         </div>
         <div className="mt-3 space-y-2">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2.5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                'rounded-xl border px-3 py-2.5',
+                i === 0 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-100 bg-gray-50/60'
+              )}
+            >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex items-center gap-1.5">
@@ -651,7 +688,10 @@ export function ProfilePageSkeleton({ className }: { className?: string }) {
                   <Bone className="h-3 w-full" />
                   <Bone className="h-3 w-2/3" />
                 </div>
-                <Bone className="h-7 w-7 shrink-0 rounded-full" />
+                <div className="flex shrink-0 items-center gap-1">
+                  {i !== 0 && <Bone className="h-7 w-7 rounded-lg" />}
+                  <Bone className="h-7 w-7 rounded-lg" />
+                </div>
               </div>
             </div>
           ))}
@@ -882,6 +922,8 @@ export function PageSkeleton({
       <DoctorProfileSkeleton />
     ) : variant === 'profile' ? (
       <ProfilePageSkeleton />
+    ) : variant === 'addresses' ? (
+      <AddressesPageSkeleton />
     ) : variant === 'orders' ? (
       <OrdersPageSkeleton />
     ) : variant === 'plans' ? (
