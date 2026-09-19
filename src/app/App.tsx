@@ -130,6 +130,7 @@ function ProtectedRoute({ children }) {
 
 function pageLoaderVariantForPath(pathname: string): PageSkeletonVariant {
     if (pathname.startsWith('/doctors')) return 'doctors';
+    if (pathname.startsWith('/doctor/')) return 'doctor-profile';
     if (pathname.startsWith('/symptoms') || pathname.startsWith('/diagnosis')) return 'diagnosis';
     if (pathname.startsWith('/home')) return 'home';
     if (pathname.startsWith('/profile')) return 'profile';

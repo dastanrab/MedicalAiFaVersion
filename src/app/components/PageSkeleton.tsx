@@ -11,6 +11,7 @@ export type PageSkeletonVariant =
   | 'home'
   | 'diagnosis'
   | 'doctors'
+  | 'doctor-profile'
   | 'profile'
   | 'orders'
   | 'plans';
@@ -385,35 +386,163 @@ export function DoctorListSkeleton({ className }: { className?: string }) {
         ))}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
+            className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
           >
             <div className="flex items-start gap-3">
-              <Bone className="h-[72px] w-[72px] shrink-0 rounded-full" />
+              <Bone className="h-14 w-14 shrink-0 rounded-2xl" />
               <div className="min-w-0 flex-1 space-y-2">
-                <Bone className="h-4 w-40" />
-                <Bone className="h-3.5 w-24" />
-                <Bone className="h-3.5 w-32" />
-                <Bone className="h-3.5 w-36" />
+                <Bone className="h-4 w-36" />
+                <Bone className="h-3 w-20" />
               </div>
-              <Bone className="h-10 w-10 shrink-0 rounded-full" />
+              <Bone className="h-8 w-8 shrink-0 rounded-full" />
             </div>
-            <div className="my-3 h-px bg-gray-100" />
-            <div className="mb-3 flex gap-1.5">
-              <Bone className="h-6 w-16 rounded-full" />
-              <Bone className="h-6 w-20 rounded-full" />
-              <Bone className="h-6 w-14 rounded-full" />
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-gray-50 px-2 py-2">
+              <Bone className="mx-auto h-8 w-12" />
+              <Bone className="mx-auto h-8 w-12" />
+              <Bone className="mx-auto h-8 w-12" />
             </div>
-            <Bone className="mb-3 h-10 w-full rounded-full" />
-            <div className="flex items-center justify-between">
-              <Bone className="h-3 w-36" />
-              <Bone className="h-9 w-24 rounded-full" />
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+              <div className="space-y-1.5">
+                <Bone className="h-3 w-36" />
+                <Bone className="h-3 w-24" />
+              </div>
+              <Bone className="h-9 w-20 rounded-full" />
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+export function DoctorProfileSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 font-[YekanBakhFaNum]',
+        className
+      )}
+      dir="rtl"
+      aria-busy="true"
+      aria-label="در حال بارگذاری صفحه پزشک"
+    >
+      <div className="mx-auto max-w-3xl px-4 pt-24 sm:px-6">
+        <div className="mb-6 rounded-xl bg-white p-6 shadow-xl">
+          <div className="mb-6 flex items-start gap-4">
+            <Bone className="h-20 w-20 shrink-0 rounded-2xl sm:h-24 sm:w-24" />
+            <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+              <Bone className="h-5 w-40" />
+              <Bone className="h-3.5 w-24" />
+              <div className="flex items-center gap-2 pt-1">
+                <Bone className="h-3.5 w-16" />
+                <Bone className="h-3 w-3 rounded-full" />
+                <Bone className="h-3.5 w-20" />
+              </div>
+            </div>
+            <Bone className="h-9 w-9 shrink-0 rounded-full" />
+          </div>
+
+          <div className="mb-4 grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-blue-50 p-3">
+              <Bone className="mx-auto mb-1 h-5 w-5 rounded-md bg-blue-200/70" />
+              <Bone className="mx-auto mb-1 h-2.5 w-10 bg-blue-200/50" />
+              <Bone className="mx-auto h-3.5 w-12 bg-blue-200/80" />
+            </div>
+            <div className="rounded-xl bg-green-50 p-3">
+              <Bone className="mx-auto mb-1 h-5 w-5 rounded-md bg-green-200/70" />
+              <Bone className="mx-auto mb-1 h-2.5 w-10 bg-green-200/50" />
+              <Bone className="mx-auto h-3.5 w-12 bg-green-200/80" />
+            </div>
+            <div className="rounded-xl bg-purple-50 p-3">
+              <Bone className="mx-auto mb-1 h-5 w-5 rounded-md bg-purple-200/70" />
+              <Bone className="mx-auto mb-1 h-2.5 w-10 bg-purple-200/50" />
+              <Bone className="mx-auto h-3.5 w-12 bg-purple-200/80" />
+            </div>
+          </div>
+
+          <div className="space-y-2.5 border-t border-gray-100 pt-4">
+            <div className="flex items-start gap-2">
+              <Bone className="mt-0.5 h-5 w-5 shrink-0 rounded-md" />
+              <Bone className="h-4 flex-1" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Bone className="h-5 w-5 shrink-0 rounded-md" />
+              <Bone className="h-4 w-2/3" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl bg-white p-5 shadow-xl">
+          <div className="mb-4 flex items-center gap-2">
+            <Bone className="h-5 w-5 rounded-md" />
+            <Bone className="h-5 w-48" />
+          </div>
+          <Bone className="mb-2 h-3.5 w-20" />
+          <div className="mb-4 flex gap-2 overflow-hidden pb-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Bone
+                key={i}
+                className={`h-9 w-[4.5rem] shrink-0 rounded-xl ${i === 0 ? 'bg-blue-200/80' : ''}`}
+              />
+            ))}
+          </div>
+          <Bone className="mb-2 h-3.5 w-28" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Bone key={i} className="h-12 rounded-xl" />
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <div className="grid h-9 grid-cols-2 gap-[3px] rounded-xl bg-slate-100 p-[3px]">
+            <Bone className="h-full rounded-lg bg-white" />
+            <Bone className="h-full rounded-lg bg-transparent" />
+          </div>
+          <div className="mt-4 rounded-xl bg-white p-5 shadow-lg">
+            <Bone className="mb-3 h-4 w-24" />
+            <div className="mb-4 space-y-1.5">
+              <Bone className="h-3 w-full" />
+              <Bone className="h-3 w-full" />
+              <Bone className="h-3 w-2/3" />
+            </div>
+            <Bone className="mb-2 h-4 w-20" />
+            <div className="mb-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Bone className="h-1.5 w-1.5 rounded-full" />
+                <Bone className="h-3 w-3/4" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Bone className="h-1.5 w-1.5 rounded-full" />
+                <Bone className="h-3 w-2/3" />
+              </div>
+            </div>
+            <Bone className="mb-2 h-4 w-28" />
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Bone className="mt-0.5 h-4 w-4 shrink-0 rounded-md" />
+                <Bone className="h-3 w-1/2" />
+              </div>
+              <div className="flex items-start gap-2">
+                <Bone className="mt-0.5 h-4 w-4 shrink-0 rounded-md" />
+                <Bone className="h-3 w-2/5" />
+              </div>
+              <div className="flex items-start gap-2">
+                <Bone className="mt-0.5 h-4 w-4 shrink-0 rounded-md" />
+                <Bone className="h-3 w-1/3" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <Bone className="h-12 rounded-md" />
+          <Bone className="h-12 rounded-md" />
+        </div>
       </div>
     </div>
   );
@@ -749,6 +878,8 @@ export function PageSkeleton({
       <DiagnosisPageSkeleton />
     ) : variant === 'doctors' ? (
       <DoctorListSkeleton />
+    ) : variant === 'doctor-profile' ? (
+      <DoctorProfileSkeleton />
     ) : variant === 'profile' ? (
       <ProfilePageSkeleton />
     ) : variant === 'orders' ? (

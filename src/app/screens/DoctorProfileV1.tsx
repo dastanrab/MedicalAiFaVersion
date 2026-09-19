@@ -546,7 +546,7 @@ export function DoctorProfileV1() {
     if (loading && Object.keys(availableSlots).length === 0) {
         return (
             <div className="min-h-full bg-gray-50">
-                <PageLoader variant="form" showAppBar backTo="/doctors" />
+                <PageLoader variant="doctor-profile" showAppBar backTo="/doctors" />
             </div>
         );
     }
