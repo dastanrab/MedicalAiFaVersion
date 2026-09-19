@@ -20,6 +20,35 @@ import {
   type ProviderDetails,
 } from '../components/ProviderDetailsDialog';
 
+const DEFAULT_PROVIDER_LOGO = "/logo.svg";
+
+type ListedProvider = ProviderDetails & {
+  city: string;
+  meta: string;
+  image: string | null;
+};
+
+function getProviderImageUrl(provider: Record<string, unknown> | null | undefined): string | null {
+  if (!provider) return null;
+
+  const candidates = [
+    provider.image,
+    provider.image_url,
+    provider.logo,
+    provider.logo_url,
+    provider.avatar,
+    provider.photo,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 // فقط ۴ سرویسی که در فرانت پیاده‌سازی شده‌اند
 const SUPPORTED_SERVICES_MAP: Record<string, { icon: LucideIcon; gradient: string; path: string }> = {
   laboratory: { icon: TestTube, gradient: 'from-sky-500 to-blue-600', path: '/services/labs' },
@@ -37,8 +66,8 @@ export function MedicalServices() {
   const [detailsType, setDetailsType] = useState<'lab' | 'pharmacy' | null>(null);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
 
-  const [labsList, setLabsList] = useState<(ProviderDetails & { city: string; meta: string })[]>([]);
-  const [pharmaciesList, setPharmaciesList] = useState<(ProviderDetails & { city: string; meta: string })[]>([]);
+  const [labsList, setLabsList] = useState<ListedProvider[]>([]);
+  const [pharmaciesList, setPharmaciesList] = useState<ListedProvider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // دریافت لیست سرویس‌های فعال و مراکز
@@ -64,7 +93,7 @@ export function MedicalServices() {
         const providersJson = await providersRes.json();
 
         if (providersJson.status === 'success') {
-          const mapToProvider = (p: any, type: 'lab' | 'pharmacy') => ({
+          const mapToProvider = (p: any, type: 'lab' | 'pharmacy'): ListedProvider => ({
             id: p.provider_id,
             name: p.name || 'بدون نام',
             city: p.city || 'نامشخص',
@@ -78,7 +107,8 @@ export function MedicalServices() {
             lng: 51.3890,
             description: '',
             services: [],
-            recentReviews: []
+            recentReviews: [],
+            image: getProviderImageUrl(p),
           });
 
           setLabsList((providersJson.data.labs || []).map((l: any) => mapToProvider(l, 'lab')));
@@ -221,8 +251,8 @@ export function MedicalServices() {
                           city={lab.city}
                           rating={lab.rating}
                           meta={lab.meta}
-                          icon={SUPPORTED_SERVICES_MAP['laboratory']?.icon || TestTube}
-                          iconBg="bg-sky-50 text-sky-600"
+                          image={lab.image}
+                          iconBg="bg-sky-50"
                           accent="text-sky-600"
                           onClick={() => fetchAndOpenDetails(lab.id, 'lab')}
                       />
@@ -246,8 +276,8 @@ export function MedicalServices() {
                           city={pharmacy.city}
                           rating={pharmacy.rating}
                           meta={pharmacy.meta}
-                          icon={SUPPORTED_SERVICES_MAP['pharmacy']?.icon || Pill}
-                          iconBg="bg-emerald-50 text-emerald-600"
+                          image={pharmacy.image}
+                          iconBg="bg-emerald-50"
                           accent="text-emerald-600"
                           onClick={() => fetchAndOpenDetails(pharmacy.id, 'pharmacy')}
                       />
@@ -316,7 +346,7 @@ function ProviderCard({
                         city,
                         rating,
                         meta,
-                        icon: Icon,
+                        image,
                         iconBg,
                         accent,
                         onClick
@@ -325,19 +355,39 @@ function ProviderCard({
   city: string;
   rating: number;
   meta: string;
-  icon: LucideIcon;
+  image?: string | null;
   iconBg: string;
   accent: string;
   onClick: () => void;
 }) {
+  const [src, setSrc] = useState(image || DEFAULT_PROVIDER_LOGO);
+  const isFallback = !image || src === DEFAULT_PROVIDER_LOGO;
+
+  useEffect(() => {
+    setSrc(image || DEFAULT_PROVIDER_LOGO);
+  }, [image]);
+
   return (
       <button
           onClick={onClick}
           className="w-[260px] flex-none snap-center rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm transition-all active:scale-[0.98]"
       >
         <div className="flex items-start justify-between">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
-            <Icon className="h-5 w-5" />
+          <div
+              className={`flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl ${
+                isFallback ? iconBg : "bg-slate-50 ring-1 ring-slate-100"
+              }`}
+          >
+            <img
+                src={src}
+                alt={name}
+                className={isFallback ? "h-8 w-8 object-contain" : "h-full w-full object-cover"}
+                onError={() => {
+                  if (src !== DEFAULT_PROVIDER_LOGO) {
+                    setSrc(DEFAULT_PROVIDER_LOGO);
+                  }
+                }}
+            />
           </div>
           <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-600">
             <Star className="h-3 w-3 fill-amber-500" />
