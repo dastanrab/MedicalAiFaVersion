@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { useWizardStep } from "../navigation/appHistory";
 import { useAuthStore } from "../store/authStore";
 import { AppBar } from "../components/AppBar";
 import { CardGridSkeleton, ListRowsSkeleton } from "../components/PageSkeleton";
@@ -137,7 +138,7 @@ export function LabsFlow() {
     const { accessToken } = useAuthStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useWizardStep(1);
     const [submitted, setSubmitted] = useState(false);
     const [digitalCode, setDigitalCode] = useState("");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);

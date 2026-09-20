@@ -42,7 +42,9 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
 
   const handleNavigate = (path: string) => {
     onOpenChange(false);
-    navigate(path);
+    if (location.pathname !== path) {
+      navigate(path);
+    }
   };
 
   const handleLogout = () => {

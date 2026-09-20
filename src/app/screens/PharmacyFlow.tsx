@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useWizardStep } from "../navigation/appHistory";
 import { AppBar } from "../components/AppBar";
 import { Skeleton } from "../components/ui/skeleton";
 import { Button } from "../components/ui/button";
@@ -44,7 +45,7 @@ export function PharmacyFlow() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { accessToken, user } = useAuthStore();
 
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useWizardStep(1);
     const [submitted, setSubmitted] = useState(false);
     const [digitalCode, setDigitalCode] = useState("");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);

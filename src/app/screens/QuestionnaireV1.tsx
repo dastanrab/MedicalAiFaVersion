@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { useWizardStep, goBack } from '../navigation/appHistory';
 import type { SymptomFormState } from './SymptomSelection';
 import { ArrowLeft, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -76,7 +77,7 @@ export function QuestionnaireV1() {
   const location = useLocation();
   const symptomFormState = (location.state as { symptomFormState?: SymptomFormState } | null)
       ?.symptomFormState;
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useWizardStep(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const [medicationDetails, setMedicationDetails] = useState('');
 
@@ -174,9 +175,9 @@ export function QuestionnaireV1() {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else if (symptomFormState) {
-      navigate('/symptoms', { state: symptomFormState });
+      goBack(navigate, '/symptoms', symptomFormState);
     } else {
-      navigate('/symptoms');
+      goBack(navigate, '/symptoms');
     }
   };
 

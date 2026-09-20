@@ -89,6 +89,7 @@ import {useUserStore} from "./store/useUserStore";
 // import CoachesPage from "./screens/CoachesPage";
  import {PharmacyFlow} from "./screens/PharmacyFlow";
 import PartnerJoin from "./screens/PartnerJoin";
+import { NativeBackButton } from "./native/NativeBackButton";
 
 // کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
 function PartnerInviteHandler() {
@@ -250,6 +251,7 @@ function AdminPublicRoute({ children }) {
 function App() {
     return (
         <BrowserRouter>
+            <NativeBackButton />
             <Routes>
                 {/* Redirect root to login */}
                 <Route path="/" element={<Navigate to="/login" replace />} />

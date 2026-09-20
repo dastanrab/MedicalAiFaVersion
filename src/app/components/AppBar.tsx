@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Menu, ChevronLeft } from 'lucide-react';
 import { Chat } from '@mui/icons-material';
 import { AppSidebar } from './AppSidebar';
+import { goBack } from '../navigation/appHistory';
 
 interface AppBarProps {
   showChat?: boolean;
@@ -32,7 +33,7 @@ export function AppBar({ showChat = false, backTo, backState }: AppBarProps) {
           {!showChat && backTo && (
             <button
               type="button"
-              onClick={() => navigate(backTo, backState !== undefined ? { state: backState } : undefined)}
+              onClick={() => goBack(navigate, backTo, backState)}
               className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
               aria-label="بازگشت"
             >

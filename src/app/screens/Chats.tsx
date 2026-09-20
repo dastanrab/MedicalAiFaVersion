@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { PageLoader } from '../components/PageLoader';
+import { goBack } from '../navigation/appHistory';
 import { ListRowsSkeleton } from '../components/PageSkeleton';
 import { useAuthStore } from '../store/authStore';
 
@@ -680,7 +681,7 @@ export function Chats() {
           <div className="px-4 py-3 border-b border-gray-100 space-y-3">
             <div className="flex items-center justify-between">
               <button
-                  onClick={() => navigate('/home')}
+                  onClick={() => goBack(navigate, '/home')}
                   aria-label="بازگشت"
                   className="text-gray-400 hover:text-gray-600"
               >

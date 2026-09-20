@@ -26,7 +26,11 @@ export function Navbar() {
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                if (location.pathname !== item.path) {
+                  navigate(item.path);
+                }
+              }}
               className="flex flex-col items-center gap-1 min-w-0 flex-1 transition-all"
             >
               <div

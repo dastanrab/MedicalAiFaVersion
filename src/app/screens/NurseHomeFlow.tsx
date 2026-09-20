@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useWizardStep } from "../navigation/appHistory";
 import { AppBar } from "../components/AppBar";
 import { CardGridSkeleton } from "../components/PageSkeleton";
 import { Button } from "../components/ui/button";
@@ -115,7 +116,7 @@ export function NurseHomeFlow() {
     const navigate = useNavigate();
     const { accessToken } = useAuthStore();
 
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useWizardStep(1);
     const [submitted, setSubmitted] = useState(false);
 
     // Data states
