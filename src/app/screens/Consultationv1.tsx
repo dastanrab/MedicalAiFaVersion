@@ -481,8 +481,8 @@ export function Consultationv1() {
 
   if (isLoadingProfile) {
     return (
-        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-          <PageLoader />
+        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+          <PageLoader variant="chat" showAppBar />
         </div>
     );
   }

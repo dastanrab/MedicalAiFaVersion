@@ -9,6 +9,7 @@ import {
     type ChartConfig,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, StatusBadge } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { nurseStatusLabels, nurseStatusStyles } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
 import {useProviderSession} from "../../store/providerAuthStore";
@@ -119,11 +120,7 @@ export function NurseDashboard() {
     };
 
     if (loading) {
-        return (
-            <div className="flex h-72 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (error || !data) {

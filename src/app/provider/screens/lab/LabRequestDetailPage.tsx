@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowRight, User, FileText, Activity, Upload, Image as ImageIcon, Trash2, CheckSquare, PlusCircle, Info, FileCheck } from 'lucide-react';
 import { formatPrice } from '../../components';
-import { Spinner } from '../../../components/PageLoader';
+import { PanelPageSkeleton, CardGridSkeleton } from '../../../components/PageSkeleton';
+import { Skeleton } from '../../../components/ui/skeleton';
 import { useProviderSession } from "../../store/providerAuthStore";
 
 const statusLabels: Record<number, string> = {
@@ -363,7 +364,7 @@ export function LabRequestDetailPage() {
         }
     };
 
-    if (loading) return <div className="flex justify-center p-12"><Spinner /></div>;
+    if (loading) return <PanelPageSkeleton />;
     if (error || !request) return <div className="p-8 text-center text-red-500">{error}</div>;
 
     const currentSelectionTotalPrice = availableTests
@@ -480,7 +481,7 @@ export function LabRequestDetailPage() {
                                             title={`مشاهده فایل ${index + 1}`}
                                         >
                                             {downloadingPrescriptionIndex === index ? (
-                                                <Spinner />
+                                                <Skeleton className="h-8 w-8 rounded-lg bg-slate-200/80" />
                                             ) : (
                                                 <>
                                                     <ImageIcon className="h-8 w-8 text-slate-300" />
@@ -516,7 +517,7 @@ export function LabRequestDetailPage() {
                                 </h3>
 
                                 {loadingTests ? (
-                                    <div className="flex justify-center p-6"><Spinner /></div>
+                                    <CardGridSkeleton count={6} />
                                 ) : availableTests.length === 0 ? (
                                     <p className="text-sm text-amber-600 bg-amber-50 p-4 rounded-lg border border-amber-200">هیچ آزمایشی در لیست آزمایشگاه شما تعریف نشده است. ابتدا از بخش مدیریت تست‌ها، آزمایش‌های خود را تعریف کنید.</p>
                                 ) : (
@@ -592,7 +593,7 @@ export function LabRequestDetailPage() {
                                                         className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-green-50 px-3.5 py-2 text-xs font-medium text-green-600 hover:bg-green-100 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-wait"
                                                     >
                                                         {downloadingTestId === test.test_pack_id ? (
-                                                            <Spinner /> /* در صورت نیاز از یک آیکون لودینگ کوچک استفاده کنید یا متن را تغییر دهید */
+                                                            <Skeleton className="h-4 w-4 rounded bg-green-200/80" />
                                                         ) : (
                                                             <FileCheck className="h-4 w-4" />
                                                         )}

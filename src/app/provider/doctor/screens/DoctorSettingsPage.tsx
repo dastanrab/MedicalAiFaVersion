@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { PageHeader } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
 import { Camera, User } from 'lucide-react';
 import {ProvinceCitySelector} from "../../../components/ProvinceCitySelector";
@@ -138,7 +139,7 @@ export function DoctorSettingsPage() {
     };
 
     if (loading) {
-        return <div className="p-6 text-center text-slate-500">در حال دریافت اطلاعات پروفایل...</div>;
+        return <PanelPageSkeleton />;
     }
 
     return (

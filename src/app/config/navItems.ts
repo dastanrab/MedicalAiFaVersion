@@ -12,6 +12,7 @@ import {
   Wallet,
   ClipboardList,
   Brain,
+  MapPinned,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -31,6 +32,7 @@ export const mainNavItems: NavItem[] = [
 export const sidebarNavItems: NavItem[] = [
   ...mainNavItems,
   { icon: User, label: 'پروفایل', path: '/profile' },
+  { icon: MapPinned, label: 'آدرس‌ها', path: '/addresses' },
   { icon: ClipboardList, label: 'سفارش‌ها', path: '/orders' },
   { icon: MessageCircle, label: 'پیام‌ها', path: '/chats' },
  // { icon: Calendar, label: 'تقویم قاعدگی', path: '/period-tracker' },

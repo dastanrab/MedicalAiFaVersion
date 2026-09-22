@@ -11,12 +11,12 @@ import {
     MessageSquare,
     Save,
     CheckCircle,
-    Loader
 } from 'lucide-react';
 import { DoctorAppointmentStatus } from "../data/mockDoctorData";
 import { useDoctorAuthStore } from "../store/doctorAuthStore";
 import { doctorAppointmentStatusLabels, doctorAppointmentStatusStyles } from "../../config/statusOptions";
 import { StatusBadge } from "../../components";
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 
 const API_BASE_URL = 'https://api.mediraai.com/api';
 
@@ -208,11 +208,7 @@ export default function DoctorAppointmentDetailPage() {
     const previousAiDiagnoses = aiDiagnoses.filter(item => !item.is_latest);
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (error || !appointment || !patient) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { PageHeader } from '../../components';
-import { Spinner } from '../../../components/PageLoader';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import {useProviderSession} from "../../store/providerAuthStore";
 
 
@@ -110,11 +110,7 @@ export default function NurseCoveragePage() {
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <Spinner />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     return (

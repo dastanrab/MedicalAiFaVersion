@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { useWizardStep } from "../navigation/appHistory";
 import { AppBar } from "../components/AppBar";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -131,7 +132,7 @@ export function RadiologyFlow() {
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useWizardStep(1);
     const [submitted, setSubmitted] = useState(false);
 
     const [prescriptionType, setPrescriptionType] = useState<"digital" | "paper">("digital");

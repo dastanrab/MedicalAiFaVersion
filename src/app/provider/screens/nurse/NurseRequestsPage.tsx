@@ -10,6 +10,7 @@ import {
     Timeline,
     formatPrice,
 } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { ProviderPagination } from '../../components/ProviderPagination';
 import {
     nurseStatusLabels,
@@ -135,9 +136,7 @@ export function NurseRequestsPage() {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-slate-400">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
+                <PanelPageSkeleton />
             ) : result.items.length === 0 ? (
                 <EmptyState message="درخواستی یافت نشد." />
             ) : (
@@ -362,11 +361,7 @@ export function NurseRequestDetailPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white py-16 text-slate-400">
-                <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (!request) return <EmptyState message="درخواست یافت نشد." />;

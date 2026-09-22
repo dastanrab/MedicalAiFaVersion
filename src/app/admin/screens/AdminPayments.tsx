@@ -16,6 +16,7 @@ import {
     Clock,
 } from 'lucide-react';
 import { iranProvinces, iranCitiesByProvince } from '../../data/iranLocations';
+import { TableRowsSkeleton } from '../../components/PageSkeleton';
 import {
     paymentStatusLabels,
     paymentStatusStyles,
@@ -566,11 +567,7 @@ export function AdminPayments() {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center">
-                                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-500" />
-                                    </td>
-                                </tr>
+                                <TableRowsSkeleton rows={8} cols={8} />
                             ) : paged.length === 0 ? (
                                 <tr>
                                     <td colSpan={8} className="px-4 py-12 text-center text-slate-400">

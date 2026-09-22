@@ -18,6 +18,7 @@ import {
     type ChartConfig,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, StatusBadge, formatPrice } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { mockPharmacyRequests } from '../../data/mockData';
 import { pharmacyStatusLabels, pharmacyStatusStyles } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
@@ -133,11 +134,7 @@ export function PharmacyDashboard() {
     };
 
     if (loading) {
-        return (
-            <div className="flex h-72 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (error || !data) {

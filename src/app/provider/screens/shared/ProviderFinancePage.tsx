@@ -8,6 +8,7 @@ import {
     type ChartConfig,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, formatPrice } from '../../components';
+import { TableRowsSkeleton } from '../../../components/PageSkeleton';
 import type { ProviderRole } from '../../config/providerNav';
 import {format} from "date-fns";
 import {useProviderSession} from "../../store/providerAuthStore";
@@ -171,7 +172,7 @@ export function ProviderFinancePage({ role }: ProviderFinancePageProps) {
                     </thead>
                     <tbody>
                     {isLoading ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-slate-500">در حال دریافت اطلاعات...</td></tr>
+                        <TableRowsSkeleton rows={6} cols={5} />
                     ) : rows.length === 0 ? (
                         <tr><td colSpan={5} className="p-4 text-center text-slate-500">تراکنشی در این بازه زمانی یافت نشد.</td></tr>
                     ) : (

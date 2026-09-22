@@ -17,6 +17,7 @@ import {
     type ChartConfig,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, StatusBadge, formatPrice } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { mockChartData } from '../../data/mockData';
 import { useLabStore } from '../../store/labStore';
 import { labStatusLabels, labStatusStyles } from '../../config/statusOptions';
@@ -151,11 +152,7 @@ export function LabDashboard() {
 
     // نمایش بارگذاری اولیه
     if (loading) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <div className="text-slate-500">در حال بارگذاری اطلاعات...</div>
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (error || !profile) {

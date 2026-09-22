@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Wallet, TrendingUp, Plus, X, Loader2 } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis} from 'recharts';
+import { Wallet, TrendingUp, Plus, X } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
     ChartContainer,
     ChartTooltipContent,
@@ -9,6 +9,7 @@ import {
     ChartTooltip,
 } from '../../../components/ui/chart';
 import { KpiCard, PageHeader, formatPrice } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from "../store/doctorAuthStore";
 
 interface TransactionRow {
@@ -192,10 +193,7 @@ export function DoctorFinancePage() {
             </div>
 
             {loading ? (
-                <div className="text-center text-slate-500 py-10 flex flex-col items-center gap-2">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-                    در حال دریافت اطلاعات...
-                </div>
+                <PanelPageSkeleton />
             ) : (
                 <>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Send, FileText, X, Eye, Activity } from 'lucide-react';
 import { PageHeader } from '../../components';
-import { Spinner } from '../../../components/PageLoader';
+import { TableRowsSkeleton } from '../../../components/PageSkeleton';
 import {useProviderSession} from "../../store/providerAuthStore";
 
 interface ResultFile {
@@ -84,11 +84,7 @@ export function LabResultsPage() {
                     </thead>
                     <tbody>
                     {loading ? (
-                        <tr>
-                            <td colSpan={7} className="px-4 py-8">
-                                <Spinner className="mx-auto" />
-                            </td>
-                        </tr>
+                        <TableRowsSkeleton rows={6} cols={7} />
                     ) : results.length === 0 ? (
                         <tr>
                             <td colSpan={7} className="px-4 py-12 text-center text-slate-400">

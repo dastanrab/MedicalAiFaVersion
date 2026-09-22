@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import { PageHeader, formatPrice } from '../../components';
-import { Spinner } from '../../../components/PageLoader';
+import { TableRowsSkeleton } from '../../../components/PageSkeleton';
 import {AddEditLabTestModal, LabTestPayload} from '../../components/AddEditLabTestModal';
 import {useProviderSession} from "../../store/providerAuthStore";
 
@@ -138,11 +138,7 @@ export function LabCatalogPage() {
                     </thead>
                     <tbody>
                     {loading ? (
-                        <tr>
-                            <td colSpan={4} className="px-4 py-8">
-                                <Spinner className="mx-auto" />
-                            </td>
-                        </tr>
+                        <TableRowsSkeleton rows={6} cols={4} />
                     ) : tests.length === 0 ? (
                         <tr>
                             <td colSpan={4} className="px-4 py-8 text-center text-slate-500">

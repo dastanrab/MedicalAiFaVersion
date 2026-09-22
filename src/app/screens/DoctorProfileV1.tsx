@@ -574,7 +574,11 @@ export function DoctorProfileV1() {
     };
 
     if (loading && Object.keys(availableSlots).length === 0) {
-        return <div className="min-h-full flex items-center justify-center bg-gray-50"><PageLoader /></div>;
+        return (
+            <div className="min-h-full bg-gray-50">
+                <PageLoader variant="doctor-profile" showAppBar backTo="/doctors" />
+            </div>
+        );
     }
 
     if (error || !doctorData) {

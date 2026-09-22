@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useWizardStep } from "../navigation/appHistory";
 import { AppBar } from "../components/AppBar";
+import { Skeleton } from "../components/ui/skeleton";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -43,7 +45,7 @@ export function PharmacyFlow() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { accessToken, user } = useAuthStore();
 
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useWizardStep(1);
     const [submitted, setSubmitted] = useState(false);
     const [digitalCode, setDigitalCode] = useState("");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
@@ -442,23 +444,46 @@ export function PharmacyFlow() {
                                         آدرس تحویل
                                     </label>
                                     {isLoadingAddresses ? (
-                                        <div className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">در حال بارگیری آدرس‌ها...</div>
+                                        <div className="space-y-2 rounded-2xl bg-slate-50 p-4">
+                                            <Skeleton className="h-4 w-32 bg-slate-200/70" />
+                                            <Skeleton className="h-11 w-full rounded-xl bg-slate-200/60" />
+                                        </div>
                                     ) : addresses.length === 0 ? (
                                         <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-700 ring-1 ring-amber-200">
-                                            هیچ آدرسی ثبت نشده است. لطفاً ابتدا در پروفایل خود آدرس اضافه کنید.
+                                            <p>هیچ آدرسی ثبت نشده است. لطفاً ابتدا آدرس خود را اضافه کنید.</p>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    navigate("/addresses", { state: { from: "/services/pharmacy" } })
+                                                }
+                                                className="mt-2 text-sm font-bold text-emerald-700"
+                                            >
+                                                ثبت آدرس
+                                            </button>
                                         </div>
                                     ) : (
-                                        <select
-                                            value={selectedAddressId || ""}
-                                            onChange={(e) => setSelectedAddressId(Number(e.target.value))}
-                                            className="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none"
-                                        >
-                                            {addresses.map((addr) => (
-                                                <option key={addr.id} value={addr.id}>
-                                                    {addr.title || addr.address}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="space-y-2">
+                                            <select
+                                                value={selectedAddressId || ""}
+                                                onChange={(e) => setSelectedAddressId(Number(e.target.value))}
+                                                className="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none"
+                                            >
+                                                {addresses.map((addr) => (
+                                                    <option key={addr.id} value={addr.id}>
+                                                        {addr.title || addr.address}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    navigate("/addresses", { state: { from: "/services/pharmacy" } })
+                                                }
+                                                className="text-xs font-bold text-emerald-700"
+                                            >
+                                                مدیریت آدرس‌ها
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             )}

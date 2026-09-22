@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { sidebarNavItems } from '../config/navItems';
 import { useAuthStore } from '../store/authStore';
 import { useUserStore } from '../store/useUserStore';
+import { Skeleton } from './ui/skeleton';
 
 const SAMPLE_PROFILE = {
   firstName: 'علی',
@@ -41,7 +42,9 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
 
   const handleNavigate = (path: string) => {
     onOpenChange(false);
-    navigate(path);
+    if (location.pathname !== path) {
+      navigate(path);
+    }
   };
 
   const handleLogout = () => {
@@ -95,7 +98,11 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
 
               <div className="min-w-0 flex-1 text-white">
                 <p className="text-lg font-bold leading-tight truncate">
-                  {isLoading && !user ? 'در حال دریافت...' : displayName}
+                  {isLoading && !user ? (
+                    <Skeleton className="h-5 w-28 bg-white/30" />
+                  ) : (
+                    displayName
+                  )}
                 </p>
                 <p className="mt-1 text-sm text-white/80 truncate" dir="ltr">
                   {displayPhone || '-'}

@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ChevronLeft,
   HeartPulse,
-  Loader2,
   MapPin,
   Pill,
   Star,
@@ -14,11 +13,41 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppBar } from "../components/AppBar";
+import { MedicalServicesSkeleton } from "../components/PageSkeleton";
 import { useAuthStore } from "../store/authStore";
 import {
   ProviderDetailsDialog,
   type ProviderDetails,
 } from '../components/ProviderDetailsDialog';
+
+const DEFAULT_PROVIDER_LOGO = "/logo.svg";
+
+type ListedProvider = ProviderDetails & {
+  city: string;
+  meta: string;
+  image: string | null;
+};
+
+function getProviderImageUrl(provider: Record<string, unknown> | null | undefined): string | null {
+  if (!provider) return null;
+
+  const candidates = [
+    provider.image,
+    provider.image_url,
+    provider.logo,
+    provider.logo_url,
+    provider.avatar,
+    provider.photo,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
 
 // فقط ۴ سرویسی که در فرانت پیاده‌سازی شده‌اند
 const SUPPORTED_SERVICES_MAP: Record<string, { icon: LucideIcon; gradient: string; path: string }> = {
@@ -37,8 +66,8 @@ export function MedicalServices() {
   const [detailsType, setDetailsType] = useState<'lab' | 'pharmacy' | null>(null);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
 
-  const [labsList, setLabsList] = useState<(ProviderDetails & { city: string; meta: string })[]>([]);
-  const [pharmaciesList, setPharmaciesList] = useState<(ProviderDetails & { city: string; meta: string })[]>([]);
+  const [labsList, setLabsList] = useState<ListedProvider[]>([]);
+  const [pharmaciesList, setPharmaciesList] = useState<ListedProvider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // دریافت لیست سرویس‌های فعال و مراکز
@@ -51,19 +80,20 @@ export function MedicalServices() {
           'Accept': 'application/json'
         };
 
-        // ۱. دریافت سرویس‌ها
-        const servicesRes = await fetch('https://api.mediraai.com/api/user/services', { headers });
+        const [servicesRes, providersRes] = await Promise.all([
+          fetch('https://api.mediraai.com/api/user/services', { headers }),
+          fetch('https://api.mediraai.com/api/user/providers', { headers }),
+        ]);
+
         const servicesJson = await servicesRes.json();
         if (servicesJson.status === 'success') {
           setActiveServices(servicesJson.data);
         }
 
-        // ۲. دریافت لیست آزمایشگاه‌ها و داروخانه‌ها
-        const providersRes = await fetch('https://api.mediraai.com/api/user/providers', { headers });
         const providersJson = await providersRes.json();
 
         if (providersJson.status === 'success') {
-          const mapToProvider = (p: any, type: 'lab' | 'pharmacy') => ({
+          const mapToProvider = (p: any, type: 'lab' | 'pharmacy'): ListedProvider => ({
             id: p.provider_id,
             name: p.name || 'بدون نام',
             city: p.city || 'نامشخص',
@@ -77,7 +107,8 @@ export function MedicalServices() {
             lng: 51.3890,
             description: '',
             services: [],
-            recentReviews: []
+            recentReviews: [],
+            image: getProviderImageUrl(p),
           });
 
           setLabsList((providersJson.data.labs || []).map((l: any) => mapToProvider(l, 'lab')));
@@ -92,10 +123,14 @@ export function MedicalServices() {
 
     if (accessToken) {
       fetchData();
+    } else {
+      setIsLoading(false);
     }
   }, [accessToken]);
 
   const fetchAndOpenDetails = async (providerId: string | number, type: 'lab' | 'pharmacy') => {
+    setDetails(null);
+    setDetailsType(type);
     setIsDetailsLoading(true);
     try {
       const response = await fetch(`https://api.mediraai.com/api/user/providers/${type}/${providerId}`, {
@@ -157,83 +192,72 @@ export function MedicalServices() {
     );
   }
 
+  if (isLoading) {
+    return (
+        <div className="relative h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
+          <AppBar backTo="/home" />
+          <MedicalServicesSkeleton />
+        </div>
+    );
+  }
+
   return (
       <div className="relative h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
         <AppBar backTo="/home" />
 
-        {isDetailsLoading && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm">
-              <div className="flex flex-col items-center rounded-2xl bg-white p-6 shadow-xl">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <p className="mt-4 text-sm font-semibold text-gray-700">در حال دریافت اطلاعات...</p>
-              </div>
-            </div>
-        )}
-
         <div className="px-4 pb-8 pt-24">
           <ServicesHero />
 
-          {isLoading ? (
-              <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
-          ) : (
-              <div className="mb-10 grid grid-cols-2 gap-3">
-                {activeServices
-                    .filter((service) => SUPPORTED_SERVICES_MAP[service.service_key])
-                    .map((service) => {
-                      const uiConfig = SUPPORTED_SERVICES_MAP[service.service_key];
-                      const Icon = uiConfig.icon;
+          <div className="mb-10 grid grid-cols-2 gap-3">
+            {activeServices
+                .filter((service) => SUPPORTED_SERVICES_MAP[service.service_key])
+                .map((service) => {
+                  const uiConfig = SUPPORTED_SERVICES_MAP[service.service_key];
+                  const Icon = uiConfig.icon;
 
-                      return (
-                          <button
-                              key={service.service_key}
-                              type="button"
-                              onClick={() => navigate(uiConfig.path)}
-                              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${uiConfig.gradient} p-4 text-right shadow-[0_6px_24px_rgba(0,0,0,0.12)] transition-all duration-300 hover:shadow-[0_10px_32px_rgba(0,0,0,0.16)] active:scale-[0.98]`}
-                          >
-                            <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-white/10" />
-                            <div className="pointer-events-none absolute -bottom-4 -right-4 h-14 w-14 rounded-full bg-white/10" />
-                            <div className="relative z-10">
-                              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
-                                <Icon className="h-5 w-5 text-white" />
-                              </div>
-                              <p className="text-sm font-bold text-white">{service.name}</p>
-                              <p className="mt-0.5 text-[11px] text-white/80 line-clamp-1">{service.description}</p>
-                              <div className="mt-3 flex items-center gap-0.5 text-[11px] font-medium text-white/90">
-                                <span>ورود</span>
-                                <ChevronLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-                              </div>
-                            </div>
-                          </button>
-                      );
-                    })}
-              </div>
-          )}
+                  return (
+                      <button
+                          key={service.service_key}
+                          type="button"
+                          onClick={() => navigate(uiConfig.path)}
+                          className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${uiConfig.gradient} p-4 text-right shadow-[0_6px_24px_rgba(0,0,0,0.12)] transition-all duration-300 hover:shadow-[0_10px_32px_rgba(0,0,0,0.16)] active:scale-[0.98]`}
+                      >
+                        <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-white/10" />
+                        <div className="pointer-events-none absolute -bottom-4 -right-4 h-14 w-14 rounded-full bg-white/10" />
+                        <div className="relative z-10">
+                          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                            <Icon className="h-5 w-5 text-white" />
+                          </div>
+                          <p className="text-sm font-bold text-white">{service.name}</p>
+                          <p className="mt-0.5 text-[11px] text-white/80 line-clamp-1">{service.description}</p>
+                          <div className="mt-3 flex items-center gap-0.5 text-[11px] font-medium text-white/90">
+                            <span>ورود</span>
+                            <ChevronLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+                          </div>
+                        </div>
+                      </button>
+                  );
+                })}
+          </div>
 
           {isServiceActive('laboratory') && (
               <>
                 <SectionHeader title="آزمایشگاه‌های برتر" onViewAll={() => navigate('/services/labs')} />
-                {isLoading ? (
-                    <p className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      در حال دریافت لیست...
-                    </p>
-                ) : (
-                    <HorizontalScroll>
-                      {labsList.map((lab, idx) => (
-                          <ProviderCard
-                              key={lab.id || `lab-${idx}`}
-                              name={lab.name}
-                              city={lab.city}
-                              rating={lab.rating}
-                              meta={lab.meta}
-                              icon={SUPPORTED_SERVICES_MAP['laboratory']?.icon || TestTube}
-                              iconBg="bg-sky-50 text-sky-600"
-                              accent="text-sky-600"
-                              onClick={() => fetchAndOpenDetails(lab.id, 'lab')}
-                          />
-                      ))}
-                    </HorizontalScroll>
-                )}
+                <HorizontalScroll>
+                  {labsList.map((lab, idx) => (
+                      <ProviderCard
+                          key={lab.id || `lab-${idx}`}
+                          name={lab.name}
+                          city={lab.city}
+                          rating={lab.rating}
+                          meta={lab.meta}
+                          image={lab.image}
+                          iconBg="bg-sky-50"
+                          accent="text-sky-600"
+                          onClick={() => fetchAndOpenDetails(lab.id, 'lab')}
+                      />
+                  ))}
+                </HorizontalScroll>
               </>
           )}
 
@@ -244,39 +268,34 @@ export function MedicalServices() {
                     className="mt-10"
                     onViewAll={() => navigate('/services/pharmacy')}
                 />
-                {isLoading ? (
-                    <p className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      در حال دریافت لیست...
-                    </p>
-                ) : (
-                    <HorizontalScroll>
-                      {pharmaciesList.map((pharmacy, idx) => (
-                          <ProviderCard
-                              key={pharmacy.id || `pharmacy-${idx}`}
-                              name={pharmacy.name}
-                              city={pharmacy.city}
-                              rating={pharmacy.rating}
-                              meta={pharmacy.meta}
-                              icon={SUPPORTED_SERVICES_MAP['pharmacy']?.icon || Pill}
-                              iconBg="bg-emerald-50 text-emerald-600"
-                              accent="text-emerald-600"
-                              onClick={() => fetchAndOpenDetails(pharmacy.id, 'pharmacy')}
-                          />
-                      ))}
-                    </HorizontalScroll>
-                )}
+                <HorizontalScroll>
+                  {pharmaciesList.map((pharmacy, idx) => (
+                      <ProviderCard
+                          key={pharmacy.id || `pharmacy-${idx}`}
+                          name={pharmacy.name}
+                          city={pharmacy.city}
+                          rating={pharmacy.rating}
+                          meta={pharmacy.meta}
+                          image={pharmacy.image}
+                          iconBg="bg-emerald-50"
+                          accent="text-emerald-600"
+                          onClick={() => fetchAndOpenDetails(pharmacy.id, 'pharmacy')}
+                      />
+                  ))}
+                </HorizontalScroll>
               </>
           )}
         </div>
 
         <ProviderDetailsDialog
-            key={details?.id ?? 'provider-details'}
-            open={details !== null}
+            key={details?.id ?? detailsType ?? 'provider-details'}
+            open={isDetailsLoading || details !== null}
+            loading={isDetailsLoading && details === null}
             onOpenChange={(open) => {
               if (!open) {
                 setDetails(null);
                 setDetailsType(null);
+                setIsDetailsLoading(false);
               }
             }}
             details={details}
@@ -327,7 +346,7 @@ function ProviderCard({
                         city,
                         rating,
                         meta,
-                        icon: Icon,
+                        image,
                         iconBg,
                         accent,
                         onClick
@@ -336,19 +355,39 @@ function ProviderCard({
   city: string;
   rating: number;
   meta: string;
-  icon: LucideIcon;
+  image?: string | null;
   iconBg: string;
   accent: string;
   onClick: () => void;
 }) {
+  const [src, setSrc] = useState(image || DEFAULT_PROVIDER_LOGO);
+  const isFallback = !image || src === DEFAULT_PROVIDER_LOGO;
+
+  useEffect(() => {
+    setSrc(image || DEFAULT_PROVIDER_LOGO);
+  }, [image]);
+
   return (
       <button
           onClick={onClick}
           className="w-[260px] flex-none snap-center rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm transition-all active:scale-[0.98]"
       >
         <div className="flex items-start justify-between">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
-            <Icon className="h-5 w-5" />
+          <div
+              className={`flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl ${
+                isFallback ? iconBg : "bg-slate-50 ring-1 ring-slate-100"
+              }`}
+          >
+            <img
+                src={src}
+                alt={name}
+                className={isFallback ? "h-8 w-8 object-contain" : "h-full w-full object-cover"}
+                onError={() => {
+                  if (src !== DEFAULT_PROVIDER_LOGO) {
+                    setSrc(DEFAULT_PROVIDER_LOGO);
+                  }
+                }}
+            />
           </div>
           <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-600">
             <Star className="h-3 w-3 fill-amber-500" />

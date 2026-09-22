@@ -361,8 +361,8 @@ export function DoctorProfile() {
 
   if (loading) {
     return (
-        <div className="h-full flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
-          <PageLoader />
+        <div className="h-full bg-gradient-to-b from-blue-50 to-white">
+          <PageLoader variant="doctor-profile" showAppBar backTo="/doctors" />
         </div>
     );
   }
@@ -714,24 +714,28 @@ export function DoctorProfile() {
                 <h3 className="text-base font-bold text-gray-900 mb-3">درباره پزشک</h3>
                 <p className="text-sm text-gray-600 leading-relaxed mb-4">{doctorData.bio || 'توضیحاتی ثبت نشده است.'}</p>
 
-                <h3 className="text-base font-bold text-gray-900 mb-2">تحصیلات</h3>
-                <ul className="space-y-1 mb-4">
-                  {mockEducation.map((edu: string, index: number) => (
-                      <li key={index} className="text-sm text-gray-600 flex items-center">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full ml-2" />
-                        {edu}
-                      </li>
-                  ))}
-                </ul>
+                <div dir="rtl">
+                  <h3 className="text-base font-bold text-gray-900 mb-2">تحصیلات</h3>
+                  <ul className="space-y-1 mb-4" dir="rtl">
+                    {mockEducation.map((edu: string, index: number) => (
+                        <li key={index} className="text-sm text-gray-600 flex items-center" dir="rtl">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full ml-2" />
+                          {edu}
+                        </li>
+                    ))}
+                  </ul>
+                </div>
 
-                <h3 className="text-base font-bold text-gray-900 mb-2">خدمات تخصصی</h3>
-                <div className="space-y-2">
-                  {mockServices.map((service: string, index: number) => (
-                      <div key={index} className="flex items-start">
-                        <Briefcase className="w-4 h-4 text-blue-500 ml-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-gray-600">{service}</span>
-                      </div>
-                  ))}
+                <div dir="rtl">
+                  <h3 className="text-base font-bold text-gray-900 mb-2">خدمات تخصصی</h3>
+                  <div className="space-y-2" dir="rtl">
+                    {mockServices.map((service: string, index: number) => (
+                        <div key={index} className="flex items-start" dir="rtl">
+                          <Briefcase className="w-4 h-4 text-blue-500 ml-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-sm text-gray-600">{service}</span>
+                        </div>
+                    ))}
+                  </div>
                 </div>
               </Card>
             </TabsContent>

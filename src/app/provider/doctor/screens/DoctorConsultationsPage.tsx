@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { MessageSquare, Clock, Loader2 } from 'lucide-react';
+import { MessageSquare, Clock } from 'lucide-react';
 import { PageHeader, StatusBadge, EmptyState } from '../../components';
-import { Spinner } from '../../../components/PageLoader';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import {
     doctorConsultationStatusLabels,
     doctorConsultationStatusStyles,
@@ -116,11 +116,7 @@ export function DoctorConsultationsPage() {
     const closed = consultations.filter((c) => c.status === 'closed');
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <Spinner />
-            </div>
-        );
+        return <PanelPageSkeleton />;
     }
 
     if (error) {

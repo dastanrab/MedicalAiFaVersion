@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Loader2, ShieldAlert, X } from 'lucide-react';
+import { Skeleton } from '../../../components/ui/skeleton';
 import type { ProviderRole } from '../../config/providerNav';
 import { providerPath } from '../../config/providerNav';
 import { cycleLabel } from '../../data/providerPlans';
@@ -129,7 +129,7 @@ export function ProviderPlanGatewayPage({ role }: ProviderPlanGatewayPageProps) 
 
                         {busy ? (
                             <div className="flex flex-col items-center py-6 text-slate-600">
-                                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                                <Skeleton className="h-10 w-10 rounded-xl bg-slate-200/80" />
                                 <p className="mt-3 text-sm">
                                     {busy === 'success'
                                         ? 'در حال تأیید پرداخت...'

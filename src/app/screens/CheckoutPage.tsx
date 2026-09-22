@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
+import { PageLoader } from '../components/PageLoader';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import {
@@ -122,8 +123,8 @@ export function CheckoutPage() {
     return (
       <div className={pageClass}>
         <AppBar backTo="/finance" />
-        <div className="flex min-h-[50vh] items-center justify-center pt-24">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <div className="pt-20">
+          <PageLoader variant="cards" />
         </div>
       </div>
     );

@@ -12,6 +12,7 @@ import {
     EmptyState,
     formatPrice,
 } from '../../components';
+import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { providerPath } from '../../config/providerNav';
 import { useProviderSession } from "../../store/providerAuthStore";
 import {SecureFileLink} from "../../components/SecureFileLink";
@@ -126,7 +127,7 @@ export function PharmacyRequestsPage() {
                 <FilterSelect label="وضعیت" value={status} onChange={setStatus} options={statusOptions} />
             </div>
             {loading ? (
-                <div className="text-center p-4">در حال بارگذاری...</div>
+                <PanelPageSkeleton />
             ) : filtered.length === 0 ? (
                 <EmptyState message="نسخه‌ای یافت نشد." />
             ) : (
@@ -416,7 +417,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
         }
     };
 
-    if (loading) return <div className="p-6 text-center">در حال بارگذاری اطلاعات...</div>;
+    if (loading) return <PanelPageSkeleton />;
     if (!request) return <EmptyState message="درخواست یافت نشد." />;
 
     const isFreeRequest = request.pharmacy_id === null;   // هنوز رزرو نشده

@@ -19,6 +19,7 @@ import {
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
+import { PageSkeleton } from '../components/PageSkeleton';
 import { useAuthStore } from "../store/authStore";
 import { JalaliCalendarModal, gregorianToJalali, jalaliToGregorian, formatJalaliDate } from "../components/JalaliCalendarModal";
 import { WorkoutModal } from '../components/WorkoutModal';
@@ -734,12 +735,7 @@ export default function PeriodTracker() {
 
                 <div className="px-6 pt-24">
                     {!trackerSettings && !isSetupModalOpen ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="animate-pulse bg-pink-100 h-20 w-20 rounded-full mb-4 flex items-center justify-center">
-                                <Sparkles className="h-10 w-10 text-pink-500" />
-                            </div>
-                            <p className="text-gray-400">در حال دریافت تنظیمات شما...</p>
-                        </div>
+                        <PageSkeleton variant="form" />
                     ) : !trackerSettings && isSetupModalOpen ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-3xl p-6 shadow-sm ring-1 ring-pink-50">
                             <div className="mb-4 rounded-full bg-pink-50 p-6">
