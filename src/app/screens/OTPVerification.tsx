@@ -19,12 +19,38 @@ export function OTPVerification() {
   const [cooldown, setCooldown] = useState(0);
   const { setTokens } = useAuthStore();
 
+  // تایمر ارسال مجدد
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [cooldown]);
 
+  // اضافه شدن Web OTP API برای خواندن خودکار پیامک
+  useEffect(() => {
+    if ('OTPCredential' in window) {
+      const ac = new AbortController();
+
+      navigator.credentials
+          .get({
+            otp: { transport: ['sms'] },
+            signal: ac.signal,
+          })
+          .then((credential) => {
+            if (credential && credential.code) {
+              setOtp(credential.code);
+              // در صورت تمایل می‌توانید اینجا مستقیماً handleVerify را هم صدا بزنید
+              // تا بلافاصله بعد از پر شدن، لاگین انجام شود
+            }
+          })
+          .catch((err) => {
+            console.error('خطا در دریافت خودکار پیامک:', err);
+          });
+
+      // اگر کاربر صفحه را بست، درخواست متوقف شود
+      return () => ac.abort();
+    }
+  }, []);
 
   const handleVerify = async () => {
     if (otp.length !== otpLength) return;
@@ -100,103 +126,100 @@ export function OTPVerification() {
   };
 
   return (
-    <div className="relative h-full overflow-y-auto bg-white" dir="rtl">
-      {/* پس‌زمینه تزئینی بر پایه رنگ برند */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-[rgba(90,200,245,0.16)] to-transparent" />
-      <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[rgba(90,200,245,0.22)] blur-3xl" />
-      <div className="pointer-events-none absolute top-52 -left-28 h-64 w-64 rounded-full bg-[rgba(90,200,245,0.14)] blur-3xl" />
+      <div className="relative h-full overflow-y-auto bg-white" dir="rtl">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-[rgba(90,200,245,0.16)] to-transparent" />
+        <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[rgba(90,200,245,0.22)] blur-3xl" />
+        <div className="pointer-events-none absolute top-52 -left-28 h-64 w-64 rounded-full bg-[rgba(90,200,245,0.14)] blur-3xl" />
 
-      <div className="relative flex min-h-full flex-col px-6 py-8">
-        {/* دکمه بازگشت */}
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(90,200,245,0.3)] bg-white/80 text-gray-600 shadow-sm transition-colors hover:text-[rgb(62,185,238)]"
-          aria-label="بازگشت"
-        >
-          <ArrowRight className="h-5 w-5" />
-        </button>
+        <div className="relative flex min-h-full flex-col px-6 py-8">
+          <button
+              onClick={() => navigate(-1)}
+              className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(90,200,245,0.3)] bg-white/80 text-gray-600 shadow-sm transition-colors hover:text-[rgb(62,185,238)]"
+              aria-label="بازگشت"
+          >
+            <ArrowRight className="h-5 w-5" />
+          </button>
 
-        <div className="flex flex-1 flex-col justify-center">
-          {/* لوگو */}
-          <div className="mb-10 text-center animate-in fade-in slide-in-from-top-4 duration-700">
-            <img
-              src="/logo.svg"
-              alt={appName}
-              className="mx-auto w-40 drop-shadow-sm"
-              draggable={false}
-            />
-          </div>
-
-          {/* کارت تایید کد */}
-          <div className="rounded-3xl border border-[rgba(90,200,245,0.25)] bg-white/80 p-6 shadow-xl shadow-[rgba(90,200,245,0.15)] backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h1 className="mb-1 text-xl text-gray-900">کد تایید را وارد کنید</h1>
-            <p className="text-sm text-gray-500">
-              کد {otpLength.toLocaleString('fa-IR')} رقمی به شماره زیر پیامک شد
-            </p>
-            <button
-              onClick={() => navigate('/login')}
-              className="mt-2 inline-flex items-center gap-1.5 text-sm text-[rgb(62,185,238)]"
-              dir="ltr"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              {phone || '09123456789'}
-            </button>
-
-            <div className="mt-6 space-y-5">
-              <div dir="ltr" className="flex justify-center">
-                <InputOTP
-                  maxLength={otpLength}
-                  value={otp}
-                  onChange={setOtp}
-                  disabled={loading}
-                  containerClassName="justify-center"
-                >
-                  <InputOTPGroup className="gap-2">
-                    {Array.from({ length: otpLength }, (_, i) => (
-                      <InputOTPSlot
-                        key={i}
-                        index={i}
-                        className="h-13 w-11 rounded-xl border border-gray-200 bg-gray-50 text-xl first:rounded-l-xl last:rounded-r-xl data-[active=true]:border-[rgb(90,200,245)] data-[active=true]:ring-[rgba(90,200,245,0.25)]"
-                      />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-
-              {error && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                onClick={handleVerify}
-                className="h-12 w-full rounded-2xl bg-[rgb(90,200,245)] text-base text-white shadow-lg shadow-[rgba(90,200,245,0.4)] transition-all hover:bg-[rgb(62,185,238)] active:scale-[0.98]"
-                disabled={otp.length !== otpLength || loading}
-              >
-                {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  'تأیید و ادامه'
-                )}
-              </Button>
+          <div className="flex flex-1 flex-col justify-center">
+            <div className="mb-10 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+              <img
+                  src="/logo.svg"
+                  alt={appName}
+                  className="mx-auto w-40 drop-shadow-sm"
+                  draggable={false}
+              />
             </div>
 
-            <div className="mt-6 text-center text-sm">
-              <span className="text-gray-400">کد را دریافت نکردید؟ </span>
+            <div className="rounded-3xl border border-[rgba(90,200,245,0.25)] bg-white/80 p-6 shadow-xl shadow-[rgba(90,200,245,0.15)] backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <h1 className="mb-1 text-xl text-gray-900">کد تایید را وارد کنید</h1>
+              <p className="text-sm text-gray-500">
+                کد {otpLength.toLocaleString('fa-IR')} رقمی به شماره زیر پیامک شد
+              </p>
               <button
-                onClick={handleResend}
-                disabled={loading || cooldown > 0}
-                className="text-[rgb(62,185,238)] transition-opacity disabled:opacity-50"
+                  onClick={() => navigate('/login')}
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm text-[rgb(62,185,238)]"
+                  dir="ltr"
               >
-                {cooldown > 0
-                  ? `ارسال مجدد (${cooldown.toLocaleString('fa-IR')} ثانیه)`
-                  : 'ارسال مجدد کد'}
+                <Pencil className="h-3.5 w-3.5" />
+                {phone || '09123456789'}
               </button>
+
+              <div className="mt-6 space-y-5">
+                <div dir="ltr" className="flex justify-center">
+                  <InputOTP
+                      maxLength={otpLength}
+                      value={otp}
+                      onChange={setOtp}
+                      disabled={loading}
+                      autoComplete="one-time-code" // ضروری برای آیفون (Safari)
+                      containerClassName="justify-center"
+                  >
+                    <InputOTPGroup className="gap-2">
+                      {Array.from({ length: otpLength }, (_, i) => (
+                          <InputOTPSlot
+                              key={i}
+                              index={i}
+                              className="h-13 w-11 rounded-xl border border-gray-200 bg-gray-50 text-xl first:rounded-l-xl last:rounded-r-xl data-[active=true]:border-[rgb(90,200,245)] data-[active=true]:ring-[rgba(90,200,245,0.25)]"
+                          />
+                      ))}
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                {error && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600">
+                      {error}
+                    </div>
+                )}
+
+                <Button
+                    onClick={handleVerify}
+                    className="h-12 w-full rounded-2xl bg-[rgb(90,200,245)] text-base text-white shadow-lg shadow-[rgba(90,200,245,0.4)] transition-all hover:bg-[rgb(62,185,238)] active:scale-[0.98]"
+                    disabled={otp.length !== otpLength || loading}
+                >
+                  {loading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                      'تأیید و ادامه'
+                  )}
+                </Button>
+              </div>
+
+              <div className="mt-6 text-center text-sm">
+                <span className="text-gray-400">کد را دریافت نکردید؟ </span>
+                <button
+                    onClick={handleResend}
+                    disabled={loading || cooldown > 0}
+                    className="text-[rgb(62,185,238)] transition-opacity disabled:opacity-50"
+                >
+                  {cooldown > 0
+                      ? `ارسال مجدد (${cooldown.toLocaleString('fa-IR')} ثانیه)`
+                      : 'ارسال مجدد کد'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }

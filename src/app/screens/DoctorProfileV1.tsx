@@ -219,6 +219,7 @@ export function DoctorProfileV1() {
     const location = useLocation();
     const abortRef = useRef<AbortController | null>(null);
 
+    const [orderType, setOrderType] = useState<'appointment' | 'chat'>('appointment');
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
     const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
@@ -412,22 +413,51 @@ export function DoctorProfileV1() {
     };
 
     const handleStartChat = async () => {
-        if (!accessToken) { alert('لطفاً ابتدا وارد حساب کاربری خود شوید'); return; }
+        if (!accessToken) {
+            alert('لطفاً ابتدا وارد حساب کاربری خود شوید');
+            return;
+        }
+
         setIsStartingChat(true);
+        setOrderError(null); // پاک کردن ارورهای قبلی پرداخت (اگر وجود داشت)
+
         try {
-            const res = await fetch('https://api.mediraai.com/api/user/chat/rooms', {
+            // تغییر آدرس وب‌سرویس به روت جدید رزرو/ایجاد چت
+            const res = await fetch('https://api.mediraai.com/api/user/chat/reserve', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/json',
                 },
                 body: JSON.stringify({ doctor_id: id }),
             });
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            navigate(`/consultation/${data.room_id ?? data.data?.room_id}`);
-        } catch {
-            alert('خطا در برقراری ارتباط چت');
+
+            const result = await res.json();
+
+            if (!res.ok || !result.success) {
+                throw new Error(result.message || 'خطا در بررسی یا ایجاد اتاق چت');
+            }
+
+            // ۱. اگر بیمار از قبل چت فعال داشت (بدون نیاز به پرداخت)
+            if (result.data?.is_active) {
+                navigate(`/consultation/${result.data.room_id}`);
+                return;
+            }
+
+            // ۲. اگر چت فعال نبود و نیاز به پرداخت داشت (سفارش جدید ساخته شده)
+            const generatedOrderId = result.data?.order_id;
+            if (!generatedOrderId) {
+                throw new Error('شناسه سفارش از سرور دریافت نشد');
+            }
+
+            // ذخیره اطلاعات سفارش و انتقال به صفحه پرداخت
+            setOrderId(generatedOrderId);
+            setOrderType('chat'); // مشخص می‌کنیم که این فاکتور برای چت است نه نوبت حضوری
+            setView('payment');
+
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'خطا در برقراری ارتباط چت');
         } finally {
             setIsStartingChat(false);
         }

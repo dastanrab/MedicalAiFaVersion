@@ -64,6 +64,7 @@ type PartnerDashboardData = {
 
 interface ActiveAppointment {
   id: number;
+  doctor_id: number;
   doctor_name: string;
   doctor_image: string | null;
   specialty_name: string;
@@ -479,7 +480,16 @@ export function Home() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.4 }}
-                  onClick={() => navigate('/orders')}
+                  onClick={() => {
+                    if (activeAppointment.is_temporary) {
+                      // هدایت به پروفایل پزشک همراه با state برای باز کردن خودکار پرداخت
+                      navigate(`/doctor/${activeAppointment.doctor_id}`, {
+                        state: { autoOpenPayment: true }
+                      });
+                    } else {
+                      navigate('/orders');
+                    }
+                  }}
                   className={`group relative mb-6 w-full cursor-pointer overflow-hidden rounded-[1.75rem] border p-4 shadow-sm transition-all duration-300 active:scale-[0.99] ${
                       activeAppointment.is_temporary
                           ? 'border-amber-100 bg-gradient-to-l from-amber-50 to-orange-50/50 hover:shadow-orange-500/10 hover:border-amber-200'
@@ -539,8 +549,11 @@ export function Home() {
                       <button
                           type="button"
                           onClick={(e) => {
-                            e.stopPropagation(); // جلوگیری از اجرای onClick اصلی کارت
-                            navigate('/orders');
+                            e.stopPropagation();
+                            // هدایت به پروفایل پزشک همراه با state
+                            navigate(`/doctor/${activeAppointment.doctor_id}`, {
+                              state: { autoOpenPayment: true }
+                            });
                           }}
                           className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-amber-500/30 transition-colors hover:bg-amber-600"
                       >

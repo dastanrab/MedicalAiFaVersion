@@ -26,7 +26,7 @@ export const doctorNavItems: DoctorNavItem[] = [
     { label: 'برنامه زمانی', segment: 'schedule', icon: Clock },
     { label: 'مشاوره‌ها', segment: 'consultations', icon: MessageSquare },
    // { label: 'نسخه‌ها', segment: 'prescriptions', icon: FileText },
-    { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
+   //  { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },
     { label: 'معرفی ویژه VIP', segment: 'vip', icon: Sparkles },
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },

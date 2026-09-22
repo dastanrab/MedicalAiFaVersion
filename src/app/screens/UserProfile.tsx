@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import {
   LogOut,
@@ -36,6 +36,12 @@ import {
   type ProfileExtras,
   type UserAddress,
 } from '../services/profileExtras';
+
+// ----------------------------- Neshan Map Imports -----------------------------
+import Map from "@neshan-maps-platform/ol/Map";
+import View from "@neshan-maps-platform/ol/View";
+import { fromLonLat, toLonLat } from "@neshan-maps-platform/ol/proj";
+// ------------------------------------------------------------------------------
 
 const pageClass =
     'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
@@ -391,7 +397,8 @@ export function UserProfile() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const addAddress = async (title: string, details: string) => {
+  // اضافه شدن مقادیر lat و lng در پارامترها و بدنه ریکوئست
+  const addAddress = async (title: string, details: string, lat: number | null, lng: number | null) => {
     if (!accessToken) return;
     if (!details.trim()) return;
 
@@ -405,8 +412,8 @@ export function UserProfile() {
         body: JSON.stringify({
           title: title.trim() || 'آدرس جدید',
           address: details.trim(),
-          lat: null,
-          lng: null,
+          lat: lat,
+          lng: lng,
         }),
       });
 
@@ -506,19 +513,15 @@ export function UserProfile() {
           >
             <div className="space-y-4">
               <NameRow formData={formData} updateField={updateField} />
-
               <Field label="جنسیت">
                 <GenderSelector value={formData.gender} onChange={(g) => updateField('gender', g)} />
               </Field>
-
               <MetricsRow formData={formData} updateField={updateField} />
-
               <LocationRow
                   formData={formData}
                   updateField={updateField}
                   availableCities={availableCities}
               />
-
               <IdentityInsuranceSection formData={formData} updateField={updateField} />
             </div>
 
@@ -535,15 +538,6 @@ export function UserProfile() {
               onRemove={removeAddress}
               onSetDefault={setDefaultAddress}
           />
-
-          {/*<button*/}
-          {/*    type="button"*/}
-          {/*    onClick={logout}*/}
-          {/*    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 bg-white py-3 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"*/}
-          {/*>*/}
-          {/*  <LogOut className="h-4 w-4" />*/}
-          {/*  خروج از حساب کاربری*/}
-          {/*</button>*/}
         </div>
       </ProfileScrollShell>
   );
@@ -642,45 +636,16 @@ function LocationRow({
   );
 }
 
-function NameRow({
-                   formData,
-                   updateField,
-                 }: {
-  formData: Pick<ProfileFormData, 'firstName' | 'lastName'>;
-  updateField: (field: string, value: string) => void;
-}) {
+function NameRow({ formData, updateField }: { formData: Pick<ProfileFormData, 'firstName' | 'lastName'>; updateField: (field: string, value: string) => void; }) {
   return (
       <div className="grid grid-cols-2 gap-3">
-        <Field label="نام">
-          <Input
-              placeholder="علی"
-              value={formData.firstName}
-              onChange={(e) => updateField('firstName', e.target.value)}
-              className={inputClass}
-          />
-        </Field>
-
-        <Field label="نام خانوادگی">
-          <Input
-              placeholder="احمدی"
-              value={formData.lastName}
-              onChange={(e) => updateField('lastName', e.target.value)}
-              className={inputClass}
-          />
-        </Field>
+        <Field label="نام"><Input placeholder="علی" value={formData.firstName} onChange={(e) => updateField('firstName', e.target.value)} className={inputClass} /></Field>
+        <Field label="نام خانوادگی"><Input placeholder="احمدی" value={formData.lastName} onChange={(e) => updateField('lastName', e.target.value)} className={inputClass} /></Field>
       </div>
   );
 }
 
-function Field({
-                 label,
-                 icon,
-                 children,
-               }: {
-  label: string;
-  icon?: ReactNode;
-  children: ReactNode;
-}) {
+function Field({ label, icon, children }: { label: string; icon?: ReactNode; children: ReactNode; }) {
   return (
       <div>
         <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
@@ -692,77 +657,21 @@ function Field({
   );
 }
 
-function GenderSelector({
-                          value,
-                          onChange,
-                        }: {
-  value: string;
-  onChange: (gender: string) => void;
-}) {
-  const options: {
-    id: string;
-    label: string;
-    Icon: LucideIcon;
-    gradient: string;
-    iconBg: string;
-    iconColor: string;
-  }[] = [
-    {
-      id: 'male',
-      label: 'مرد',
-      Icon: Mars,
-      gradient: 'from-sky-500 to-blue-600',
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
-    },
-    {
-      id: 'female',
-      label: 'زن',
-      Icon: Venus,
-      gradient: 'from-rose-400 to-pink-600',
-      iconBg: 'bg-pink-100',
-      iconColor: 'text-pink-600',
-    },
+function GenderSelector({ value, onChange }: { value: string; onChange: (gender: string) => void; }) {
+  const options = [
+    { id: 'male', label: 'مرد', Icon: Mars, gradient: 'from-sky-500 to-blue-600', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+    { id: 'female', label: 'زن', Icon: Venus, gradient: 'from-rose-400 to-pink-600', iconBg: 'bg-pink-100', iconColor: 'text-pink-600' },
   ];
-
   return (
       <div className="grid w-full grid-cols-2 gap-3">
         {options.map((opt) => {
           const active = value === opt.id;
           const Icon = opt.Icon;
-
           return (
-              <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => onChange(opt.id)}
-                  className={`group relative flex w-full min-w-0 flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 px-2 py-3 transition-all duration-200 active:scale-[0.98] ${
-                      active
-                          ? `border-transparent bg-gradient-to-br ${opt.gradient} shadow-lg shadow-black/10`
-                          : 'border-gray-100 bg-gray-50/80 hover:border-gray-200 hover:bg-white'
-                  }`}
-              >
-            <span
-                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
-                    active ? 'bg-white/25 text-white' : `${opt.iconBg} ${opt.iconColor}`
-                }`}
-            >
-              <Icon className="h-5 w-5" strokeWidth={2} />
-            </span>
-
-                <span
-                    className={`text-sm font-bold ${
-                        active ? 'text-white' : 'text-gray-700 group-hover:text-gray-900'
-                    }`}
-                >
-              {opt.label}
-            </span>
-
-                {active && (
-                    <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/25">
-                <Check className="h-3 w-3 text-white" strokeWidth={3} />
-              </span>
-                )}
+              <button key={opt.id} type="button" onClick={() => onChange(opt.id)} className={`group relative flex w-full min-w-0 flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 px-2 py-3 transition-all duration-200 active:scale-[0.98] ${active ? `border-transparent bg-gradient-to-br ${opt.gradient} shadow-lg shadow-black/10` : 'border-gray-100 bg-gray-50/80 hover:border-gray-200 hover:bg-white'}`}>
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${active ? 'bg-white/25 text-white' : `${opt.iconBg}${opt.iconColor}`}`}><Icon className="h-5 w-5" strokeWidth={2} /></span>
+                <span className={`text-sm font-bold ${active ? 'text-white' : 'text-gray-700 group-hover:text-gray-900'}`}>{opt.label}</span>
+                {active && <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/25"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>}
               </button>
           );
         })}
@@ -770,123 +679,28 @@ function GenderSelector({
   );
 }
 
-function MetricsRow({
-                      formData,
-                      updateField,
-                    }: {
-  formData: Pick<ProfileFormData, 'age' | 'weight' | 'height'>;
-  updateField: (field: string, value: string) => void;
-}) {
+function MetricsRow({ formData, updateField }: { formData: Pick<ProfileFormData, 'age' | 'weight' | 'height'>; updateField: (field: string, value: string) => void; }) {
   const blockNegativeKey: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
     if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
   };
-
   return (
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Field label="سن" icon={<Calendar className="h-3.5 w-3.5 text-blue-500" />}>
-          <Input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              placeholder="۲۵"
-              value={formData.age}
-              onChange={(e) => updateField('age', e.target.value)}
-              onKeyDown={blockNegativeKey}
-              className={inputClass}
-          />
-        </Field>
-
-        <Field label="وزن" icon={<Scale className="h-3.5 w-3.5 text-blue-500" />}>
-          <Input
-              type="number"
-              min={0}
-              step="0.1"
-              inputMode="decimal"
-              placeholder="۷۰"
-              value={formData.weight}
-              onChange={(e) => updateField('weight', e.target.value)}
-              onKeyDown={blockNegativeKey}
-              className={inputClass}
-          />
-        </Field>
-
-        <Field label="قد" icon={<Ruler className="h-3.5 w-3.5 text-blue-500" />}>
-          <Input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              placeholder="۱۷۵"
-              value={formData.height}
-              onChange={(e) => updateField('height', e.target.value)}
-              onKeyDown={blockNegativeKey}
-              className={inputClass}
-          />
-        </Field>
+        <Field label="سن" icon={<Calendar className="h-3.5 w-3.5 text-blue-500" />}><Input type="number" min={0} inputMode="numeric" placeholder="۲۵" value={formData.age} onChange={(e) => updateField('age', e.target.value)} onKeyDown={blockNegativeKey} className={inputClass} /></Field>
+        <Field label="وزن" icon={<Scale className="h-3.5 w-3.5 text-blue-500" />}><Input type="number" min={0} step="0.1" inputMode="decimal" placeholder="۷۰" value={formData.weight} onChange={(e) => updateField('weight', e.target.value)} onKeyDown={blockNegativeKey} className={inputClass} /></Field>
+        <Field label="قد" icon={<Ruler className="h-3.5 w-3.5 text-blue-500" />}><Input type="number" min={0} inputMode="numeric" placeholder="۱۷۵" value={formData.height} onChange={(e) => updateField('height', e.target.value)} onKeyDown={blockNegativeKey} className={inputClass} /></Field>
       </div>
   );
 }
 
-function IdentityInsuranceSection({
-                                    formData,
-                                    updateField,
-                                  }: {
-  formData: Pick<ProfileFormData, 'nationalCode' | 'insuranceType' | 'insuranceNumber'>;
-  updateField: (field: string, value: string) => void;
-}) {
-  const nationalCodeInvalid =
-      formData.nationalCode.length === 10 && !isValidNationalCode(formData.nationalCode);
-
+function IdentityInsuranceSection({ formData, updateField }: { formData: Pick<ProfileFormData, 'nationalCode' | 'insuranceType' | 'insuranceNumber'>; updateField: (field: string, value: string) => void; }) {
+  const nationalCodeInvalid = formData.nationalCode.length === 10 && !isValidNationalCode(formData.nationalCode);
   return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-          <IdCard className="h-4 w-4" />
-        </span>
-          <span className="text-sm font-bold text-gray-800">اطلاعات هویتی و بیمه</span>
-        </div>
-
-        <Field label="کد ملی" icon={<IdCard className="h-3.5 w-3.5 text-blue-500" />}>
-          <Input
-              dir="ltr"
-              inputMode="numeric"
-              maxLength={10}
-              placeholder="۰۰۱۲۳۴۵۶۷۸"
-              value={formData.nationalCode}
-              onChange={(e) => updateField('nationalCode', e.target.value)}
-              className={`${inputClass} ${nationalCodeInvalid ? 'ring-2 ring-red-300' : ''}`}
-          />
-          {nationalCodeInvalid && (
-              <p className="mt-1 text-[11px] text-red-500">کد ملی وارد شده معتبر نیست</p>
-          )}
-        </Field>
-
+        <div className="flex items-center gap-2 border-t border-gray-100 pt-4"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600"><IdCard className="h-4 w-4" /></span><span className="text-sm font-bold text-gray-800">اطلاعات هویتی و بیمه</span></div>
+        <Field label="کد ملی" icon={<IdCard className="h-3.5 w-3.5 text-blue-500" />}><Input dir="ltr" inputMode="numeric" maxLength={10} placeholder="۰۰۱۲۳۴۵۶۷۸" value={formData.nationalCode} onChange={(e) => updateField('nationalCode', e.target.value)} className={`${inputClass} ${nationalCodeInvalid ? 'ring-2 ring-red-300' : ''}`} />{nationalCodeInvalid && (<p className="mt-1 text-[11px] text-red-500">کد ملی وارد شده معتبر نیست</p>)}</Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="نوع بیمه" icon={<ShieldCheck className="h-3.5 w-3.5 text-blue-500" />}>
-            <select
-                value={formData.insuranceType}
-                onChange={(e) => updateField('insuranceType', e.target.value)}
-                className={selectClass}
-            >
-              <option value="">انتخاب نوع بیمه</option>
-              {INSURANCE_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="شماره بیمه" icon={<ShieldCheck className="h-3.5 w-3.5 text-blue-500" />}>
-            <Input
-                dir="ltr"
-                inputMode="numeric"
-                placeholder="شماره دفترچه / بیمه"
-                value={formData.insuranceNumber}
-                onChange={(e) => updateField('insuranceNumber', e.target.value)}
-                disabled={formData.insuranceType === 'none'}
-                className={`${inputClass} ${formData.insuranceType === 'none' ? 'cursor-not-allowed opacity-50' : ''}`}
-            />
-          </Field>
+          <Field label="نوع بیمه" icon={<ShieldCheck className="h-3.5 w-3.5 text-blue-500" />}><select value={formData.insuranceType} onChange={(e) => updateField('insuranceType', e.target.value)} className={selectClass}><option value="">انتخاب نوع بیمه</option>{INSURANCE_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}</select></Field>
+          <Field label="شماره بیمه" icon={<ShieldCheck className="h-3.5 w-3.5 text-blue-500" />}><Input dir="ltr" inputMode="numeric" placeholder="شماره دفترچه / بیمه" value={formData.insuranceNumber} onChange={(e) => updateField('insuranceNumber', e.target.value)} disabled={formData.insuranceType === 'none'} className={`${inputClass} ${formData.insuranceType === 'none' ? 'cursor-not-allowed opacity-50' : ''}`} /></Field>
         </div>
       </div>
   );
@@ -903,7 +717,8 @@ function AddressesSection({
   addresses: UserAddress[];
   loading: boolean;
   saving: boolean;
-  onAdd: (title: string, details: string) => Promise<boolean | void>;
+  // آپدیت برای دریافت lat و lng در پارامترها
+  onAdd: (title: string, details: string, lat: number | null, lng: number | null) => Promise<boolean | void>;
   onRemove: (id: string) => Promise<void>;
   onSetDefault: (id: string) => void;
 }) {
@@ -911,13 +726,61 @@ function AddressesSection({
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
 
+  // استیت‌های ذخیره مختصات و ارجاع به نقشه
+  const [lat, setLat] = useState<number | null>(35.699739);
+  const [lng, setLng] = useState<number | null>(51.338097);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstance = useRef<Map | null>(null);
+
+  useEffect(() => {
+    // تنها در صورت باز شدن فرم نقشه ساخته می‌شود
+    let map: Map | null = null;
+
+    if (showForm && mapRef.current) {
+      map = new Map({
+        mapType: "neshan",
+        target: mapRef.current,
+        key: "web.7f11b5c6971d4917a6e9272a522d8b9e",
+        poi: true,
+        traffic: false,
+        view: new View({
+          center: fromLonLat([lng || 51.338097, lat || 35.699739]),
+          zoom: 14,
+        }),
+      });
+
+      // گوش دادن به رویداد جابجایی کاربر و استخراج مختصات
+      map.on('moveend', () => {
+        const center = map?.getView().getCenter();
+        if (center) {
+          const lonLat = toLonLat(center);
+          setLng(lonLat[0]);
+          setLat(lonLat[1]);
+        }
+      });
+
+      mapInstance.current = map;
+    }
+
+    // پاک‌سازی نقشه هنگام بسته شدن فرم یا Unmount
+    return () => {
+      if (map) {
+        map.setTarget(undefined);
+        mapInstance.current = null;
+      }
+    };
+  }, [showForm]); // فقط با تغییر وضعیت showForm اجرا می‌شود
+
   const handleAdd = async () => {
     if (!details.trim()) return;
 
-    const success = await onAdd(title, details);
+    // ارسال به تابع والد همراه با مختصات
+    const success = await onAdd(title, details, lat, lng);
     if (success) {
       setTitle('');
       setDetails('');
+      setLat(35.699739);
+      setLng(51.338097);
       setShowForm(false);
     }
   };
@@ -1011,7 +874,26 @@ function AddressesSection({
         )}
 
         {showForm && (
-            <div className="mt-3 space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/30 p-3">
+            <div className="mt-4 space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/30 p-3">
+
+              {/* ------------ نقشه نشان ------------ */}
+              <Field label="موقعیت روی نقشه">
+                <div className="relative h-48 w-full overflow-hidden rounded-xl border border-gray-200 shadow-sm z-0 bg-gray-100">
+                  {/* نگهدارنده نقشه */}
+                  <div ref={mapRef} className="w-full h-full absolute inset-0" />
+
+                  {/* پین مرکزی ثابت به عنوان نشانگر */}
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                    <div className="relative -top-4">
+                      <MapPin className="h-8 w-8 text-red-500 drop-shadow-md" fill="currentColor" />
+                      <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-black/20 blur-[2px]"></div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1.5 text-right">نقشه را جابجا کنید تا پین روی مکان شما قرار بگیرد.</p>
+              </Field>
+              {/* ---------------------------------- */}
+
               <Field label="عنوان آدرس">
                 <Input
                     placeholder="مثلاً منزل، محل کار"
@@ -1031,7 +913,7 @@ function AddressesSection({
             />
               </Field>
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-2 mt-2">
                 <button
                     type="button"
                     onClick={() => {
@@ -1060,13 +942,7 @@ function AddressesSection({
   );
 }
 
-function SaveProfileButton({
-                             saving,
-                             onClick,
-                           }: {
-  saving: boolean;
-  onClick: () => void;
-}) {
+function SaveProfileButton({ saving, onClick }: { saving: boolean; onClick: () => void; }) {
   return (
       <button
           type="button"

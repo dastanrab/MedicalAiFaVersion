@@ -11,6 +11,8 @@ interface AppContainerProps {
     scrollable?: boolean;
     /** عرض فریم: phone (پیش‌فرض) | tablet | wide | full */
     size?: 'phone' | 'tablet' | 'wide' | 'full';
+    /** اگر true باشد، در حالت phone تحت هر شرایطی Navbar را نمایش می‌دهد */
+    forceNavbarOnPhone?: boolean;
 }
 
 const SIZE_CLASSES: Record<NonNullable<AppContainerProps['size']>, string> = {
@@ -27,17 +29,24 @@ export function AppContainer({
                                  showAppBar = false,
                                  scrollable = true,
                                  size = 'phone',
+                                 forceNavbarOnPhone = true, // به صورت پیش‌فرض فعال شد تا روی phone همیشه نمایش داده شود
                              }: AppContainerProps) {
+
+    // جایگزینی min-h-screen با min-h-[100dvh] برای پشتیبانی صحیح از موبایل
     const outerClass =
         variant === 'transparent'
-            ? 'flex min-h-screen items-center justify-center bg-white'
-            : 'flex min-h-screen items-center justify-center bg-gray-100';
+            ? 'flex min-h-[100dvh] items-center justify-center bg-white'
+            : 'flex min-h-[100dvh] items-center justify-center bg-gray-100';
 
+    // جایگزینی h-screen با h-[100dvh] برای جلوگیری از بیرون زدن Navbar از پایین صفحه گوشی
     const frameClass = [
-        'relative flex h-screen w-full flex-col overflow-hidden bg-white',
+        'relative flex h-[100dvh] w-full flex-col overflow-hidden bg-white',
         SIZE_CLASSES[size],
         variant === 'default' ? 'shadow-lg' : '',
     ].join(' ');
+
+    // شرط نهایی برای نمایش Navbar
+    const isNavbarVisible = showNavbar || (forceNavbarOnPhone && size === 'phone');
 
     return (
         <div className={outerClass}>
@@ -52,7 +61,7 @@ export function AppContainer({
                 >
                     {children}
                 </div>
-                {showNavbar && <Navbar />}
+                {isNavbarVisible && <Navbar />}
             </div>
         </div>
     );

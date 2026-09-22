@@ -17,11 +17,16 @@ export const PaymentResultPage: React.FC = () => {
     const navigate = useNavigate();
     const [copied, setCopied] = React.useState(false);
 
-    // استخراج پارامترهای ارسالی از سمت بک‌اند
+    // استخراج پارامترهای اصلی
     const status = searchParams.get('status'); // 'success' | 'failed' | 'error'
     const refNum = searchParams.get('ref_num') || '---';
     const resNum = searchParams.get('res_num') || '---';
     const errorMessage = searchParams.get('message') || 'تراکنش با خطا مواجه شد یا توسط کاربر لغو گردید.';
+
+    // استخراج پارامترهای جدید برای مسیردهی پویا
+    const reasonId = searchParams.get('reason_id');
+    const reasonRef = searchParams.get('reason_ref');
+    const role = searchParams.get('role');
 
     const isSuccess = status === 'success';
     const isError = status === 'error' || status === 'failed' || !status;
@@ -40,6 +45,74 @@ export const PaymentResultPage: React.FC = () => {
             timeStyle: 'short',
         }).format(new Date());
     }, []);
+
+    // ─── تعیین مقصد و دکمه حالت موفق بر اساس نوع سفارش ───
+    const getSuccessActionConfig = () => {
+        // reason_id = 7 -> خرید پلن VIP پزشک
+        if (reasonId === '7') {
+            return {
+                label: 'بازگشت به پنل VIP',
+                path: '/provider/doctor/vip'
+            };
+        }
+
+        // reason_id = 2 -> شارژ کیف پول
+        if (reasonId === '2') {
+            if (role === 'doctor') {
+                return {
+                    label: 'بازگشت به گزارش مالی',
+                    path: '/provider/doctor/finance'
+                };
+            }
+            return {
+                label: 'بازگشت به کیف پول',
+                path: '/wallet' // مسیر کیف پول کاربر عادی (در صورت وجود)
+            };
+        }
+
+        // reason_id = 3 -> مشاوره متنی (چت)
+        if (reasonId === '3' && reasonRef) {
+            return {
+                label: 'ورود به اتاق چت',
+                path: `/consultation/${reasonRef}`
+            };
+        }
+        if (reasonId === '8' ) {
+            return {
+                label: 'رفتن به داشبورد',
+                path: '/provider/doctor'
+            };
+        }
+        if (reasonId === '5' ) {
+            return {
+                label: 'ورود به لیست سفارش‌ها',
+                path: '/orders'
+            };
+        }
+
+        // reason_id = 1 -> رزرو نوبت یا پیش‌فرض
+        return {
+            label: 'ورود به لیست سفارش‌ها',
+            path: '/orders'
+        };
+    };
+
+    // ─── تعیین مقصد دکمه حالت ناموفق ───
+    const getFailurePath = () => {
+        if (role === 'doctor') {
+            // برای خرید پلن VIP در صورت خطا به پنل اصلی دکتر برود
+            if (reasonId === '7') {
+                return '/provider/doctor';
+            }
+            // بقیه خطاهای مالی دکتر به صفحه مالی برود
+            return '/provider/doctor/finance';
+        }
+        // خطاهای کاربر عادی
+        return '/';
+    };
+
+    const successAction = getSuccessActionConfig();
+    const failurePath = getFailurePath();
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans dir-rtl" dir="rtl">
@@ -77,10 +150,10 @@ export const PaymentResultPage: React.FC = () => {
                         {/* شماره پیگیری بانکی (RefNum) */}
                         {isSuccess && (
                             <div className="flex items-center justify-between text-sm py-1 border-b border-slate-200/60">
-                <span className="text-slate-500 flex items-center gap-1.5">
-                  <Receipt className="w-4 h-4 text-slate-400" />
-                  شماره پیگیری بانک (RefNum)
-                </span>
+                                <span className="text-slate-500 flex items-center gap-1.5">
+                                  <Receipt className="w-4 h-4 text-slate-400" />
+                                  شماره پیگیری بانک (RefNum)
+                                </span>
                                 <div className="flex items-center gap-2">
                                     <span className="font-mono font-bold text-slate-800 text-base">{refNum}</span>
                                     <button
@@ -96,18 +169,38 @@ export const PaymentResultPage: React.FC = () => {
 
                         {/* شماره سفارش سیستم (ResNum) */}
                         <div className="flex items-center justify-between text-sm py-1 border-b border-slate-200/60">
-              <span className="text-slate-500 flex items-center gap-1.5">
-                <Hash className="w-4 h-4 text-slate-400" />
-                شناسه سفارش (ResNum)
-              </span>
+                            <span className="text-slate-500 flex items-center gap-1.5">
+                                <Hash className="w-4 h-4 text-slate-400" />
+                                شناسه سفارش (ResNum)
+                            </span>
                             <span className="font-mono font-medium text-slate-700">{resNum}</span>
                         </div>
 
                         {/* درگاه پرداخت */}
                         <div className="flex items-center justify-between text-sm py-1 border-b border-slate-200/60">
                             <span className="text-slate-500">درگاه پرداخت</span>
-                            <span className="font-medium text-slate-700">بانک سامان (سپ)</span>
+                            <span className="font-medium text-slate-700">سامان کیش (سپ)</span>
                         </div>
+
+                        {/* نوع تراکنش */}
+                        {reasonId === '2' && (
+                            <div className="flex items-center justify-between text-sm py-1 border-b border-slate-200/60">
+                                <span className="text-slate-500">بابت</span>
+                                <span className="font-medium text-blue-700">شارژ کیف پول</span>
+                            </div>
+                        )}
+                        {reasonId === '3' && (
+                            <div className="flex items-center justify-between text-sm py-1 border-b border-slate-200/60">
+                                <span className="text-slate-500">بابت</span>
+                                <span className="font-medium text-blue-700">مشاوره متنی (چت)</span>
+                            </div>
+                        )}
+                        {reasonId === '7' && (
+                            <div className="flex items-center justify-between text-sm py-1 border-b border-slate-200/60">
+                                <span className="text-slate-500">بابت</span>
+                                <span className="font-medium text-amber-600">ارتقا / خرید پلن VIP</span>
+                            </div>
+                        )}
 
                         {/* زمان تراکنش */}
                         <div className="flex items-center justify-between text-sm py-1">
@@ -121,8 +214,8 @@ export const PaymentResultPage: React.FC = () => {
                         <div className="flex items-start gap-2 bg-amber-50 text-amber-800 text-xs p-3 rounded-lg border border-amber-200">
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
                             <span>
-                اگر مبلغی از حساب شما کسر شده است، ظرف حداکثر ۷۲ ساعت آینده توسط بانک مبدا به حسابتان برگشت داده خواهد شد.
-              </span>
+                                اگر مبلغی از حساب شما کسر شده است، ظرف حداکثر ۷۲ ساعت آینده توسط بانک مبدا به حسابتان برگشت داده خواهد شد.
+                            </span>
                         </div>
                     )}
 
@@ -130,26 +223,19 @@ export const PaymentResultPage: React.FC = () => {
                     <div className="pt-2 space-y-2">
                         {isSuccess ? (
                             <button
-                                onClick={() => navigate('/orders')}
+                                onClick={() => navigate(successAction.path)}
                                 className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center justify-center gap-2"
                             >
-                                <span>ورود به داشبورد</span>
+                                <span>{successAction.label}</span>
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         ) : (
                             <>
                                 <button
-                                    onClick={() => navigate('/')}
-                                    className="w-full py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center justify-center gap-2"
-                                >
-                                    <RotateCcw className="w-4 h-4" />
-                                    <span>تلاش مجدد برای پرداخت</span>
-                                </button>
-                                <button
-                                    onClick={() => navigate('/')}
+                                    onClick={() => navigate(failurePath)}
                                     className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors text-sm"
                                 >
-                                    بازگشت به صفحه اصلی
+                                    بازگشت
                                 </button>
                             </>
                         )}

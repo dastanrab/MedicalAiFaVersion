@@ -29,6 +29,7 @@ export interface DoctorUser {
     visit_count?: number;
     rating?: number;
     medical_code?: string;
+    has_paid_subscription?: number;
 }
 
 // ساختار واقعی ریسپانس login
@@ -98,18 +99,8 @@ export const useDoctorAuthStore = create<DoctorAuthState>()(
                     set({
                         token,
                         doctor: {
-                            id: user.id,
-                            name: user.name,
-                            email: user.email,
-                            phone: user.phone,
-                            gender: user.gender,
-                            avatar: user.avatar,
-                            is_verify: user.is_verify,
-                            status: user.status,
-                            role: user.role,
-                            province_id: user.province_id,
-                            city_id: user.city_id,
-                        },
+                            ...user,
+                        } as DoctorUser,
                     });
 
                     await get().fetchProfile();
@@ -136,10 +127,11 @@ export const useDoctorAuthStore = create<DoctorAuthState>()(
 
                     // --- ساختار دقیق این endpoint رو بعد از تست جایگزین کن ---
                     const data: ProfileApiResponse = await response.json();
-                    if (data.success && data.data) {
+                    console.log(data)
+                    if ( data.doctor) {
                         set((state) => ({
                             doctor: state.doctor
-                                ? { ...state.doctor, ...data.data }
+                                ? { ...state.doctor, ...data.doctor }
                                 : null,
                         }));
                     }

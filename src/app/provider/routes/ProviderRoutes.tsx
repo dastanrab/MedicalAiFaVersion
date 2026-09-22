@@ -56,6 +56,8 @@ import { DoctorSettingsPage } from '../doctor/screens/DoctorSettingsPage';
 import NurseCoveragePage from "../screens/nurse/NurseCoveragePage";
 import {DoctorChatPage} from "../doctor/screens/DoctorChatPage";
 import {ProfileGuard} from "../components/ProfileGuard";
+import {SubscriptionGuard} from "../doctor/components/SubscriptionGuard";
+import {DoctorSubscriptionFeePage} from "../doctor/screens/DoctorSubscriptionFeePage";
 
 function ProtectedRolePanel({ role }: { role: ProviderRole }) {
     if (role === 'doctor') {
@@ -63,7 +65,9 @@ function ProtectedRolePanel({ role }: { role: ProviderRole }) {
             <DoctorAuthGate>
                 {/* اضافه شدن ProfileGuard برای دکتر */}
                 <ProfileGuard role={role}>
-                    <ProviderRoleLayout role={role} />
+                    <SubscriptionGuard role={role}>
+                        <ProviderRoleLayout role={role} />
+                    </SubscriptionGuard>
                 </ProfileGuard>
             </DoctorAuthGate>
         );
@@ -73,7 +77,9 @@ function ProtectedRolePanel({ role }: { role: ProviderRole }) {
         <ProviderAuthGate role={role}>
             {/* اضافه شدن ProfileGuard برای بقیه نقش‌ها */}
             <ProfileGuard role={role}>
-                <ProviderRoleLayout role={role} />
+                <SubscriptionGuard role={role}>
+                    <ProviderRoleLayout role={role} />
+                </SubscriptionGuard>
             </ProfileGuard>
         </ProviderAuthGate>
     );
@@ -174,6 +180,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Routes>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<DoctorDashboardPage />} />
+                <Route path="subscription-fee" element={<DoctorSubscriptionFeePage />} />
                 <Route path="appointments" element={<DoctorAppointmentsPage />} />
                 <Route path="appointments/:id" element={<DoctorAppointmentDetailRoute />} />
                 <Route path="patients" element={<DoctorPatientsPage />} />

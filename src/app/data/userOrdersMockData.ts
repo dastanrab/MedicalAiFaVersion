@@ -5,7 +5,8 @@ export type UserRequestServiceType =
   | 'lab'
   | 'pharmacy'
   | 'radiology'
-  | 'nurse';
+  | 'nurse'
+    | 'chat';
 
 /** Normalized status shown to the patient across all service types. */
 export type UserRequestStatus =
@@ -45,6 +46,7 @@ export const serviceTypeLabels: Record<UserRequestServiceType, string> = {
   pharmacy: 'داروخانه',
   radiology: 'رادیولوژی',
   nurse: 'پرستاری',
+  chat: 'مشاوره متنی', // <-- اضافه شد
 };
 
 export const requestStatusLabels: Record<UserRequestStatus, string> = {

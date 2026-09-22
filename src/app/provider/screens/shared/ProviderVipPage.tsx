@@ -9,18 +9,16 @@ import {
     ChartTooltipContent,
     type ChartConfig,
 } from '../../../components/ui/chart';
-import { Sparkles, Power, Wallet, Search, Trash2, ShieldCheck, CreditCard, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Power, Wallet, Search, Trash2, ShieldCheck, CreditCard, CheckCircle2, Loader2, Plus } from 'lucide-react';
 import { PageHeader, formatPrice } from '../../components';
 import { ProviderModal } from '../../components/ProviderModal';
 import type { ProviderRole } from '../../config/providerNav';
-import { providerPath } from '../../config/providerNav';
-import { providerRoleLabels } from '../../config/providerTheme';
 import { showProviderError, showProviderSuccess } from '../../utils/toast';
 import { formatJalali, toFaDigits } from '../../utils/jalali';
 import { toJalaali } from 'jalaali-js';
 import { useDoctorAuthStore } from "../../doctor/store/doctorAuthStore";
-import {useEffect, useMemo, useState} from "react";
-import {useNavigate} from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 
 const API_BASE_URL = 'https://api.mediraai.com/api';
 
@@ -90,6 +88,13 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
     const [suggestOpen, setSuggestOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    // State for payment processing
+    const [isPaying, setIsPaying] = useState(false);
+
+    // State for Custom Keyword
+    const [newKeywordInput, setNewKeywordInput] = useState('');
+    const [isAddingKeyword, setIsAddingKeyword] = useState(false);
+
     // State for plan selection (preview)
     const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
     const [paymentVisible, setPaymentVisible] = useState(false);
@@ -129,15 +134,7 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                 setMyKeywords(Array.isArray(mineData?.data) ? mineData.data : []);
             }
 
-            const availableRes = await fetch(`${API_BASE_URL}/doctor/keywords/available`, { headers: apiHeaders });
-            if (availableRes.ok) {
-                const availableData = await availableRes.json();
-                const validArray = Array.isArray(availableData?.data?.data)
-                    ? availableData.data.data
-                    : (Array.isArray(availableData?.data) ? availableData.data : []);
-                setAvailableKeywords(validArray);
-            }
-
+            fetchAvailableKeywords();
             fetchFinanceAndChart();
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -146,6 +143,21 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
             setIsLoading(false);
         }
     };
+
+    const fetchAvailableKeywords = async () => {
+        try {
+            const availableRes = await fetch(`${API_BASE_URL}/doctor/keywords/available`, { headers: apiHeaders });
+            if (availableRes.ok) {
+                const availableData = await availableRes.json();
+                const validArray = Array.isArray(availableData?.data?.data)
+                    ? availableData.data.data
+                    : (Array.isArray(availableData?.data) ? availableData.data : []);
+                setAvailableKeywords(validArray);
+            }
+        } catch (error) {
+            console.warn('Error fetching available keywords');
+        }
+    }
 
     const fetchFinanceAndChart = async () => {
         try {
@@ -178,36 +190,77 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
         return availableKeywords.filter(k => k.word.includes(searchInput));
     }, [availableKeywords, searchInput]);
 
-    // Derived: selected plan object
     const selectedPlan = plans.find(p => p.id === selectedPlanId) || null;
-
-    // Multiplier for sample keyword preview
     const previewMultiplier = selectedPlan ? selectedPlan.multiplier : (activePlan?.multiplier || 1);
 
     const sampleClickTariff = sampleKeyword.base_click_tariff * previewMultiplier;
     const sampleImpressionTariff = sampleKeyword.base_impression_tariff * previewMultiplier;
     const sampleTotalPrice = sampleKeyword.base_price * previewMultiplier;
 
+    // حذف window.confirm و اتصال مستقیم به درگاه
     const handleSubscribePlan = async (planId: number, planName: string) => {
-        if (!window.confirm(`آیا از ارتقا / تغییر پلن خود به "${planName}" اطمینان دارید؟`)) return;
+        setIsPaying(true);
 
         try {
             const res = await fetch(`${API_BASE_URL}/doctor/plans/subscribe`, {
                 method: 'POST',
                 headers: apiHeaders,
-                body: JSON.stringify({ plan_id: planId })
+                body: JSON.stringify({
+                    plan_id: planId,
+                    gateway: 'saman' // ارسال درگاه سامان
+                })
             });
             const data = await res.json();
-            if (res.ok) {
-                showProviderSuccess(data.message || 'پلن شما با موفقیت تغییر کرد');
-                setSelectedPlanId(null);
-                setPaymentVisible(false);
-                fetchDashboardData();
+
+            if (res.ok && data.success) {
+                if (data.data?.payment_url) {
+                    // هدایت مستقیم کاربر به درگاه سامان بدون هیچ پیام اضافه‌ای
+                    window.location.href = data.data.payment_url;
+                } else {
+                    showProviderSuccess(data.message || 'پلن شما فعال شد');
+                    setSelectedPlanId(null);
+                    setPaymentVisible(false);
+                    fetchDashboardData();
+                    setIsPaying(false);
+                }
             } else {
-                showProviderError(data.message || 'خطا در تغییر پلن');
+                showProviderError(data.message || 'خطا در ارتقای پلن');
+                setIsPaying(false);
             }
         } catch (error) {
             showProviderError('ارتباط با سرور برقرار نشد.');
+            setIsPaying(false);
+        }
+    };
+
+    // افزودن کلمه کلیدی دلخواه
+    const handleAddCustomKeyword = async () => {
+        if (!newKeywordInput.trim()) {
+            showProviderError('لطفا کلمه کلیدی دلخواه خود را وارد کنید.');
+            return;
+        }
+
+        setIsAddingKeyword(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/doctor/keywords/custom`, {
+                method: 'POST',
+                headers: apiHeaders,
+                body: JSON.stringify({ word: newKeywordInput.trim() })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                showProviderSuccess(data.message || 'کلمه با موفقیت اضافه شد');
+                setNewKeywordInput('');
+                // بروزرسانی لیست کلمات برای نمایش کلمه جدید
+                fetchAvailableKeywords();
+            } else {
+                showProviderError(data.message || 'خطا در افزودن کلمه');
+            }
+        } catch (error) {
+            showProviderError('ارتباط با سرور برقرار نشد.');
+        } finally {
+            setIsAddingKeyword(false);
         }
     };
 
@@ -298,11 +351,11 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                 actions={
                     <button
                         type="button"
-                        onClick={() => navigate(providerPath(role, 'vip/charge'))}
+                        onClick={() => navigate('/provider/doctor/finance')}
                         className="inline-flex h-11 items-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-bold text-white shadow-sm hover:bg-amber-600"
                     >
                         <Wallet className="h-4 w-4" />
-                        شارژ سرویس VIP
+                        شارژ کیف پول
                     </button>
                 }
             />
@@ -364,7 +417,6 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                         </div>
                     </div>
 
-                    {/* Sample keyword preview - updates based on selected plan */}
                     <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-bold text-amber-800">نمونه کلمه (پیش‌نمایش هزینه‌ها)</h3>
@@ -488,7 +540,6 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                             </div>
                         )}
 
-                        {/* Plan details panel */}
                         {selectedPlan && (
                             <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
                                 <h4 className="text-sm font-bold text-slate-800">
@@ -501,25 +552,12 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                                 </h4>
                                 <p className="mt-1 text-xs text-slate-600">{selectedPlan.description}</p>
                                 <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
-                                    <div>
-                                        <span className="text-slate-400">قیمت: </span>
-                                        <b>{formatPrice(selectedPlan.price)} تومان</b>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400">مدت: </span>
-                                        <b>{toFaDigits(selectedPlan.duration_days)} روز</b>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400">ضریب: </span>
-                                        <b>{toFaDigits(selectedPlan.multiplier)}x</b>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-400">سطح: </span>
-                                        <b>{toFaDigits(selectedPlan.tier_level)}</b>
-                                    </div>
+                                    <div><span className="text-slate-400">قیمت: </span><b>{formatPrice(selectedPlan.price)} تومان</b></div>
+                                    <div><span className="text-slate-400">مدت: </span><b>{toFaDigits(selectedPlan.duration_days)} روز</b></div>
+                                    <div><span className="text-slate-400">ضریب: </span><b>{toFaDigits(selectedPlan.multiplier)}x</b></div>
+                                    <div><span className="text-slate-400">سطح: </span><b>{toFaDigits(selectedPlan.tier_level)}</b></div>
                                 </div>
 
-                                {/* Sample keyword preview for selected plan */}
                                 <div className="mt-3 rounded-lg bg-white p-3 text-[11px] space-y-1">
                                     <p className="font-bold text-slate-700">پیش‌نمایش کلمه نمونه با این پلن:</p>
                                     <p>هر کلیک: {formatPrice(sampleKeyword.base_click_tariff * selectedPlan.multiplier)} ت</p>
@@ -535,31 +573,40 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                                     <button
                                         type="button"
                                         onClick={() => setPaymentVisible(true)}
-                                        className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white hover:bg-amber-600"
+                                        className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white hover:bg-amber-600 transition-colors"
                                     >
                                         <CreditCard className="h-4 w-4" />
                                         ادامه و پرداخت
                                     </button>
                                 ) : (
                                     <div className="mt-3 space-y-3">
-                                        <div className="rounded-lg border border-dashed border-slate-300 p-3 text-center text-xs text-slate-400">
-                                            [درگاه پرداخت اینجا قرار می‌گیرد]
-                                        </div>
-                                        <div className="flex justify-end gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setPaymentVisible(false)}
-                                                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                                            >
-                                                انصراف
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleSubscribePlan(selectedPlan.id, selectedPlan.name)}
-                                                className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600"
-                                            >
-                                                تایید و پرداخت
-                                            </button>
+                                        <div className="rounded-lg border border-slate-200 bg-white p-3 text-center">
+                                            <p className="text-xs font-medium text-slate-700 mb-2">پرداخت با درگاه امن سامان</p>
+                                            <div className="flex justify-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPaymentVisible(false)}
+                                                    disabled={isPaying}
+                                                    className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                                                >
+                                                    انصراف
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSubscribePlan(selectedPlan.id, selectedPlan.name)}
+                                                    disabled={isPaying}
+                                                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors disabled:opacity-70"
+                                                >
+                                                    {isPaying ? (
+                                                        <>
+                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                            در حال انتقال...
+                                                        </>
+                                                    ) : (
+                                                        'تایید و پرداخت'
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -592,11 +639,36 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                 title={searchInput ? `نتایج جستجو برای «${searchInput}»` : "کلمات کلیدی قابل خرید"}
                 description="مبالغ زیر با احتساب ضریب پلن فعال شما محاسبه شده‌اند."
             >
+                {/* بخش افزودن کلمه کلیدی دلخواه */}
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-slate-50 p-2">
+                    <input
+                        value={newKeywordInput}
+                        onChange={(e) => setNewKeywordInput(e.target.value)}
+                        placeholder="کلمه دلخواه خود را وارد کنید..."
+                        className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-amber-400"
+                    />
+                    <button
+                        type="button"
+                        onClick={handleAddCustomKeyword}
+                        disabled={isAddingKeyword}
+                        className="inline-flex h-10 items-center gap-1 rounded-lg bg-slate-800 px-4 text-xs font-bold text-white hover:bg-slate-700 transition-colors disabled:opacity-50"
+                    >
+                        {isAddingKeyword ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Plus className="h-4 w-4" />
+                        )}
+                        ثبت کلمه جدید
+                    </button>
+                </div>
+
                 <ul className="space-y-2 max-h-[400px] overflow-y-auto pl-1">
                     {!activePlan ? (
                         <p className="text-center text-sm font-bold text-red-500 py-4">لطفا ابتدا از پنل سمت راست یک پلن VIP فعال کنید.</p>
                     ) : filteredAvailable.length === 0 ? (
-                        <p className="text-center text-sm text-slate-500 py-4">کلمه‌ای یافت نشد.</p>
+                        <p className="text-center text-sm text-slate-500 py-4">
+                            کلمه‌ای یافت نشد. می‌توانید از کادر بالا آن را ثبت کنید.
+                        </p>
                     ) : (
                         filteredAvailable.map((item) => {
                             const multiplier = activePlan.multiplier || 1;

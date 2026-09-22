@@ -131,7 +131,22 @@ export function DoctorList() {
       setLoading(false);
     }
   };
+  const handleDoctorClick = (doctorId: number) => {
+    // 1. اگر کاربر متنی را سرچ کرده بود، درخواست ثبت کلیک را در بک‌گراند به سرور بفرست
+    if (searchQuery.trim().length > 0) {
+      fetch(`https://api.mediraai.com/api/user/diagnosis/doctor/${doctorId}/click`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery.trim() })
+      }).catch((err) => console.error("Error logging click:", err));
+    }
 
+    // 2. بلافاصله و بدون معطلی به صفحه پزشک برو
+    navigate(`/doctor/${doctorId}`);
+  };
   // دریافت کلمات کلیدی پیشنهادی
   const fetchSuggestions = async (text: string) => {
     if (text.length < 2) {
@@ -482,7 +497,7 @@ export function DoctorList() {
                 <Card
                     key={doctor.id}
                     dir="rtl"
-                    onClick={() => navigate(`/doctor/${doctor.id}`)}
+                    onClick={() => handleDoctorClick(doctor.id)}
                     className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow cursor-pointer text-right"
                 >
                   <div className="flex items-start gap-3">
@@ -581,7 +596,8 @@ export function DoctorList() {
                         className="shrink-0 rounded-full bg-gradient-to-l from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/30 hover:from-blue-700 hover:to-blue-600 hover:shadow-lg hover:shadow-blue-500/35 active:scale-[0.98] transition-all duration-200"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/doctor/${doctor.id}`);
+                          // جایگزین کردن هندلر کلیک در دکمه
+                          handleDoctorClick(doctor.id);
                         }}
                     >
                       رزرو نوبت
