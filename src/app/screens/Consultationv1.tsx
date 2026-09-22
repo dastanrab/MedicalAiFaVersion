@@ -90,7 +90,6 @@ export function Consultationv1() {
   // فقط state عنوان اتاق
   const [roomTitle, setRoomTitle] = useState<string>('در حال بارگذاری...');
 
-// فقط fetchChatHistory کافیه
   const fetchChatHistory = async () => {
     try {
       setIsLoadingHistory(true);
@@ -322,7 +321,7 @@ export function Consultationv1() {
         setErrorMsg('دسترسی به این چت مجاز نیست');
       }else if(event.code === 4001){
         setErrorMsg('دسترسی به این چت مجاز نیست');
-         setTimeout(() => navigate('/'), 3000);
+        setTimeout(() => navigate('/'), 3000);
       }
       else if (event.code !== 1000) {
         setErrorMsg(`اتصال قطع شد (${event.code})`);
@@ -488,7 +487,8 @@ export function Consultationv1() {
   }
 
   return (
-      <div className="flex flex-col h-screen bg-gradient-to-b from-blue-50 to-white overflow-hidden">
+      // 🟢 تغییر h-screen به h-[100dvh]
+      <div className="flex flex-col h-[100dvh] bg-gradient-to-b from-blue-50 to-white overflow-hidden">
 
         {/* هدر */}
         <div className="flex-shrink-0 bg-white border-b px-4 py-4 shadow-sm w-full">
@@ -613,8 +613,8 @@ export function Consultationv1() {
                   {/* نشانگر تایپ */}
                   <TypingIndicator />
 
-                  {/* ورودی پیام */}
-                  <div className="flex-shrink-0 bg-white border-t px-4 py-4">
+                  {/* 🟢 ورودی پیام: تغییر py-4 به pt-4 pb-24 برای جلوگیری از تداخل با Navbar */}
+                  <div className="flex-shrink-0 bg-white border-t px-4 pt-4 pb-24">
                     <div className="flex items-center gap-2">
                       <button className="text-gray-400 hover:text-gray-600 flex-shrink-0">
                         <Paperclip className="w-6 h-6" />
@@ -647,7 +647,8 @@ export function Consultationv1() {
 
             {/* تب تماس صوتی */}
             {activeTab === 'call' && (
-                <div className="flex-1 flex items-center justify-center p-6">
+                // 🟢 اضافه شدن pb-24
+                <div className="flex-1 flex items-center justify-center p-6 pb-24">
                   <Card className="p-8 text-center shadow-xl border-0 max-w-sm w-full">
                     <div className="w-32 h-32 mx-auto mb-6 relative">
                       <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-4xl">
@@ -673,7 +674,8 @@ export function Consultationv1() {
 
             {/* تب تماس تصویری */}
             {activeTab === 'video' && (
-                <div className="flex-1 flex items-center justify-center p-6">
+                // 🟢 اضافه شدن pb-24
+                <div className="flex-1 flex items-center justify-center p-6 pb-24">
                   <Card className="p-8 text-center shadow-xl border-0 max-w-sm w-full">
                     <div className="w-32 h-32 mx-auto mb-6 relative">
                       <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-4xl">
