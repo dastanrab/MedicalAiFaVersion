@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { goBack } from '../navigation/appHistory';
+import { rememberCreatedAddress } from '../lib/pendingAddress';
 import {
   Check,
   HeartPulse,
@@ -64,11 +66,15 @@ function ErrorAlert({ message, onClose }: { message: string; onClose: () => void
   );
 }
 
-function getReturnPath(from: unknown): string {
+function getExplicitReturnPath(from: unknown): string | null {
   if (typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')) {
     return from;
   }
-  return '/home';
+  return null;
+}
+
+function getReturnPath(from: unknown): string {
+  return getExplicitReturnPath(from) ?? '/home';
 }
 
 export function UserAddresses() {
@@ -78,14 +84,16 @@ export function UserAddresses() {
   const storeUser = useUserStore((state) => state.user);
   const fetchUserProfile = useUserStore((state) => state.fetchProfile);
 
-  const backTo = getReturnPath((location.state as { from?: string } | null)?.from);
+  const navigationState = location.state as { from?: string; openForm?: boolean } | null;
+  const backTo = getReturnPath(navigationState?.from);
+  const returnPath = getExplicitReturnPath(navigationState?.from);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<number | null>(storeUser?.id ?? null);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(Boolean(navigationState?.openForm));
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
 
@@ -170,7 +178,7 @@ export function UserAddresses() {
 
       setAddresses(mergedAddresses);
       persistAddresses(mergedAddresses, nextUserId);
-      setShowForm(mergedAddresses.length === 0);
+      setShowForm((open) => open || mergedAddresses.length === 0);
     } catch (error) {
       console.error('خطا در دریافت آدرس‌ها:', error);
       setErrorMessage('خطا در دریافت آدرس‌ها');
@@ -216,6 +224,11 @@ export function UserAddresses() {
       setTitle('');
       setDetails('');
       setShowForm(false);
+
+      if (returnPath) {
+        rememberCreatedAddress(createdAddress.id);
+        goBack(navigate, returnPath);
+      }
     } catch (error) {
       console.error('خطا در ثبت آدرس:', error);
       setErrorMessage('خطا در ثبت آدرس');

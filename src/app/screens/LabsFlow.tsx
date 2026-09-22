@@ -121,28 +121,72 @@ const stepsData = [
     { id: 2, title: "انتخاب آزمایشگاه", icon: Building2 },
 ];
 
+const LABS_DRAFT_KEY = "medira:labs-flow-draft";
+
+type LabsDraft = {
+    step: number;
+    digitalCode: string;
+    openSection: "code" | "upload" | null;
+    selectedTests: number[];
+    selectedLab: number | null;
+    selectedAddressId: number | null;
+};
+
+function loadLabsDraft(): LabsDraft | null {
+    try {
+        const raw = sessionStorage.getItem(LABS_DRAFT_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<LabsDraft>;
+        return {
+            step: parsed.step === 2 ? 2 : 1,
+            digitalCode: typeof parsed.digitalCode === "string" ? parsed.digitalCode : "",
+            openSection:
+                parsed.openSection === "code" || parsed.openSection === "upload"
+                    ? parsed.openSection
+                    : null,
+            selectedTests: Array.isArray(parsed.selectedTests)
+                ? parsed.selectedTests.filter((id) => typeof id === "number")
+                : [],
+            selectedLab: typeof parsed.selectedLab === "number" ? parsed.selectedLab : null,
+            selectedAddressId:
+                typeof parsed.selectedAddressId === "number" ? parsed.selectedAddressId : null,
+        };
+    } catch {
+        return null;
+    }
+}
+
+function clearLabsDraft() {
+    sessionStorage.removeItem(LABS_DRAFT_KEY);
+}
+
 export function LabsFlow() {
     const navigate = useNavigate();
     const { accessToken } = useAuthStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [step, setStep] = useState(1);
+    const [initialDraft] = useState(loadLabsDraft);
+    const [step, setStep] = useState(initialDraft?.step ?? 1);
     const [submitted, setSubmitted] = useState(false);
-    const [digitalCode, setDigitalCode] = useState("");
+    const [digitalCode, setDigitalCode] = useState(initialDraft?.digitalCode ?? "");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
-    const [openSection, setOpenSection] = useState<"code" | "upload" | null>(null);
+    const [openSection, setOpenSection] = useState<"code" | "upload" | null>(
+        initialDraft?.openSection ?? null,
+    );
 
     const [testPacks, setTestPacks] = useState<TestPack[]>([]);
-    const [selectedTests, setSelectedTests] = useState<number[]>([]);
+    const [selectedTests, setSelectedTests] = useState<number[]>(initialDraft?.selectedTests ?? []);
     const [labs, setLabs] = useState<LabCenter[]>([]);
-    const [selectedLab, setSelectedLab] = useState<number | null>(null);
+    const [selectedLab, setSelectedLab] = useState<number | null>(initialDraft?.selectedLab ?? null);
     const [labDetails, setLabDetails] = useState<LabDetails | null>(null);
     const [reviewRating, setReviewRating] = useState(0);
     const [reviewText, setReviewText] = useState("");
     const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
     // نگهداری آیدی آدرس انتخاب شده که از کامپوننت AddressSelector دریافت می‌شود
-    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+        initialDraft?.selectedAddressId ?? null,
+    );
 
     const [loadingTests, setLoadingTests] = useState(true);
     const [loadingLabs, setLoadingLabs] = useState(false);
@@ -213,11 +257,16 @@ export function LabsFlow() {
         }
     }, [accessToken]);
 
-    const fetchLabs = async () => {
+    const fetchLabs = async (
+        testPackIds: number[] = selectedTests,
+        options?: { preserveSelection?: boolean },
+    ) => {
         try {
             setLoadingLabs(true);
             setApiError(null);
-            setSelectedLab(null);
+            if (!options?.preserveSelection) {
+                setSelectedLab(null);
+            }
             setLabs([]);
 
             const res = await fetch(`${API_BASE_URL}/api/user/labs/search-centers`, {
@@ -227,14 +276,20 @@ export function LabsFlow() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    test_pack_ids: selectedTests,
+                    test_pack_ids: testPackIds,
                 }),
             });
 
             const json = await res.json();
 
             if (json.success) {
-                setLabs(json.data || []);
+                const nextLabs: LabCenter[] = json.data || [];
+                setLabs(nextLabs);
+                if (options?.preserveSelection) {
+                    setSelectedLab((current) =>
+                        current != null && nextLabs.some((lab) => lab.id === current) ? current : null,
+                    );
+                }
                 return true;
             }
 
@@ -247,6 +302,29 @@ export function LabsFlow() {
             setLoadingLabs(false);
         }
     };
+
+    const restoredLabsSearch = useRef(false);
+    useEffect(() => {
+        if (restoredLabsSearch.current || !accessToken || !initialDraft) return;
+        if (initialDraft.step !== 2 || initialDraft.selectedTests.length === 0) return;
+        restoredLabsSearch.current = true;
+        void fetchLabs(initialDraft.selectedTests, { preserveSelection: true });
+    }, [accessToken]);
+
+    useEffect(() => {
+        if (submitted) return;
+        sessionStorage.setItem(
+            LABS_DRAFT_KEY,
+            JSON.stringify({
+                step,
+                digitalCode,
+                openSection,
+                selectedTests,
+                selectedLab,
+                selectedAddressId,
+            } satisfies LabsDraft),
+        );
+    }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId]);
 
     const submitLabRequest = async () => {
         const requestType = getSelectedMode();
@@ -332,6 +410,7 @@ export function LabsFlow() {
                 setApiError(validationErrors || json?.message || "خطا در ثبت درخواست");
                 return false;
             }
+            clearLabsDraft();
             if (json.data && json.data.payment_url) {
                 window.location.href = json.data.payment_url;
                 return true;

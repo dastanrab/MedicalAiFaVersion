@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useWizardStep } from "../navigation/appHistory";
+import { clearPendingAddressId, peekPendingAddressId } from "../lib/pendingAddress";
 import { AppBar } from "../components/AppBar";
 import { Skeleton } from "../components/ui/skeleton";
 import { Button } from "../components/ui/button";
@@ -40,30 +41,88 @@ const stepsData = [
     { id: 2, title: "تحویل", icon: Bike },
 ];
 
+const PHARMACY_DRAFT_KEY = "medira:pharmacy-flow-draft";
+
+type PharmacyDraft = {
+    digitalCode: string;
+    deliveryType: "pickup" | "delivery";
+    hasInsurance: boolean;
+    note: string;
+    drugs: string[];
+    selectedAddressId: number | null;
+    openSection: "code" | "upload" | null;
+};
+
+function loadPharmacyDraft(): PharmacyDraft | null {
+    try {
+        const raw = sessionStorage.getItem(PHARMACY_DRAFT_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<PharmacyDraft>;
+        return {
+            digitalCode: typeof parsed.digitalCode === "string" ? parsed.digitalCode : "",
+            deliveryType: parsed.deliveryType === "pickup" ? "pickup" : "delivery",
+            hasInsurance: Boolean(parsed.hasInsurance),
+            note: typeof parsed.note === "string" ? parsed.note : "",
+            drugs: Array.isArray(parsed.drugs)
+                ? parsed.drugs.filter((item) => typeof item === "string")
+                : [],
+            selectedAddressId:
+                typeof parsed.selectedAddressId === "number" ? parsed.selectedAddressId : null,
+            openSection:
+                parsed.openSection === "code" || parsed.openSection === "upload"
+                    ? parsed.openSection
+                    : null,
+        };
+    } catch {
+        return null;
+    }
+}
+
+function clearPharmacyDraft() {
+    sessionStorage.removeItem(PHARMACY_DRAFT_KEY);
+}
+
 export function PharmacyFlow() {
     const navigate = useNavigate();
+    const location = useLocation();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { accessToken, user } = useAuthStore();
+    const [initialDraft] = useState(loadPharmacyDraft);
 
     const [step, setStep] = useWizardStep(1);
     const [submitted, setSubmitted] = useState(false);
-    const [digitalCode, setDigitalCode] = useState("");
+    const [digitalCode, setDigitalCode] = useState(initialDraft?.digitalCode ?? "");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
-    const [deliveryType, setDeliveryType] = useState<"pickup" | "delivery">("delivery");
-    const [hasInsurance, setHasInsurance] = useState(false);
-    const [note, setNote] = useState("");
-    const [drugs, setDrugs] = useState<string[]>([]);
+    const [deliveryType, setDeliveryType] = useState<"pickup" | "delivery">(
+        initialDraft?.deliveryType ?? "delivery",
+    );
+    const [hasInsurance, setHasInsurance] = useState(initialDraft?.hasInsurance ?? false);
+    const [note, setNote] = useState(initialDraft?.note ?? "");
+    const [drugs, setDrugs] = useState<string[]>(initialDraft?.drugs ?? []);
     const [drugInput, setDrugInput] = useState("");
 
     // آدرس‌های کاربر
     const [addresses, setAddresses] = useState<any[]>([]);
-    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+        initialDraft?.selectedAddressId ?? null,
+    );
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // بخش‌های باز شونده
-    const [openSection, setOpenSection] = useState<"code" | "upload" | null>(null);
+    const [openSection, setOpenSection] = useState<"code" | "upload" | null>(
+        initialDraft?.openSection ?? null,
+    );
+
+    const openAddresses = (openForm = false) => {
+        navigate("/addresses", {
+            state: {
+                from: `${location.pathname}${location.search}`,
+                ...(openForm ? { openForm: true } : {}),
+            },
+        });
+    };
 
     // دریافت آدرس‌های کاربر
     useEffect(() => {
@@ -78,10 +137,15 @@ export function PharmacyFlow() {
                     },
                 });
                 const json = await res.json();
-                if (json?.data?.addresses) {
-                    setAddresses(json.data.addresses);
-                    if (json.data.addresses.length > 0) {
-                        setSelectedAddressId(json.data.addresses[0].id);
+                const list = Array.isArray(json?.data?.addresses) ? json.data.addresses : [];
+                setAddresses(list);
+                if (list.length > 0) {
+                    const pendingId = peekPendingAddressId();
+                    const preferredId = pendingId ?? initialDraft?.selectedAddressId ?? null;
+                    const matched = list.find((item: { id: number }) => item.id === preferredId);
+                    setSelectedAddressId(matched?.id ?? list[0].id);
+                    if (pendingId != null && matched) {
+                        clearPendingAddressId();
                     }
                 }
             } catch (err) {
@@ -91,7 +155,23 @@ export function PharmacyFlow() {
             }
         };
         fetchAddresses();
-    }, [accessToken]);
+    }, [accessToken, initialDraft]);
+
+    useEffect(() => {
+        if (submitted) return;
+        sessionStorage.setItem(
+            PHARMACY_DRAFT_KEY,
+            JSON.stringify({
+                digitalCode,
+                deliveryType,
+                hasInsurance,
+                note,
+                drugs,
+                selectedAddressId,
+                openSection,
+            } satisfies PharmacyDraft),
+        );
+    }, [submitted, digitalCode, deliveryType, hasInsurance, note, drugs, selectedAddressId, openSection]);
 
     const toggleSection = (section: "code" | "upload") => {
         setOpenSection((prev) => (prev === section ? null : section));
@@ -156,6 +236,7 @@ export function PharmacyFlow() {
             });
             const json = await response.json();
             if (response.ok && json.status === "success") {
+                clearPharmacyDraft();
                 setSubmitted(true);
             } else {
                 setError(json.message || "خطا در ثبت درخواست");
@@ -453,9 +534,7 @@ export function PharmacyFlow() {
                                             <p>هیچ آدرسی ثبت نشده است. لطفاً ابتدا آدرس خود را اضافه کنید.</p>
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    navigate("/addresses", { state: { from: "/services/pharmacy" } })
-                                                }
+                                                onClick={() => openAddresses(true)}
                                                 className="mt-2 text-sm font-bold text-emerald-700"
                                             >
                                                 ثبت آدرس
@@ -476,9 +555,7 @@ export function PharmacyFlow() {
                                             </select>
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    navigate("/addresses", { state: { from: "/services/pharmacy" } })
-                                                }
+                                                onClick={() => openAddresses(false)}
                                                 className="text-xs font-bold text-emerald-700"
                                             >
                                                 مدیریت آدرس‌ها
