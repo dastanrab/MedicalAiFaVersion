@@ -89,6 +89,12 @@ export const PaymentResultPage: React.FC = () => {
                 path: '/orders'
             };
         }
+        if (reasonId === '6' ) {
+            return {
+                label: 'ورود به لیست سفارش‌ها',
+                path: '/orders'
+            };
+        }
 
         // reason_id = 1 -> رزرو نوبت یا پیش‌فرض
         return {

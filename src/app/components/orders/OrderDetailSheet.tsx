@@ -125,7 +125,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
-    // ----- پرداخت آزمایشگاه (متصل به وب‌سرویس جدید درگاه) -----
+    // ----- پرداخت آزمایشگاه -----
     const handleLabPay = async () => {
         console.log(order)
         if (!order || !order.order_id) {
@@ -185,21 +185,63 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
+    // ----- پرداخت داروخانه -----
     const handlePharmacyPay = async () => {
-        if (!order || !detailData) return;
-        setPaying(true);
+        if (!order || !order.order_id) {
+            setDetailError('شماره سفارش برای پرداخت یافت نشد.');
+            return;
+        }
+        setPaying(true); setDetailError(null);
         try {
-            const res = await fetch(`https://api.mediraai.com/api/user/pharmacy-requests/${order.id}/pay`, {
-                method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
+            const res = await fetch(`https://api.mediraai.com/api/user/payments/initiate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: order.order_id, gateway: selectedGateway })
             });
             const json = await res.json();
-            if (!res.ok || !json.success) throw new Error(json.message || 'پرداخت ناموفق بود');
 
-            const updatedOrder: UserRequestOrder = { ...order, status: 'active', status_label: 'در حال آماده‌سازی' };
+            if (!res.ok || !json.success) {
+                if (refreshOrders) refreshOrders();
+                throw new Error(json.message || 'خطا در ایجاد لینک پرداخت. ممکن است مهلت پرداخت تمام شده باشد.');
+            }
+
+            if (json.data && json.data.payment_url) {
+                window.location.href = json.data.payment_url;
+            } else {
+                throw new Error('آدرس درگاه پرداخت دریافت نشد.');
+            }
+        } catch (err: any) {
+            setDetailError(err.message);
+            setPaying(false);
+        }
+    };
+
+    // ----- لغو درخواست داروخانه -----
+    const handleCancelPharmacyRequest = async () => {
+        if (!order) return;
+        if (!window.confirm('آیا از لغو این درخواست داروخانه اطمینان دارید؟')) return;
+
+        setCanceling(true); setDetailError(null);
+        try {
+            const res = await fetch(`https://api.mediraai.com/api/user/pharmacy-requests/${order.id}/cancel`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
+            });
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || 'خطا در لغو درخواست');
+            }
+
+            const updatedOrder: UserRequestOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
             if (onOrderUpdate) onOrderUpdate(updatedOrder);
-            setDetailData((prev) => prev ? { ...prev, status: 2, status_label: 'در حال آماده‌سازی' } : null);
+            setDetailData((prev) => prev ? { ...prev, status: 7, status_label: 'لغو شده' } : null);
             if (refreshOrders) refreshOrders();
-        } catch (err: any) { setDetailError(err.message); } finally { setPaying(false); }
+        } catch (err: any) {
+            setDetailError(err.message);
+        } finally {
+            setCanceling(false);
+        }
     };
 
     const handleSubmitReview = async () => {
@@ -222,11 +264,15 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
 
     const Icon = serviceIcons[order.serviceType];
     const statusClass = getStatusClass(order.status);
-    const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
-    const showPharmacyPayButton = order.serviceType === 'pharmacy' && detailData && detailData.status === 1;
 
-    const showLabPayButton = order.serviceType === 'lab' && labData && labData.status === 1;
+    // شروط دکمه پرداخت
+    const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
+    const showLabPayButton = order.serviceType === 'lab' && labData && labData.status === 1 && order.order_id !== null;
+    const showPharmacyPayButton = order.serviceType === 'pharmacy' && detailData && detailData.status === 1 && order.order_id !== null;
+
+    // شروط دکمه لغو
     const showLabCancelButton = order.serviceType === 'lab' && labData && (labData.status === 0 || labData.status === 1);
+    const showPharmacyCancelButton = order.serviceType === 'pharmacy' && detailData && (detailData.status === 0 || detailData.status === 1);
 
     const isCompleted = order.status === 'completed';
     const patientInfo = getDoctorPatientInfo();
@@ -391,8 +437,23 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     )}
 
                     {showPharmacyPayButton && (
-                        <button onClick={handlePharmacyPay} disabled={paying} className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
-                            {paying ? <><Loader2 className="h-5 w-5 animate-spin" />در حال پردازش…</> : <><CreditCard className="h-5 w-5" />پرداخت فاکتور داروخانه</>}
+                        <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-gray-700">انتخاب درگاه پرداخت:</label>
+                                <select className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={selectedGateway} onChange={(e) => setSelectedGateway(e.target.value as 'saman' | 'zarinpal')} disabled={paying || canceling}>
+                                    <option value="saman">پرداخت آنلاین با کارت بانکی (سامان کیش)</option>
+                                    <option value="zarinpal">زرین‌پال</option>
+                                </select>
+                            </div>
+                            <button onClick={handlePharmacyPay} disabled={paying || canceling} className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
+                                {paying ? <><Loader2 className="h-5 w-5 animate-spin" /><span>در حال پردازش…</span></> : <><CreditCard className="h-5 w-5" /><span>پرداخت فاکتور داروخانه</span></>}
+                            </button>
+                        </div>
+                    )}
+
+                    {showPharmacyCancelButton && (
+                        <button onClick={handleCancelPharmacyRequest} disabled={paying || canceling} className="mt-2 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
+                            {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست داروخانه</>}
                         </button>
                     )}
 
