@@ -207,7 +207,20 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
     const [addPrice, setAddPrice] = useState<number | ''>('');
     const [isSearching, setIsSearching] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
-
+    const handleSelectCustomMedicine = (name: string) => {
+        setSelectedMedicine({
+            id: 0, // آیدی 0 می‌فرستیم تا بک‌اند متوجه شود داروی جدید است
+            name: name,
+            base_price: '',
+            pharmacy_medicine_id: null,
+            pharmacy_price: null,
+            pharmacy_unit: 'عدد'
+        });
+        setAddPrice('');
+        setAddQuantity(1);
+        setSearchResults([]);
+        setSearchQuery('');
+    };
     useEffect(() => {
         if (token) fetchRequestDetail();
     }, [requestId, token]);
@@ -385,7 +398,9 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    medicine_id: selectedMedicine.id,
+                    // اگر آیدی 0 باشد نال ارسال میکنیم که در بک‌اند بر اساس اسم ساخته شود
+                    medicine_id: selectedMedicine.id === 0 ? null : selectedMedicine.id,
+                    medicine_name: selectedMedicine.name, // همیشه اسم را می‌فرستیم
                     qty: addQuantity,
                     price: addPrice
                 })
@@ -561,7 +576,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                             <Search className="h-4 w-4" />
                                         </button>
                                     </div>
-                                    {searchResults.length > 0 && (
+                                    {(searchResults.length > 0 || (searchQuery.trim().length > 0 && !isSearching)) && (
                                         <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
                                             {searchResults.map(med => (
                                                 <div
@@ -569,6 +584,7 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                                     onClick={() => handleSelectMedicine(med)}
                                                     className="cursor-pointer rounded-lg px-3 py-2 text-sm hover:bg-teal-50 hover:text-teal-700 flex justify-between items-center border-b border-slate-100 last:border-0"
                                                 >
+                                                    {/* کدهای قبلی رندر هر آیتم */}
                                                     <div className="flex flex-col">
                                                         <span className="font-medium">{med.name}</span>
                                                         {med.pharmacy_price ? (
@@ -577,15 +593,25 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                                             </span>
                                                         ) : (
                                                             <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded mt-1 w-max">
-                                                                جدید برای داروخانه
+                                                                ثبت با قیمت جدید
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-slate-500 text-xs font-mono">
-                                                        {formatPrice(med.pharmacy_price || med.base_price || 0)}
-                                                    </span>
                                                 </div>
                                             ))}
+
+                                            {/* اضافه شدن دکمه افزودن داروی کاستوم و جدید */}
+                                            {searchQuery.trim() !== '' && !searchResults.some(m => m.name === searchQuery.trim()) && (
+                                                <div
+                                                    onClick={() => handleSelectCustomMedicine(searchQuery.trim())}
+                                                    className="cursor-pointer rounded-lg px-3 py-2 mt-1 text-sm text-teal-800 bg-teal-100/50 hover:bg-teal-100 flex justify-between items-center border border-teal-200 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Plus className="w-4 h-4" />
+                                                        <span className="font-medium">افزودن "{searchQuery.trim()}" به عنوان داروی جدید</span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

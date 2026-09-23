@@ -13,11 +13,16 @@ export function OrderCard({ order, onOpen }: OrderCardProps) {
     const Icon = serviceIcons[order.serviceType];
     const statusClass = getStatusClass(order.status);
 
+    // بررسی وضعیت سفارش برای کمرنگ کردن
+    const isInactive = order.status === 'completed' || order.status === 'cancelled';
+
     return (
         <button type="button" onClick={onOpen} className="block w-full text-right">
             <Card
                 dir="rtl"
-                className="gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
+                className={`gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] ${
+                    isInactive ? 'opacity-60 hover:opacity-80' : ''
+                }`}
             >
                 <div className="flex items-start gap-3">
                     <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${serviceIconStyles[order.serviceType]}`}>
