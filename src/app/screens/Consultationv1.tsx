@@ -1,5 +1,5 @@
-import {useState, useEffect, useRef, JSX} from 'react';
-import { useNavigate , useParams } from 'react-router';
+import { useState, useEffect, useRef, JSX } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
   Video,
@@ -20,9 +20,6 @@ import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { PageLoader } from '../components/PageLoader';
 import { useAuthStore } from '../store/authStore';
 
-
-// const WS_HOST = '185.222.163.113:4070';
-// const API_BASE = 'https://chat.mediraai.com';
 const WS_HOST = 'chat.mediraai.com';
 const API_BASE = 'https://api.mediraai.com';
 
@@ -33,6 +30,7 @@ type Message = {
   time: string;
   user_id?: number;
   username?: string;
+  message_type?: 'text' | 'file'; // اضافه شدن نوع پیام
 };
 
 type UserStatus = {
@@ -52,6 +50,7 @@ type WSMessage = {
   content?: string;
   is_online?: boolean;
   is_typing?: boolean;
+  message_type?: 'text' | 'file'; // اضافه شدن نوع پیام در سوکت
 };
 
 export function Consultationv1() {
@@ -70,6 +69,10 @@ export function Consultationv1() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // استیت و رفرنس برای آپلود فایل
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [onlineUsers, setOnlineUsers] = useState<Map<number, UserStatus>>(new Map());
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -78,7 +81,10 @@ export function Consultationv1() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const msgIdRef = useRef(1);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [roomTitle, setRoomTitle] = useState<string>('در حال بارگذاری...');
   const roomTitleRef = useRef<string>('در حال بارگذاری...');
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -86,9 +92,6 @@ export function Consultationv1() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // فقط state عنوان اتاق
-  const [roomTitle, setRoomTitle] = useState<string>('در حال بارگذاری...');
 
   const fetchChatHistory = async () => {
     try {
@@ -107,7 +110,6 @@ export function Consultationv1() {
 
       const data = await response.json();
 
-      // دریافت عنوان اتاق از همین پاسخ
       if (data.room_title) {
         setRoomTitle(data.room_title);
         roomTitleRef.current = data.room_title;
@@ -119,6 +121,7 @@ export function Consultationv1() {
         id: msg.id,
         sender: msg.user_id === userIdRef.current ? 'user' : 'other',
         message: msg.message,
+        message_type: msg.message_type || 'text', // دریافت نوع از دیتابیس
         time: new Date(msg.created_at).toLocaleTimeString('fa-IR', {
           hour: '2-digit',
           minute: '2-digit',
@@ -135,7 +138,6 @@ export function Consultationv1() {
       setIsLoadingHistory(false);
     }
   };
-
 
   const fetchParticipants = async () => {
     try {
@@ -210,10 +212,7 @@ export function Consultationv1() {
   };
 
   const connect = (token: string) => {
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
+    if (wsRef.current) wsRef.current.close();
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -235,23 +234,21 @@ export function Consultationv1() {
       try {
         const data: WSMessage = JSON.parse(event.data);
 
-        // پیام معمولی
+        // دریافت پیام جدید
         if (data.type === 'message') {
-          if (data.user_id && userIdRef.current && data.user_id === userIdRef.current) {
-            return;
-          }
+          if (data.user_id && userIdRef.current && data.user_id === userIdRef.current) return;
 
           const incoming: Message = {
             id: msgIdRef.current++,
             sender: 'other',
             message: data.message || data.content || '',
+            message_type: data.message_type || 'text', // دریافت نوع از سوکت
             time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
             user_id: data.user_id,
             username: data.username,
           };
           setMessages((prev) => [...prev, incoming]);
 
-          // حذف نشانگر تایپ کاربر
           if (data.user_id) {
             setTypingUsers((prev) => {
               const next = new Set(prev);
@@ -260,8 +257,6 @@ export function Consultationv1() {
             });
           }
         }
-
-        // تغییر وضعیت آنلاین/آفلاین
         else if (data.type === 'user_status') {
           if (data.user_id && data.user_id !== userIdRef.current) {
             setOnlineUsers((prev) => {
@@ -283,21 +278,14 @@ export function Consultationv1() {
           }
         }
         else if (data.type === 'error') {
-          console.log(data.message,'on error')
           setErrorMsg(data.message || 'خطا در اتصال');
-          //setTimeout(() => navigate('/'), 3000);
         }
-
-        // نشانگر تایپ
         else if (data.type === 'typing') {
           if (data.user_id && data.user_id !== userIdRef.current) {
             setTypingUsers((prev) => {
               const next = new Set(prev);
-              if (data.is_typing) {
-                next.add(data.user_id!);
-              } else {
-                next.delete(data.user_id!);
-              }
+              if (data.is_typing) next.add(data.user_id!);
+              else next.delete(data.user_id!);
               return next;
             });
           }
@@ -313,17 +301,14 @@ export function Consultationv1() {
     };
 
     ws.onclose = (event) => {
-      console.log('close code:', event.code, 'reason:', event.reason);
       setStatus('disconnected');
-
-      if (event.code === 1008 ) {
+      if (event.code === 1008) {
         setStatus('disable');
         setErrorMsg('دسترسی به این چت مجاز نیست');
-      }else if(event.code === 4001){
+      } else if (event.code === 4001) {
         setErrorMsg('دسترسی به این چت مجاز نیست');
         setTimeout(() => navigate('/'), 3000);
-      }
-      else if (event.code !== 1000) {
+      } else if (event.code !== 1000) {
         setErrorMsg(`اتصال قطع شد (${event.code})`);
         reconnectTimeoutRef.current = setTimeout(() => {
           if (accessToken) {
@@ -334,7 +319,6 @@ export function Consultationv1() {
         }, 3000);
       }
     };
-
   };
 
   const addSystemMessage = (text: string) => {
@@ -344,15 +328,14 @@ export function Consultationv1() {
         id: msgIdRef.current++,
         sender: 'other',
         message: `🔔 ${text}`,
+        message_type: 'text',
         time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
   };
 
   const handleDisconnect = () => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
     wsRef.current?.close(1000);
     navigate(-1);
   };
@@ -367,28 +350,16 @@ export function Consultationv1() {
 
   const sendTypingIndicator = (isTyping: boolean) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-
-    const payload = JSON.stringify({
-      type: 'typing',
-      is_typing: isTyping,
-    });
+    const payload = JSON.stringify({ type: 'typing', is_typing: isTyping });
     wsRef.current.send(payload);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessage(e.target.value);
-
-    // ارسال نشانگر تایپ
     if (e.target.value.trim()) {
       sendTypingIndicator(true);
-
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
-      typingTimeoutRef.current = setTimeout(() => {
-        sendTypingIndicator(false);
-      }, 2000);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => sendTypingIndicator(false), 2000);
     } else {
       sendTypingIndicator(false);
     }
@@ -401,15 +372,13 @@ export function Consultationv1() {
       return;
     }
 
-    // توقف نشانگر تایپ
     sendTypingIndicator(false);
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
     const payload = JSON.stringify({
       type: 'message',
       message: message.trim(),
+      message_type: 'text' // مشخص کردن نوع متنی
     });
     wsRef.current.send(payload);
 
@@ -417,11 +386,99 @@ export function Consultationv1() {
       id: msgIdRef.current++,
       sender: 'user',
       message: message.trim(),
+      message_type: 'text',
       time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
       user_id: userIdRef.current || undefined,
     };
     setMessages((prev) => [...prev, outgoing]);
     setMessage('');
+  };
+
+  // تابع آپلود فایل
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('room_id', String(ROOM_ID));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        const fileUrl = data.file_url;
+
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          // ارسال لینک فایل به سوکت
+          wsRef.current.send(JSON.stringify({
+            type: 'message',
+            message: fileUrl,
+            message_type: 'file'
+          }));
+
+          // افزودن به استیت پیام‌ها
+          const outgoing: Message = {
+            id: msgIdRef.current++,
+            sender: 'user',
+            message: fileUrl,
+            message_type: 'file',
+            time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+            user_id: userIdRef.current || undefined,
+          };
+          setMessages((prev) => [...prev, outgoing]);
+        }
+      } else {
+        setErrorMsg('سرور در ذخیره فایل با خطا مواجه شد');
+      }
+    } catch (error) {
+      console.error('آپلود ناموفق:', error);
+      setErrorMsg('خطا در ارتباط برای آپلود فایل');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // ریست کردن ورودی
+    }
+  };
+
+  // تابع رندر کردن محتوای پیام (عکس، فایل یا متن)
+  const renderMessageContent = (msg: Message) => {
+    if (msg.message_type === 'file') {
+      const isImage = msg.message.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i);
+      if (isImage) {
+        return (
+            <a href={msg.message} target="_blank" rel="noreferrer" className="block mt-1">
+              <img
+                  src={msg.message}
+                  alt="تصویر پیوست"
+                  className="max-w-[200px] sm:max-w-[240px] max-h-[240px] w-auto h-auto object-cover rounded-lg border border-black/10 shadow-sm bg-white/20"
+                  onLoad={scrollToBottom}
+              />
+            </a>
+        );
+      }
+      return (
+          <a
+              href={msg.message}
+              target="_blank"
+              rel="noreferrer"
+              className={`flex items-center gap-2 underline mt-1 hover:opacity-80 transition-opacity ${msg.sender === 'user' ? 'text-white' : 'text-blue-600'}`}
+          >
+            <Paperclip className="w-5 h-5" />
+            دانلود فایل پیوست
+          </a>
+      );
+    }
+    // پیام متنی پیش‌فرض
+    return <p className="text-sm break-words whitespace-pre-wrap">{msg.message}</p>;
   };
 
   useEffect(() => {
@@ -432,25 +489,16 @@ export function Consultationv1() {
     fetchProfile();
 
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       wsRef.current?.close();
     };
   }, []);
 
   const StatusBadge = () => {
     const onlineCount = Array.from(onlineUsers.values()).filter(u => u.is_online).length;
-
     const map: Record<ConnectionStatus, { color: string; label: string; icon: JSX.Element }> = {
-      connected: {
-        color: 'text-green-600',
-        label: onlineCount > 0 ? `${onlineCount} نفر آنلاین` : 'متصل',
-        icon: <Wifi className="w-4 h-4" />
-      },
+      connected: { color: 'text-green-600', label: onlineCount > 0 ? `${onlineCount} نفر آنلاین` : 'متصل', icon: <Wifi className="w-4 h-4" /> },
       connecting: { color: 'text-yellow-500', label: 'در حال اتصال...', icon: <Loader2 className="w-4 h-4 animate-spin" /> },
       disconnected: { color: 'text-gray-400', label: 'قطع شده', icon: <WifiOff className="w-4 h-4" /> },
       disable: { color: 'text-purple-500', label: 'دسترسی شما محدود شده', icon: <WifiOff className="w-4 h-4" /> },
@@ -466,7 +514,6 @@ export function Consultationv1() {
 
   const TypingIndicator = () => {
     if (typingUsers.size === 0) return null;
-
     const typingUsernames = Array.from(typingUsers)
         .map(uid => onlineUsers.get(uid)?.username || `کاربر ${uid}`)
         .join('، ');
@@ -487,7 +534,6 @@ export function Consultationv1() {
   }
 
   return (
-      // 🟢 تغییر h-screen به h-[100dvh]
       <div className="flex flex-col h-[100dvh] bg-gradient-to-b from-blue-50 to-white overflow-hidden">
 
         {/* هدر */}
@@ -528,18 +574,6 @@ export function Consultationv1() {
           </div>
         </div>
 
-        {/* تب‌ها */}
-        <div className="flex-shrink-0 bg-white border-b px-4 w-full">
-          <div className="max-w-md mx-auto">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full">
-                <TabsTrigger value="chat" className="flex-1">گفتگو</TabsTrigger>
-                <TabsTrigger value="call" className="flex-1">تماس صوتی</TabsTrigger>
-                <TabsTrigger value="video" className="flex-1">تماس تصویری</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </div>
 
         {/* محتوا */}
         <div className="flex-1 overflow-hidden min-w-0">
@@ -548,7 +582,6 @@ export function Consultationv1() {
             {/* تب گفتگو */}
             {activeTab === 'chat' && (
                 <>
-                  {/* بنر خطا */}
                   {errorMsg && (
                       <div className="flex-shrink-0 bg-red-50 border-b border-red-100 px-4 py-2 text-sm text-red-600 text-center">
                         ⚠️ {errorMsg}
@@ -596,9 +629,12 @@ export function Consultationv1() {
                                   {msg.username}
                                 </p>
                             )}
-                            <p className="text-sm break-words">{msg.message}</p>
+
+                            {/* جایگزین شدن محتوای متنی ساده با رندرکننده شرطی */}
+                            {renderMessageContent(msg)}
+
                             <p
-                                className={`text-xs mt-1 ${
+                                className={`text-xs mt-1 text-left ${
                                     msg.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
                                 }`}
                             >
@@ -613,11 +649,25 @@ export function Consultationv1() {
                   {/* نشانگر تایپ */}
                   <TypingIndicator />
 
-                  {/* 🟢 ورودی پیام: تغییر py-4 به pt-4 pb-24 برای جلوگیری از تداخل با Navbar */}
+                  {/* ورودی پیام و آپلود فایل */}
                   <div className="flex-shrink-0 bg-white border-t px-4 pt-4 pb-24">
                     <div className="flex items-center gap-2">
-                      <button className="text-gray-400 hover:text-gray-600 flex-shrink-0">
-                        <Paperclip className="w-6 h-6" />
+
+                      {/* input مخفی برای آپلود */}
+                      <input
+                          type="file"
+                          className="hidden"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          accept="image/*,application/pdf,.doc,.docx"
+                      />
+
+                      <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={status !== 'connected' || isUploading}
+                          className="text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0 disabled:opacity-50"
+                      >
+                        {isUploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Paperclip className="w-6 h-6" />}
                       </button>
 
                       <div className="flex-1 min-w-0">
@@ -625,17 +675,15 @@ export function Consultationv1() {
                             value={message}
                             onChange={handleInputChange}
                             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                            placeholder={
-                              status === 'connected' ? 'پیام خود را بنویسید...' : 'در انتظار اتصال...'
-                            }
-                            disabled={status !== 'connected'}
-                            className="w-full"
+                            placeholder={isUploading ? 'درحال آپلود...' : status === 'connected' ? 'پیام خود را بنویسید...' : 'در انتظار اتصال...'}
+                            disabled={status !== 'connected' || isUploading}
+                            className="w-full bg-gray-50 focus:bg-white"
                         />
                       </div>
 
                       <button
                           onClick={sendMessage}
-                          disabled={status !== 'connected' || !message.trim()}
+                          disabled={status !== 'connected' || !message.trim() || isUploading}
                           className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white p-3 rounded-full transition-colors flex-shrink-0"
                       >
                         <Send className="w-5 h-5" />
@@ -643,66 +691,6 @@ export function Consultationv1() {
                     </div>
                   </div>
                 </>
-            )}
-
-            {/* تب تماس صوتی */}
-            {activeTab === 'call' && (
-                // 🟢 اضافه شدن pb-24
-                <div className="flex-1 flex items-center justify-center p-6 pb-24">
-                  <Card className="p-8 text-center shadow-xl border-0 max-w-sm w-full">
-                    <div className="w-32 h-32 mx-auto mb-6 relative">
-                      <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-4xl">
-                        {roomTitle.charAt(0)}
-                      </div>
-                      <div className="absolute inset-0 rounded-full bg-green-500 opacity-20 animate-pulse" />
-                    </div>
-                    <h2 className="text-2xl text-gray-900 mb-2">{roomTitle}</h2>
-                    <p className="text-gray-600 mb-6">تماس صوتی</p>
-                    <div className="space-y-3">
-                      <Button className="w-full h-12 bg-green-500 hover:bg-green-600 text-white">
-                        <Phone className="w-5 h-5 ml-2" />
-                        شروع تماس صوتی
-                      </Button>
-                      <Button variant="outline" className="w-full h-12">
-                        <Mic className="w-5 h-5 ml-2" />
-                        بی‌صدا
-                      </Button>
-                    </div>
-                  </Card>
-                </div>
-            )}
-
-            {/* تب تماس تصویری */}
-            {activeTab === 'video' && (
-                // 🟢 اضافه شدن pb-24
-                <div className="flex-1 flex items-center justify-center p-6 pb-24">
-                  <Card className="p-8 text-center shadow-xl border-0 max-w-sm w-full">
-                    <div className="w-32 h-32 mx-auto mb-6 relative">
-                      <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-4xl">
-                        {roomTitle.charAt(0)}
-                      </div>
-                      <div className="absolute inset-0 rounded-full bg-blue-500 opacity-20 animate-pulse" />
-                    </div>
-                    <h2 className="text-2xl text-gray-900 mb-2">{roomTitle}</h2>
-                    <p className="text-gray-600 mb-6">تماس تصویری</p>
-                    <div className="space-y-3">
-                      <Button className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white">
-                        <Video className="w-5 h-5 ml-2" />
-                        شروع تماس تصویری
-                      </Button>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" className="h-12">
-                          <Video className="w-5 h-5 ml-2" />
-                          دوربین
-                        </Button>
-                        <Button variant="outline" className="h-12">
-                          <Mic className="w-5 h-5 ml-2" />
-                          میکروفون
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
             )}
 
           </div>
