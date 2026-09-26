@@ -4,6 +4,7 @@ import { useWizardStep } from "../navigation/appHistory";
 import { AppBar } from "../components/AppBar";
 import { CardGridSkeleton } from "../components/PageSkeleton";
 import { Button } from "../components/ui/button";
+import { AddressSelector } from "../components/AddressSelector"; // <--- کامپوننت مجزای آدرس
 import {
     ProviderDetailsDialog,
     type ProviderDetails,
@@ -29,11 +30,9 @@ import {
     Info,
     CheckCircle2,
 } from "lucide-react";
-import {useAuthStore} from "../store/authStore";
-// فرض می‌کنیم هوک استور شما اینجا قرار دارد
+import { useAuthStore } from "../store/authStore";
 
-
-const API_BASE_URL = "https://api.mediraai.com/api/user"; // فرض بر این است که روت‌ها در api.php هستند
+const API_BASE_URL = "https://api.mediraai.com/api/user";
 
 // نگاشت آیکون‌ها بر اساس slug خدمات دریافتی از دیتابیس
 const getServiceIcon = (slug: string) => {
@@ -92,9 +91,9 @@ const getClinicDetails = (
         services:
             selectedServices.length > 0
                 ? selectedServices.map((service) => ({
-                      name: service.name,
-                      price: service.price ?? (Number(clinic.total_estimated_price) || 0),
-                  }))
+                    name: service.name,
+                    price: service.price ?? (Number(clinic.total_estimated_price) || 0),
+                }))
                 : [{ name: "خدمات پرستاری در منزل", price: Number(clinic.total_estimated_price) || 0 }],
         recentReviews: reviewsPool[seed],
     };
@@ -131,7 +130,9 @@ export function NurseHomeFlow() {
     // Form states
     const [selectedServices, setSelectedServices] = useState<number[]>([]);
     const [genderPref, setGenderPref] = useState<"any" | "female" | "male">("any");
-    const [address, setAddress] = useState("");
+
+    // فیلد آدرس
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
     const [condition, setCondition] = useState("");
     const [urgent, setUrgent] = useState(false);
     const [selectedClinic, setSelectedClinic] = useState<number | null>(null);
@@ -158,7 +159,9 @@ export function NurseHomeFlow() {
             }
         };
 
-        fetchServices();
+        if (accessToken) {
+            fetchServices();
+        }
     }, [accessToken]);
 
     // مرحله ۳: واکشی درمانگاه‌ها هنگام رفتن به استپ ۳
@@ -188,7 +191,7 @@ export function NurseHomeFlow() {
         }
     };
 
-    // ثبت نهایی درخواست
+    // ثبت نهایی درخواست و هدایت به درگاه
     const submitFinalRequest = async () => {
         setIsSubmitting(true);
         try {
@@ -205,20 +208,23 @@ export function NurseHomeFlow() {
                     gender_pref: genderPref,
                     condition: condition,
                     is_urgent: urgent ? 1 : 0,
-                    address: address,
+                    user_address_id: selectedAddressId, // <--- ارسال شناسه آدرس
                     time_type_id: 1 // فرض بر بازه زمانی پیش‌فرض
                 })
             });
             const json = await response.json();
-            if (json.success) {
-                setSubmitted(true);
+
+            if (json.success && json.data && json.data.payment_url) {
+                // هدایت مستقیم کاربر به درگاه پرداخت
+                window.location.href = json.data.payment_url;
             } else {
                 alert("خطا در ثبت درخواست: " + (json.message || "لطفاً مجدداً تلاش کنید"));
+                setIsSubmitting(false);
             }
         } catch (error) {
             console.error("Error submitting request:", error);
-        } finally {
             setIsSubmitting(false);
+            alert("خطا در ارتباط با سرور");
         }
     };
 
@@ -228,6 +234,7 @@ export function NurseHomeFlow() {
 
     const selectedServiceItems = servicesList.filter((s) => selectedServices.includes(s.id));
     const clinic = clinicsList.find((c) => c.id === selectedClinic) ?? null;
+
     // استخراج قیمت نهایی کلینیک انتخاب شده از API
     const finalPrice = clinic ? parseFloat(clinic.total_estimated_price) : 0;
 
@@ -243,23 +250,24 @@ export function NurseHomeFlow() {
         setClinicDetails(getClinicDetails(clinicItem, items));
     };
 
-    const isStep2Valid = address.trim().length > 0 && condition.trim().length > 0;
+    // بررسی تکمیل بودن مرحله ۲ بر اساس نوشتن شرح حال (آدرس دیگر در مرحله ۱ بررسی می‌شود)
+    const isStep2Valid = condition.trim().length > 0;
     const isStep3Valid = selectedClinic !== null;
 
     if (submitted) {
         return (
-            <div className="h-[100dvh] bg-gradient-to-b from-rose-50 to-white text-right font-[YekanBakhFaNum] flex flex-col" dir="rtl">
+            <div className="flex h-[100dvh] flex-col bg-gradient-to-b from-rose-50 to-white text-right font-[YekanBakhFaNum]" dir="rtl">
                 <AppBar backTo="/services" />
-                <div className="flex-1 flex flex-col items-center justify-center px-6 pt-20">
+                <div className="flex flex-1 flex-col items-center justify-center px-6 pt-20">
                     <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 shadow-lg shadow-rose-200">
                         <PartyPopper className="h-10 w-10 text-white" />
                     </div>
                     <h1 className="mb-2 text-xl font-black text-slate-800">درخواست شما ثبت شد</h1>
-                    <p className="mb-8 max-w-sm text-center text-sm text-slate-500 leading-relaxed">
+                    <p className="mb-8 max-w-sm text-center text-sm leading-relaxed text-slate-500">
                         درخواست پرستار در منزل شما برای <span className="font-bold text-slate-700">{clinic?.name}</span> ثبت شد. به‌محض تخصیص پرستار، مشخصات و زمان دقیق مراجعه برای شما پیامک می‌شود.
                     </p>
                     <Button
-                        className="rounded-2xl h-12 px-8 bg-rose-600 text-white hover:bg-rose-700"
+                        className="h-12 rounded-2xl bg-rose-600 px-8 text-white hover:bg-rose-700"
                         onClick={() => navigate("/services")}
                     >
                         بازگشت به خدمات
@@ -273,8 +281,16 @@ export function NurseHomeFlow() {
         <div className="h-full overflow-y-auto bg-gradient-to-b from-rose-50 to-white pb-24 text-right font-[YekanBakhFaNum]" dir="rtl">
             <AppBar backTo="/services" />
 
-            <div className="relative z-10 px-5 pt-24 pb-4 text-right sm:px-6">
-                <div className="mb-8 shrink-0">
+            <div className="relative z-10 px-5 pb-4 pt-24 text-right sm:px-6">
+
+                {/* ---------- فراخوانی کامپوننت مجزای آدرس در بالای صفحه ---------- */}
+                <AddressSelector
+                    selectedAddressId={selectedAddressId}
+                    onSelect={setSelectedAddressId}
+                />
+                {/* ---------------------------------------------------------------- */}
+
+                <div className="mb-8 mt-6 shrink-0">
                     <div className="mb-6 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 p-4 shadow-lg shadow-rose-200">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
                             <HomeIcon className="h-6 w-6 text-white" />
@@ -290,8 +306,8 @@ export function NurseHomeFlow() {
                         </div>
                     </div>
 
-                    <div className="relative flex justify-between items-center px-2">
-                        <div className="absolute top-5 left-6 right-6 -z-10 h-1 overflow-hidden rounded-full bg-rose-100">
+                    <div className="relative flex items-center justify-between px-2">
+                        <div className="absolute left-6 right-6 top-5 -z-10 h-1 overflow-hidden rounded-full bg-rose-100">
                             <div
                                 className="h-full rounded-full bg-gradient-to-l from-rose-500 to-pink-600 transition-all duration-500 ease-out"
                                 style={{ width: `${((step - 1) / (stepsData.length - 1)) * 100}%`, marginRight: "auto" }}
@@ -306,13 +322,13 @@ export function NurseHomeFlow() {
                                     <div
                                         className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-500 ${
                                             isCompleted
-                                                ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200"
+                                                ? "border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-200"
                                                 : isCurrent
-                                                    ? "scale-110 bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-200 ring-4 ring-white"
-                                                    : "bg-white border-rose-200 text-rose-300 ring-4 ring-white"
+                                                    ? "scale-110 border-rose-600 bg-rose-600 text-white shadow-lg shadow-rose-200 ring-4 ring-white"
+                                                    : "border-rose-200 bg-white text-rose-300 ring-4 ring-white"
                                         }`}
                                     >
-                                        <StepIcon className={`w-5 h-5 ${isCompleted ? "animate-in zoom-in duration-300" : ""}`} />
+                                        <StepIcon className={`h-5 w-5 ${isCompleted ? "animate-in zoom-in duration-300" : ""}`} />
                                     </div>
                                     <span
                                         className={`text-[11px] font-bold transition-colors duration-300 ${
@@ -327,17 +343,17 @@ export function NurseHomeFlow() {
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col pb-4">
+                <div className="flex flex-1 flex-col pb-4">
                     {/* STEP 1: Service type */}
                     {step === 1 && (
-                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-1">نوع خدمات مورد نیاز را انتخاب کنید</h2>
-                            <p className="text-xs text-slate-500 mb-4">می‌توانید بیش از یک خدمت انتخاب کنید</p>
+                        <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-1 flex-col duration-500">
+                            <h2 className="mb-1 text-lg font-bold text-slate-800">نوع خدمات مورد نیاز را انتخاب کنید</h2>
+                            <p className="mb-4 text-xs text-slate-500">می‌توانید بیش از یک خدمت انتخاب کنید</p>
 
                             {isLoadingServices ? (
                                 <CardGridSkeleton count={6} />
                             ) : (
-                                <div className="grid grid-cols-2 gap-3 mb-6">
+                                <div className="mb-6 grid grid-cols-2 gap-3">
                                     {servicesList.map((svc) => {
                                         const isSelected = selectedServices.includes(svc.id);
                                         const Icon = getServiceIcon(svc.slug);
@@ -345,24 +361,24 @@ export function NurseHomeFlow() {
                                             <div
                                                 key={svc.id}
                                                 onClick={() => toggleService(svc.id)}
-                                                className={`p-4 rounded-3xl cursor-pointer transition-all border-2 flex flex-col h-full ${
-                                                    isSelected ? "border-rose-500 bg-rose-50/80 shadow-sm" : "border-slate-100 bg-white hover:border-rose-200 shadow-sm"
+                                                className={`flex h-full cursor-pointer flex-col rounded-3xl border-2 p-4 transition-all ${
+                                                    isSelected ? "border-rose-500 bg-rose-50/80 shadow-sm" : "border-slate-100 bg-white shadow-sm hover:border-rose-200"
                                                 }`}
                                             >
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div className={`p-2.5 rounded-2xl ${isSelected ? "bg-rose-600" : "bg-rose-50"}`}>
-                                                        <Icon className={`w-5 h-5 ${isSelected ? "text-white" : "text-rose-600"}`} />
+                                                <div className="mb-3 flex items-start justify-between">
+                                                    <div className={`rounded-2xl p-2.5 ${isSelected ? "bg-rose-600" : "bg-rose-50"}`}>
+                                                        <Icon className={`h-5 w-5 ${isSelected ? "text-white" : "text-rose-600"}`} />
                                                     </div>
                                                     <div
-                                                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
                                                             isSelected ? "border-rose-600 bg-rose-600" : "border-slate-200"
                                                         }`}
                                                     >
-                                                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                                                        {isSelected && <Check className="h-3 w-3 text-white" />}
                                                     </div>
                                                 </div>
 
-                                                <h3 className="text-sm font-bold text-slate-800 mt-2">{svc.name}</h3>
+                                                <h3 className="mt-2 text-sm font-bold text-slate-800">{svc.name}</h3>
                                             </div>
                                         );
                                     })}
@@ -371,22 +387,22 @@ export function NurseHomeFlow() {
                         </div>
                     )}
 
-                    {/* STEP 2: Patient info + address */}
+                    {/* STEP 2: Patient info */}
                     {step === 2 && (
-                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">اطلاعات بیمار و آدرس</h2>
+                        <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-1 flex-col duration-500">
+                            <h2 className="mb-4 text-lg font-bold text-slate-800">اطلاعات بیمار</h2>
 
                             <div className="mb-5">
-                                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 mb-2 px-1">
-                                    <Users className="w-3.5 h-3.5" />
+                                <label className="mb-2 flex items-center gap-1.5 px-1 text-xs font-bold text-slate-600">
+                                    <Users className="h-3.5 w-3.5" />
                                     ترجیح جنسیت پرستار
                                 </label>
-                                <div className="flex bg-white shadow-sm p-1.5 rounded-2xl border border-rose-50">
+                                <div className="flex rounded-2xl border border-rose-50 bg-white p-1.5 shadow-sm">
                                     {genderOptions.map((opt) => (
                                         <button
                                             key={opt.value}
                                             onClick={() => setGenderPref(opt.value)}
-                                            className={`flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all ${
+                                            className={`flex-1 rounded-xl py-2.5 text-xs font-semibold transition-all ${
                                                 genderPref === opt.value ? "bg-rose-50 text-rose-700" : "text-slate-500"
                                             }`}
                                         >
@@ -397,45 +413,31 @@ export function NurseHomeFlow() {
                             </div>
 
                             <div className="mb-5">
-                                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 mb-2 px-1">
-                                    <MapPin className="w-3.5 h-3.5" />
-                                    آدرس محل مراجعه
-                                </label>
-                                <textarea
-                                    value={address}
-                                    onChange={(e) => setAddress(e.target.value)}
-                                    rows={3}
-                                    placeholder="آدرس کامل، پلاک و واحد را وارد کنید"
-                                    className="w-full rounded-2xl border border-rose-100 bg-white p-4 text-sm shadow-sm resize-none focus:border-rose-500 focus:ring-rose-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="mb-5">
-                                <label className="text-xs font-bold text-slate-600 mb-2 px-1 block">شرح وضعیت بیمار</label>
+                                <label className="mb-2 block px-1 text-xs font-bold text-slate-600">شرح وضعیت بیمار</label>
                                 <textarea
                                     value={condition}
                                     onChange={(e) => setCondition(e.target.value)}
                                     rows={3}
                                     placeholder="سن بیمار، شرایط حرکتی و نکات لازم برای پرستار را بنویسید"
-                                    className="w-full rounded-2xl border border-rose-100 bg-white p-4 text-sm shadow-sm resize-none focus:border-rose-500 focus:ring-rose-500 focus:outline-none"
+                                    className="w-full resize-none rounded-2xl border border-rose-100 bg-white p-4 text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-rose-500"
                                 />
                             </div>
 
                             <button
                                 onClick={() => setUrgent((v) => !v)}
-                                className={`flex items-center justify-between p-4 rounded-2xl border-2 mb-5 transition-all shadow-sm ${
+                                className={`mb-5 flex items-center justify-between rounded-2xl border-2 p-4 shadow-sm transition-all ${
                                     urgent ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white"
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5">
-                                    <Zap className={`w-5 h-5 ${urgent ? "text-rose-600" : "text-slate-400"}`} />
+                                    <Zap className={`h-5 w-5 ${urgent ? "text-rose-600" : "text-slate-400"}`} />
                                     <div className="text-right">
-                                        <span className="text-sm font-semibold text-slate-700 block">درخواست فوری</span>
+                                        <span className="block text-sm font-semibold text-slate-700">درخواست فوری</span>
                                         <span className="text-[11px] text-slate-400">اعزام پرستار در کمتر از ۲ ساعت</span>
                                     </div>
                                 </div>
-                                <div className={`w-11 h-6 rounded-full transition-colors relative ${urgent ? "bg-rose-500" : "bg-slate-200"}`}>
-                                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${urgent ? "right-0.5" : "right-5"}`} />
+                                <div className={`relative h-6 w-11 rounded-full transition-colors ${urgent ? "bg-rose-500" : "bg-slate-200"}`}>
+                                    <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${urgent ? "right-0.5" : "right-5"}`} />
                                 </div>
                             </button>
                         </div>
@@ -443,22 +445,22 @@ export function NurseHomeFlow() {
 
                     {/* STEP 3: Clinic selection + summary */}
                     {step === 3 && (
-                        <div className="flex flex-col flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-lg font-bold text-slate-800 mb-1">درمانگاه ارائه‌دهنده خدمت را انتخاب کنید</h2>
-                            <p className="text-xs text-slate-500 mb-4">لیست درمانگاه‌هایی که خدمات انتخابی را ارائه می‌دهند</p>
+                        <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-1 flex-col duration-500">
+                            <h2 className="mb-1 text-lg font-bold text-slate-800">درمانگاه ارائه‌دهنده خدمت را انتخاب کنید</h2>
+                            <p className="mb-4 text-xs text-slate-500">لیست درمانگاه‌هایی که خدمات انتخابی را ارائه می‌دهند</p>
 
                             {clinicsList.length === 0 ? (
-                                <div className="p-4 text-center text-slate-500 text-sm bg-slate-50 rounded-2xl">
+                                <div className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">
                                     درمانگاهی برای خدمات انتخابی یافت نشد.
                                 </div>
                             ) : (
-                                <div className="flex flex-col gap-3 mb-6">
+                                <div className="mb-6 flex flex-col gap-3">
                                     {clinicsList.map((c) => {
                                         const isSelected = selectedClinic === c.id;
                                         return (
                                             <div
                                                 key={c.id}
-                                                className={`p-4 rounded-3xl transition-all border-2 shadow-sm ${
+                                                className={`rounded-3xl border-2 p-4 shadow-sm transition-all ${
                                                     isSelected ? "border-rose-500 bg-rose-50/80" : "border-slate-100 bg-white hover:border-rose-200"
                                                 }`}
                                             >
@@ -468,7 +470,7 @@ export function NurseHomeFlow() {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <h3 className="text-sm font-bold text-slate-800 truncate">{c.name}</h3>
+                                                            <h3 className="truncate text-sm font-bold text-slate-800">{c.name}</h3>
                                                             <div
                                                                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
                                                                     isSelected ? "border-rose-600 bg-rose-600" : "border-slate-200"
@@ -525,26 +527,26 @@ export function NurseHomeFlow() {
                             )}
 
                             {selectedClinic && (
-                                <div className="bg-white rounded-3xl p-5 shadow-sm border border-rose-50 space-y-3 animate-in fade-in zoom-in duration-300">
+                                <div className="animate-in fade-in zoom-in space-y-3 rounded-3xl border border-rose-50 bg-white p-5 shadow-sm duration-300">
                                     <div className="flex items-start justify-between gap-3 text-sm">
                                         <span className="shrink-0 text-slate-500">خدمات انتخابی</span>
-                                        <span className="text-left font-bold text-slate-800 leading-relaxed">
+                                        <span className="text-left font-bold leading-relaxed text-slate-800">
                                             {selectedServiceItems.map((s) => s.name).join("، ")}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-sm">
                                         <span className="text-slate-500">ترجیح جنسیت</span>
                                         <span className="font-bold text-slate-800">
                                             {genderOptions.find((g) => g.value === genderPref)?.label}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-end pt-2">
+                                    <div className="flex items-end justify-between pt-2">
                                         <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
                                         <div className="text-left">
-                                            <span className="text-2xl font-black text-rose-600 tracking-tight">
+                                            <span className="text-2xl font-black tracking-tight text-rose-600">
                                                 {finalPrice.toLocaleString("fa-IR")}
                                             </span>
-                                            <span className="text-xs text-slate-500 mr-1">تومان</span>
+                                            <span className="mr-1 text-xs text-slate-500">تومان</span>
                                         </div>
                                     </div>
                                 </div>
@@ -554,7 +556,7 @@ export function NurseHomeFlow() {
                 </div>
 
                 {/* Footer buttons */}
-                <div className="mt-auto sticky bottom-0 pt-6 pb-2 bg-gradient-to-t from-white via-white/95 to-transparent z-10">
+                <div className="sticky bottom-0 z-10 mt-auto bg-gradient-to-t from-white via-white/95 to-transparent pb-2 pt-6">
                     <div className="flex items-center justify-center gap-3">
                         {step > 1 && (
                             <Button
@@ -563,41 +565,41 @@ export function NurseHomeFlow() {
                                 onClick={() => setStep(step - 1)}
                                 disabled={isLoadingClinics || isSubmitting}
                             >
-                                <ArrowLeft className="w-5 h-5 rotate-180" />
+                                <ArrowLeft className="h-5 w-5 rotate-180" />
                             </Button>
                         )}
 
                         {step === 1 && (
                             <Button
-                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all"
-                                disabled={selectedServices.length === 0 || isLoadingServices}
+                                className="flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 px-10 text-sm font-bold text-white shadow-lg shadow-rose-600/30 transition-all hover:shadow-xl hover:shadow-rose-600/40"
+                                disabled={selectedServices.length === 0 || isLoadingServices || !selectedAddressId}
                                 onClick={() => setStep(2)}
                             >
                                 مرحله بعد
                                 {selectedServices.length > 0 && ` (${selectedServices.length.toLocaleString("fa-IR")} مورد)`}
-                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                <ArrowLeft className="h-4 w-4" />
                             </Button>
                         )}
 
                         {step === 2 && (
                             <Button
-                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all flex items-center gap-2"
+                                className="flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 px-10 text-sm font-bold text-white shadow-lg shadow-rose-600/30 transition-all hover:shadow-xl hover:shadow-rose-600/40"
                                 disabled={!isStep2Valid || isLoadingClinics}
                                 onClick={fetchClinicsAndProceed}
                             >
-                                {isLoadingClinics && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isLoadingClinics && <Loader2 className="h-4 w-4 animate-spin" />}
                                 مرحله بعد
-                                <ArrowLeft className="w-4 h-4" />
+                                <ArrowLeft className="h-4 w-4" />
                             </Button>
                         )}
 
                         {step === 3 && (
                             <Button
-                                className="rounded-full h-12 px-10 text-sm font-bold bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40 transition-all flex items-center gap-2"
+                                className="flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 px-10 text-sm font-bold text-white shadow-lg shadow-rose-600/30 transition-all hover:shadow-xl hover:shadow-rose-600/40"
                                 disabled={!isStep3Valid || isSubmitting}
                                 onClick={submitFinalRequest}
                             >
-                                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                                 ثبت نهایی درخواست
                             </Button>
                         )}

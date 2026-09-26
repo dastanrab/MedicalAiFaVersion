@@ -66,7 +66,7 @@ export const pharmacyNavItems: ProviderNavItem[] = [
 
 export const nurseNavItems: ProviderNavItem[] = [
     { label: 'داشبورد', segment: 'dashboard', icon: LayoutDashboard },
-    { label: 'تقویم درخواست‌ها', segment: 'calendar', icon: CalendarDays },
+    // { label: 'تقویم درخواست‌ها', segment: 'calendar', icon: CalendarDays },
     { label: 'لیست درخواست‌ها', segment: 'requests', icon: ClipboardList },
     { label: 'محدوده خدمت‌رسانی', segment: 'coverage', icon: Map },
     { label: 'پرسنل', segment: 'personnel', icon: Users },

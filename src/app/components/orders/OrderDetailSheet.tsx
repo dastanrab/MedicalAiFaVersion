@@ -28,7 +28,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
 
     const [doctorData, setDoctorData] = useState<DoctorAppointmentDetail | null>(null);
     const [detailData, setDetailData] = useState<PharmacyRequestDetail | null>(null);
-    const [nurseData, setNurseData] = useState<NurseRequestDetail | null>(null);
+    const [nurseData, setNurseData] = useState<any | null>(null); // To accommodate the new fields
     const [labData, setLabData] = useState<LabRequestDetail | null>(null);
 
     const [detailLoading, setDetailLoading] = useState(false);
@@ -127,7 +127,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
 
     // ----- پرداخت آزمایشگاه -----
     const handleLabPay = async () => {
-        console.log(order)
         if (!order || !order.order_id) {
             setDetailError('شماره سفارش برای پرداخت یافت نشد.');
             return;
@@ -244,6 +243,65 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
+    // ----- پرداخت خدمات پرستاری/مرکز درمانی -----
+    const handleNursePay = async () => {
+        if (!order || !order.order_id) {
+            setDetailError('شماره سفارش برای پرداخت یافت نشد.');
+            return;
+        }
+        setPaying(true); setDetailError(null);
+        try {
+            const res = await fetch(`https://api.mediraai.com/api/user/payments/initiate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: order.order_id, gateway: selectedGateway })
+            });
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                if (refreshOrders) refreshOrders();
+                throw new Error(json.message || 'خطا در ایجاد لینک پرداخت. ممکن است مهلت پرداخت تمام شده باشد.');
+            }
+
+            if (json.data && json.data.payment_url) {
+                window.location.href = json.data.payment_url;
+            } else {
+                throw new Error('آدرس درگاه پرداخت دریافت نشد.');
+            }
+        } catch (err: any) {
+            setDetailError(err.message);
+            setPaying(false);
+        }
+    };
+
+    // ----- لغو درخواست خدمات پرستاری/مرکز درمانی -----
+    const handleCancelNurseRequest = async () => {
+        if (!order) return;
+        if (!window.confirm('آیا از لغو این درخواست خدمات پرستاری اطمینان دارید؟')) return;
+
+        setCanceling(true); setDetailError(null);
+        try {
+            const res = await fetch(`https://api.mediraai.com/api/user/medical-requests/${order.id}/cancel`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
+            });
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || 'خطا در لغو درخواست');
+            }
+
+            const updatedOrder: UserRequestOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
+            if (onOrderUpdate) onOrderUpdate(updatedOrder);
+            setNurseData((prev: any) => prev ? { ...prev, status: 5, status_label: 'لغو شده' } : null);
+            if (refreshOrders) refreshOrders();
+        } catch (err: any) {
+            setDetailError(err.message);
+        } finally {
+            setCanceling(false);
+        }
+    };
+
     const handleSubmitReview = async () => {
         if (!order || rating === 0) return;
         setReviewLoading(true); setReviewMessage(null);
@@ -265,14 +323,16 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
     const Icon = serviceIcons[order.serviceType];
     const statusClass = getStatusClass(order.status);
 
-    // شروط دکمه پرداخت
+    // شروط دکمه‌های پرداخت
     const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
     const showLabPayButton = order.serviceType === 'lab' && labData && labData.status === 1 && order.order_id !== null;
     const showPharmacyPayButton = order.serviceType === 'pharmacy' && detailData && detailData.status === 1 && order.order_id !== null;
+    const showNursePayButton = order.serviceType === 'nurse' && nurseData && nurseData.status === 0 && order.order_id !== null; // status 0 = در انتظار پرداخت
 
-    // شروط دکمه لغو
+    // شروط دکمه‌های لغو
     const showLabCancelButton = order.serviceType === 'lab' && labData && (labData.status === 0 || labData.status === 1);
     const showPharmacyCancelButton = order.serviceType === 'pharmacy' && detailData && (detailData.status === 0 || detailData.status === 1);
+    const showNurseCancelButton = order.serviceType === 'nurse' && nurseData && (nurseData.status === 0 || nurseData.status === 1); // 0=در انتظار پرداخت، 1=در انتظار انتخاب پرستار
 
     const isCompleted = order.status === 'completed';
     const patientInfo = getDoctorPatientInfo();
@@ -338,15 +398,78 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                         </div>
                     )}
 
+                    {/* ---------- بخش جزئیات خدمات پرستاری جدید ---------- */}
                     {order.serviceType === 'nurse' && nurseData && !detailLoading && (
-                        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2">
-                            <h4 className="mb-2 font-semibold text-gray-800">جزئیات خدمات پرستاری</h4>
-                            {nurseData.services.map((svc, idx) => (
-                                <div key={idx} className="flex justify-between bg-gray-50 px-3 py-2 rounded-lg">
-                                    <span className="text-gray-700">{svc.service_name}</span>
-                                    <span className="text-gray-900 font-medium">{formatOrderPrice(svc.price)} ت</span>
+                        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-4 shadow-sm">
+                            <h4 className="font-semibold text-gray-800">جزئیات خدمات پرستاری</h4>
+
+                            {/* سرویس‌های درخواستی */}
+                            <div className="space-y-2">
+                                {nurseData.services?.map((svc: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                        <span className="text-gray-700">{svc.service_name}</span>
+                                        <span className="text-gray-900 font-medium">{formatOrderPrice(svc.price)} ت</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* اطلاعات مرکز */}
+                            {nurseData.center_name && (
+                                <div className="flex justify-between items-center text-xs border-t border-gray-100 pt-3 mt-3">
+                                    <span className="text-gray-500">نام مرکز:</span>
+                                    <span className="font-medium text-gray-900">{nurseData.center_name}</span>
                                 </div>
-                            ))}
+                            )}
+
+                            {/* اطلاعات پرستار */}
+                            {nurseData.staff && (
+                                <div className="space-y-2 border-t border-gray-100 pt-3 mt-3">
+                                    <h5 className="font-semibold text-gray-700 text-xs mb-1">اطلاعات پرستار</h5>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-gray-500">نام:</span>
+                                        <span className="font-medium text-gray-900">{nurseData.staff.name}</span>
+                                    </div>
+                                    {nurseData.staff.mobile && (
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-gray-500">شماره تماس:</span>
+                                            <span className="font-medium text-gray-900" dir="ltr">{nurseData.staff.mobile}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* اطلاعات تکمیلی (extra_info) */}
+                            {nurseData.extra_info && (
+                                <div className="space-y-2 border-t border-gray-100 pt-3 mt-3">
+                                    <h5 className="font-semibold text-gray-700 text-xs mb-1">اطلاعات تکمیلی</h5>
+                                    {nurseData.extra_info.condition && (
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-gray-500">وضعیت بیمار:</span>
+                                            <span className="font-medium text-gray-900">{nurseData.extra_info.condition}</span>
+                                        </div>
+                                    )}
+                                    {nurseData.extra_info.custom_address && (
+                                        <div className="flex justify-between items-start text-xs gap-4 mt-1">
+                                            <span className="text-gray-500 shrink-0">آدرس:</span>
+                                            <span className="font-medium text-gray-900 text-left leading-relaxed">{nurseData.extra_info.custom_address}</span>
+                                        </div>
+                                    )}
+                                    {nurseData.extra_info.gender_pref && (
+                                        <div className="flex justify-between items-center text-xs mt-1">
+                                            <span className="text-gray-500">جنسیت پرستار:</span>
+                                            <span className="font-medium text-gray-900">
+                                                {nurseData.extra_info.gender_pref === 'male' ? 'آقا' : nurseData.extra_info.gender_pref === 'female' ? 'خانم' : 'فرقی نمی‌کند'}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {nurseData.extra_info.is_urgent === 1 && (
+                                        <div className="flex justify-between items-center text-xs mt-1">
+                                            <span className="text-gray-500">نوع درخواست:</span>
+                                            <span className="font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-md">اورژانسی</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -400,6 +523,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                         </div>
                     )}
 
+                    {/* ---------- بخش نوبت دکتر ---------- */}
                     {showDoctorPayButton && (
                         <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
                             <div>
@@ -415,6 +539,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                         </div>
                     )}
 
+                    {/* ---------- بخش آزمایشگاه ---------- */}
                     {showLabPayButton && (
                         <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
                             <div>
@@ -436,6 +561,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                         </button>
                     )}
 
+                    {/* ---------- بخش داروخانه ---------- */}
                     {showPharmacyPayButton && (
                         <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
                             <div>
@@ -454,6 +580,28 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     {showPharmacyCancelButton && (
                         <button onClick={handleCancelPharmacyRequest} disabled={paying || canceling} className="mt-2 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
                             {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست داروخانه</>}
+                        </button>
+                    )}
+
+                    {/* ---------- بخش خدمات پرستاری/مرکز درمانی ---------- */}
+                    {showNursePayButton && (
+                        <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
+                            <div>
+                                <label className="mb-1.5 block text-xs font-semibold text-gray-700">انتخاب درگاه پرداخت:</label>
+                                <select className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={selectedGateway} onChange={(e) => setSelectedGateway(e.target.value as 'saman' | 'zarinpal')} disabled={paying || canceling}>
+                                    <option value="saman">پرداخت آنلاین با کارت بانکی (سامان کیش)</option>
+                                    <option value="zarinpal">زرین‌پال</option>
+                                </select>
+                            </div>
+                            <button onClick={handleNursePay} disabled={paying || canceling} className="w-full rounded-xl bg-rose-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
+                                {paying ? <><Loader2 className="h-5 w-5 animate-spin" /><span>در حال بررسی و اتصال…</span></> : <><CreditCard className="h-5 w-5" /><span>پرداخت هزینه خدمات پرستاری</span></>}
+                            </button>
+                        </div>
+                    )}
+
+                    {showNurseCancelButton && (
+                        <button onClick={handleCancelNurseRequest} disabled={paying || canceling} className="mt-2 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
+                            {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست خدمات پرستاری</>}
                         </button>
                     )}
 

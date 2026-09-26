@@ -58,6 +58,7 @@ import {DoctorChatPage} from "../doctor/screens/DoctorChatPage";
 import {ProfileGuard} from "../components/ProfileGuard";
 import {SubscriptionGuard} from "../doctor/components/SubscriptionGuard";
 import {DoctorSubscriptionFeePage} from "../doctor/screens/DoctorSubscriptionFeePage";
+import MedicalCenterRulesPage from "../screens/nurse/NurseCoveragePage";
 
 function ProtectedRolePanel({ role }: { role: ProviderRole }) {
     if (role === 'doctor') {
@@ -206,7 +207,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Route path="requests" element={<NurseRequestsPage />} />
             <Route path="requests/:id" element={<NurseRequestDetailRoute />} />
             <Route path="schedule" element={<NurseSchedulePage />} />
-            <Route path="coverage" element={<NurseCoveragePage />} />
+            <Route path="coverage" element={<MedicalCenterRulesPage />} />
             <Route path="personnel" element={<NursePersonnelPage />} />
             <Route path="services" element={<NurseServicesPage />} />
             {planRoutes('nurse')}
