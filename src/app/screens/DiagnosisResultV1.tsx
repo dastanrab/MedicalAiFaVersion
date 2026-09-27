@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowRight, Star, Loader2, User, Stethoscope, Send, Calendar, UserCircle } from 'lucide-react';
+import { ArrowRight, Star, Loader2, User, Stethoscope, Send, Calendar, UserCircle, Crown } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
 import type { SymptomFormState } from './SymptomSelection';
@@ -101,6 +101,10 @@ export function DiagnosisResultV1() {
     const [gender, setGender] = useState<'male' | 'female' | ''>('');
     const [isPregnant, setIsPregnant] = useState<boolean>(false);
 
+    // حالت‌های پاپ‌آپ ارتقا پلن
+    const [showPlanModal, setShowPlanModal] = useState(false);
+    const [planModalMessage, setPlanModalMessage] = useState('');
+
     const bottomRef = useRef<HTMLDivElement>(null);
     const isFirstRun = useRef(true);
 
@@ -141,27 +145,30 @@ export function DiagnosisResultV1() {
                 }),
             });
 
-            if (!response.ok) throw new Error('خطا در دریافت پاسخ از سرور');
-
             const json = await response.json();
-            if (!json.success) throw new Error(json.message || 'خطا در عملیات');
+
+            // بررسی خطای پایان محدودیت پلن
+            if (response.status === 400 && !json.success && json.data && 'daily_limit' in json.data) {
+                setPlanModalMessage(json.message);
+                setShowPlanModal(true);
+                return; // توقف ادامه اجرا تا بلاک catch اجرا نشود
+            }
+
+            if (!response.ok && response.status !== 400) throw new Error('خطا در دریافت پاسخ از سرور');
 
             const data = handleApiResponse(json);
 
             if (data.status === 'need_more_info') {
-                // بررسی آیا پیام مربوط به سن و جنسیت است
                 const message = data.message || '';
                 const isAgeGenderQuestion = message.includes('سن') && message.includes('جنسیت');
 
                 if (isAgeGenderQuestion) {
-                    // نمایش فرم سن و جنسیت
                     setAgeGenderForm('waiting');
                     setMessages(prev => [...prev, {
                         role: 'assistant',
                         content: 'لطفاً سن و جنسیت خود را مشخص کنید:'
                     }]);
                 } else {
-                    // ادامه چت معمولی
                     setMessages(prev => [...prev, { role: 'assistant', content: message }]);
                 }
             } else if (data.status === 'complete') {
@@ -198,27 +205,31 @@ export function DiagnosisResultV1() {
                 body: JSON.stringify({ messages: newMessages , session_id: sessionId,}),
             });
 
-            if (!response.ok) throw new Error('خطا در دریافت پاسخ از سرور');
-
             const json = await response.json();
-            if (!json.success) throw new Error(json.message || 'خطا در عملیات');
+
+            // بررسی خطای پایان محدودیت پلن
+            if (response.status === 400 && !json.success && json.data && 'daily_limit' in json.data) {
+                setPlanModalMessage(json.message);
+                setShowPlanModal(true);
+                // پیام کاربری که ارسال شده ولی به دلیل خطای لیمیت ناموفق بوده رو هم میتونید از لیست حذف کنید یا نگه دارید. اینجا نگه داشتیم.
+                return;
+            }
+
+            if (!response.ok && response.status !== 400) throw new Error('خطا در دریافت پاسخ از سرور');
 
             const data = handleApiResponse(json);
 
             if (data.status === 'need_more_info') {
-                // بررسی آیا پیام مربوط به سن و جنسیت است
                 const message = data.message || '';
                 const isAgeGenderQuestion = message.includes('سن') && message.includes('جنسیت');
 
                 if (isAgeGenderQuestion) {
-                    // نمایش فرم سن و جنسیت
                     setAgeGenderForm('waiting');
                     setMessages(prev => [...prev, {
                         role: 'assistant',
                         content: 'لطفاً سن و جنسیت خود را مشخص کنید:'
                     }]);
                 } else {
-                    // ادامه چت معمولی
                     setMessages(prev => [...prev, { role: 'assistant', content: message }]);
                 }
             } else if (data.status === 'complete') {
@@ -254,20 +265,14 @@ export function DiagnosisResultV1() {
 
         let userResponse = `سن: ${age} سال، جنسیت: ${gender === 'male' ? 'مرد' : 'زن'}`;
 
-        // اگر زن است و در سن باروری (فرضاً 15-50 سال)، سوال بارداری بپرسیم
         const ageNum = parseInt(age);
         if (gender === 'female' && ageNum >= 15 && ageNum <= 50) {
-            // در اینجا می‌توانیم یک سوال اضافی برای بارداری بپرسیم
-            // اما برای سادگی، فعلاً فقط اطلاعات سن و جنسیت را می‌فرستیم
-            // اگر نیاز به سوال بارداری دارید، می‌توانید یک مرحله دیگر اضافه کنید
+            // منطق بارداری
         }
 
-        // اضافه کردن پاسخ کاربر به تاریخچه چت
         const newMessages = [...messages, { role: 'user', content: userResponse }];
         setMessages(newMessages);
         setAgeGenderForm('submitted');
-
-        // ارسال به سرور
         setLoading(true);
 
         try {
@@ -281,16 +286,23 @@ export function DiagnosisResultV1() {
 
             });
 
-            if (!response.ok) throw new Error('خطا در دریافت پاسخ از سرور');
-
             const json = await response.json();
-            if (!json.success) throw new Error(json.message || 'خطا در عملیات');
+
+            // بررسی خطای پایان محدودیت پلن
+            if (response.status === 400 && !json.success && json.data && 'daily_limit' in json.data) {
+                setPlanModalMessage(json.message);
+                setShowPlanModal(true);
+                setAgeGenderForm('idle'); // فرم رو برمیگردونیم که کاربر گیر نکنه
+                return;
+            }
+
+            if (!response.ok && response.status !== 400) throw new Error('خطا در دریافت پاسخ از سرور');
 
             const data = handleApiResponse(json);
 
             if (data.status === 'need_more_info') {
                 setMessages(prev => [...prev, { role: 'assistant', content: data.message || '' }]);
-                setAgeGenderForm('idle'); // برگشت به حالت چت معمولی
+                setAgeGenderForm('idle');
             } else if (data.status === 'complete') {
                 handleCompleteResponse(data);
             }
@@ -301,6 +313,7 @@ export function DiagnosisResultV1() {
                 role: 'assistant',
                 content: '⚠️ متأسفانه در ارتباط با سرور مشکلی پیش آمد.'
             }]);
+            setAgeGenderForm('idle');
         } finally {
             setLoading(false);
         }
@@ -311,7 +324,6 @@ export function DiagnosisResultV1() {
         if (status !== 'complete' || !finalResult) return;
 
         const lastMsg = messages[messages.length - 1]?.content || '';
-
         let currentIndex = 0;
         const typingSpeed = 40;
 
@@ -402,11 +414,8 @@ export function DiagnosisResultV1() {
                             </div>
 
                             <div className="space-y-4">
-                                {/* فیلد سن */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        سن (سال)
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">سن (سال)</label>
                                     <input
                                         type="number"
                                         min="1"
@@ -414,16 +423,13 @@ export function DiagnosisResultV1() {
                                         value={age}
                                         onChange={(e) => setAge(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                        placeholder="مثال: III"
+                                        placeholder="مثال: 30"
                                         autoFocus
                                     />
                                 </div>
 
-                                {/* فیلد جنسیت */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        جنسیت
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">جنسیت</label>
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => setGender('male')}
@@ -444,12 +450,9 @@ export function DiagnosisResultV1() {
                                     </div>
                                 </div>
 
-                                {/* سوال بارداری (فقط برای زنان در سن باروری) */}
                                 {gender === 'female' && parseInt(age) >= 15 && parseInt(age) <= 50 && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            آیا باردار هستید؟
-                                        </label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">آیا باردار هستید؟</label>
                                         <div className="flex gap-3">
                                             <button
                                                 onClick={() => setIsPregnant(true)}
@@ -471,7 +474,6 @@ export function DiagnosisResultV1() {
                                     </div>
                                 )}
 
-                                {/* دکمه ارسال */}
                                 <Button
                                     onClick={submitAgeGender}
                                     disabled={!age.trim() || !gender || loading}
@@ -503,9 +505,9 @@ export function DiagnosisResultV1() {
                     <div ref={bottomRef} />
                 </div>
 
-                {/* ورودی چت برای زمانی که اطلاعات بیشتری نیاز است و فرم سن و جنسیت فعال نیست */}
+                {/* ورودی چت */}
                 {status === 'chatting' && !loading && ageGenderForm === 'idle' && (
-                    <div className="bg-white rounded-2xl border border-gray-200 p-2 flex gap-2 shadow-sm shrink-0 mb-4 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="bg-white rounded-2xl border border-gray-200 p-2 flex gap-2 shadow-sm shrink-0 mb-20 animate-in fade-in slide-in-from-bottom-2">
                         <input
                             className="flex-1 outline-none text-sm px-3 bg-transparent"
                             placeholder="پاسخ خود را اینجا بنویسید..."
@@ -527,9 +529,7 @@ export function DiagnosisResultV1() {
                 {/* بخش نمایش نتایج نهایی */}
                 {status === 'complete' && finalResult && (
                     <div className={`transition-all duration-700 shrink-0 ${!showContent ? 'blur-md opacity-0 pointer-events-none translate-y-4' : 'blur-0 opacity-100 translate-y-0'}`}>
-                        {/* ... کونتنت قبلی بدون تغییر ... */}
                         <div className="space-y-5 mb-5">
-                            {/* پزشکان */}
                             {finalResult.recommended_doctors && finalResult.recommended_doctors.length > 0 && (
                                 <div className="w-full">
                                     <h2 className="text-base font-semibold text-gray-800 mb-3 px-1">
@@ -544,26 +544,14 @@ export function DiagnosisResultV1() {
                                                     onClick={() => {
                                                         const ttl = 5 * 60 * 1000;
                                                         const now = new Date().getTime();
-
-                                                        // ذخیره اطلاعات همراه با زمان انقضا
                                                         sessionStorage.setItem('diagnosis_doctor_context_'+doctor.id, JSON.stringify({
                                                             doctor_id:doctor.id,
                                                             sessionId: sessionId,
                                                             source: 'diagnosis',
-                                                            expiry: now + ttl // زمان انقضا
+                                                            expiry: now + ttl
                                                         }));
-
-                                                        // باز کردن تب جدید
                                                         window.open(`/doctor/${doctor.id}`, '_blank');
                                                     }}
-                                                    // onClick={() =>
-                                                    //     // navigate(`/doctor/${doctor.id}`, {
-                                                    //     //     state: {
-                                                    //     //         sessionId,
-                                                    //     //         source: 'diagnosis',
-                                                    //     //     },
-                                                    //     // })
-                                                    // }
                                                 >
                                                     <div className="relative inline-block mb-2">
                                                         <img src={doctor.image_url} alt={doctor.name} className="w-16 h-16 rounded-full object-cover mx-auto ring-1 ring-gray-100" />
@@ -575,13 +563,11 @@ export function DiagnosisResultV1() {
                                                     <h3 className="font-medium text-gray-800 text-xs leading-tight mb-0.5 line-clamp-2">{doctor.name}</h3>
                                                 </div>
                                             ))}
-
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* آزمایشگاه‌ها */}
                             {finalResult.recommended_labs && finalResult.recommended_labs.length > 0 && (
                                 <div className="w-full">
                                     <h2 className="text-base font-semibold text-gray-800 mb-3 px-1">آزمایشگاه‌های پیشنهادی</h2>
@@ -605,7 +591,6 @@ export function DiagnosisResultV1() {
                             )}
                         </div>
 
-                        {/* فرم تکمیلی */}
                         {finalResult.form && (
                             <div className="mb-5 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                                 <h2 className="text-base font-semibold text-gray-800 mb-2">{finalResult.form.title}</h2>
@@ -622,6 +607,40 @@ export function DiagnosisResultV1() {
                     </div>
                 )}
             </div>
+
+            {/* پاپ‌آپ ارتقا پلن کاربری */}
+            {showPlanModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 fade-in duration-200">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
+                                <Crown className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">ارتقا پلن کاربری</h3>
+                            <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                                {planModalMessage || 'محدودیت درخواست روزانه به پایان رسید. برای دسترسی بیشتر پلن خود را ارتقا دهید.'}
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    onClick={() => setShowPlanModal(false)}
+                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                >
+                                    انصراف
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        setShowPlanModal(false);
+                                        navigate('/plans');
+                                    }}
+                                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                                >
+                                    مشاهده پلن‌ها
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

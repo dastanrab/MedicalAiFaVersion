@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 
 import { doctorNavItems } from '../doctor/config/doctorNav';
+import {Rule} from "@mui/icons-material";
 
 export type ProviderRole = 'lab' | 'pharmacy' | 'nurse' | 'doctor';
 export type NurseAccountType = 'individual' | 'company';
@@ -39,7 +40,8 @@ export const labNavItems: ProviderNavItem[] = [
     { label: 'داشبورد', segment: 'dashboard', icon: LayoutDashboard },
     { label: 'درخواست‌های آزمایش', segment: 'requests', icon: ClipboardList },
     { label: 'کاتالوگ آزمایش‌ها', segment: 'catalog', icon: FlaskConical },
-    { label: 'زمان‌بندی نمونه‌گیری', segment: 'schedule', icon: CalendarDays },
+    { label: 'قوانین نوبت دهی', segment: 'coverage', icon: CalendarDays },
+    // { label: 'زمان‌بندی نمونه‌گیری', segment: 'schedule', icon: CalendarDays },
     //{ label: 'نمونه‌گیری در منزل', segment: 'home-sampling', icon: Home },
     { label: 'نتایج آزمایش', segment: 'results', icon: FileText },
     { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },

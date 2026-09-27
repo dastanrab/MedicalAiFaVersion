@@ -83,6 +83,18 @@ export const PaymentResultPage: React.FC = () => {
                 path: '/provider/doctor'
             };
         }
+        if (reasonId === '4') {
+            return {
+                label: 'ورود به لیست سفارش‌ها',
+                path: '/orders'
+            };
+        }
+        if (reasonId === '9') {
+            return {
+                label: 'ورود به پلن ها',
+                path: '/plans'
+            };
+        }
         if (reasonId === '5' ) {
             return {
                 label: 'ورود به لیست سفارش‌ها',

@@ -48,7 +48,7 @@ export function OrdersPageV1() {
     const { accessToken } = useAuthStore();
 
     const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all');
-    const [statusGroup, setStatusGroup] = useState<UserRequestStatusGroup>('all');
+    const [statusGroup, setStatusGroup] = useState<UserRequestStatusGroup>('active');
     const [selected, setSelected] = useState<UserRequestOrder | null>(null);
 
     const [orders, setOrders] = useState<UserRequestOrder[]>([]);

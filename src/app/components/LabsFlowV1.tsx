@@ -37,6 +37,7 @@ export function LabsFlowV1() {
     const [labs, setLabs] = useState<LabCenter[]>([]);
     const [selectedLab, setSelectedLab] = useState<number | null>(initialDraft?.selectedLab ?? null);
     const [labDetails, setLabDetails] = useState<LabDetails | null>(null);
+    const [shiftType, setShiftType] = useState<number>(initialDraft?.shiftType ?? 1); // اضافه شدن استیت شیفت زمانی (پیش‌فرض 1 = صبح)
 
     // Modal State
     const [reviewRating, setReviewRating] = useState(0);
@@ -117,8 +118,9 @@ export function LabsFlowV1() {
 
     useEffect(() => {
         if (submitted) return;
-        sessionStorage.setItem(LABS_DRAFT_KEY, JSON.stringify({ step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId }));
-    }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId]);
+        // ذخیره shiftType در پیش‌نویس
+        sessionStorage.setItem(LABS_DRAFT_KEY, JSON.stringify({ step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType }));
+    }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType]);
 
     const submitLabRequest = async () => {
         const requestType = getSelectedMode();
@@ -132,9 +134,18 @@ export function LabsFlowV1() {
 
             if (requestType === 1) {
                 if (!selectedLab) { setApiError("آزمایشگاه انتخاب نشده است."); return false; }
+                if (!shiftType) { setApiError("لطفاً شیفت زمانی مراجعه را انتخاب کنید."); return false; } // اعتبارسنجی شیفت
+
                 res = await fetch(`${API_BASE_URL}/api/user/labs/requests`, {
                     method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ request_type_id: 1, visit_type: 0, lab_id: selectedLab, test_pack_ids: selectedTests, user_address_id: selectedAddressId }),
+                    body: JSON.stringify({
+                        request_type_id: 1,
+                        visit_type: 0,
+                        lab_id: selectedLab,
+                        test_pack_ids: selectedTests,
+                        user_address_id: selectedAddressId,
+                        shift_type: shiftType // ارسال شیفت به بک‌اند
+                    }),
                 });
                 setSuccessMessage("درخواست شما ثبت شد.");
             } else if (requestType === 2) {
@@ -222,6 +233,9 @@ export function LabsFlowV1() {
                             selectedLab={selectedLab} setSelectedLab={setSelectedLab}
                             openLabDetails={(lab) => { setReviewRating(0); setReviewText(""); setReviewSubmitted(false); setLabDetails(getLabDetails(lab)); }}
                             selectedTests={selectedTests}
+                            shiftType={shiftType} // پاس دادن شیفت به مرحله دوم
+                            setShiftType={setShiftType}
+                            accessToken={accessToken}
                         />
                     )}
                 </div>

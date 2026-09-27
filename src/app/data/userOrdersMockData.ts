@@ -17,7 +17,7 @@ export type UserRequestStatus =
   | 'completed'
   | 'cancelled';
 
-export type UserRequestStatusGroup = 'all' | 'active' | 'completed' | 'cancelled';
+export type UserRequestStatusGroup =   'active'|'all' | 'completed' | 'cancelled';
 
 export interface UserRequestOrder {
   id: number;

@@ -59,6 +59,7 @@ import {ProfileGuard} from "../components/ProfileGuard";
 import {SubscriptionGuard} from "../doctor/components/SubscriptionGuard";
 import {DoctorSubscriptionFeePage} from "../doctor/screens/DoctorSubscriptionFeePage";
 import MedicalCenterRulesPage from "../screens/nurse/NurseCoveragePage";
+import LabShiftsPage from "../screens/lab/LabShiftsPage";
 
 function ProtectedRolePanel({ role }: { role: ProviderRole }) {
     if (role === 'doctor') {
@@ -138,6 +139,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
     if (role === 'lab') {
         return (
             <Routes>
+
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<LabDashboard />} />
                 <Route path="requests" element={<LabRequestsPage />} />
@@ -146,6 +148,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="schedule" element={<LabSchedulePage />} />
                 <Route path="home-sampling" element={<LabHomeSamplingPage />} />
                 <Route path="results" element={<LabResultsPage />} />
+                <Route path="coverage" element={<LabShiftsPage />} />
                 {planRoutes('lab')}
                 <Route path="finance" element={<SharedFinance role="lab" />} />
                 <Route path="reviews" element={<ProviderReviewsPage role="lab"/>} />
