@@ -16,6 +16,7 @@ import { MealPlan } from './screens/MealPlan';
 import HealthInsights from './screens/HealthInsights';
 import { AppContainer } from './components/AppContainer';
 import { PageLoader } from './components/PageLoader';
+import { SplashScreen } from './components/SplashScreen';
 import type { PageSkeletonVariant } from './components/PageSkeleton';
 import { useAuthStore } from './store/authStore';
 import {DiagnosisResult} from "./screens/DiagnosisResult";
@@ -251,6 +252,7 @@ function AdminPublicRoute({ children }) {
 function App() {
     return (
         <BrowserRouter>
+            <SplashScreen />
             <NativeBackButton />
             <Routes>
                 {/* Redirect root to login */}

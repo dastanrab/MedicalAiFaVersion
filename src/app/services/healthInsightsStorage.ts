@@ -15,10 +15,14 @@ export interface DayLog {
 
 export interface HealthInsightsData {
   dailyGoal: number;
+  /** وزن ایده‌آل کاربر (کیلوگرم) — مبنای محاسبه هدف کالری در بک‌اند */
+  idealWeight: number | null;
   days: Record<string, DayLog>;
 }
 
 export const DEFAULT_DAILY_GOAL = 2000;
+export const IDEAL_WEIGHT_MIN = 30;
+export const IDEAL_WEIGHT_MAX = 250;
 
 const STORAGE_PREFIX = 'health_insights_';
 
@@ -38,7 +42,7 @@ export function createMealId(): string {
 }
 
 export function emptyData(): HealthInsightsData {
-  return { dailyGoal: DEFAULT_DAILY_GOAL, days: {} };
+  return { dailyGoal: DEFAULT_DAILY_GOAL, idealWeight: null, days: {} };
 }
 
 export function loadHealthInsights(userId: number | string): HealthInsightsData {
@@ -50,6 +54,12 @@ export function loadHealthInsights(userId: number | string): HealthInsightsData 
       typeof parsed.dailyGoal === 'number' && parsed.dailyGoal > 0
         ? Math.round(parsed.dailyGoal)
         : DEFAULT_DAILY_GOAL;
+    const idealWeight =
+      typeof parsed.idealWeight === 'number' &&
+      parsed.idealWeight >= IDEAL_WEIGHT_MIN &&
+      parsed.idealWeight <= IDEAL_WEIGHT_MAX
+        ? Math.round(parsed.idealWeight * 10) / 10
+        : null;
     const days: Record<string, DayLog> = {};
     if (parsed.days && typeof parsed.days === 'object') {
       for (const [date, log] of Object.entries(parsed.days)) {
@@ -67,7 +77,7 @@ export function loadHealthInsights(userId: number | string): HealthInsightsData 
         days[date] = { date, meals };
       }
     }
-    return { dailyGoal, days };
+    return { dailyGoal, idealWeight, days };
   } catch {
     return emptyData();
   }
