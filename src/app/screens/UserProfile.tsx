@@ -41,6 +41,7 @@ import {
 import Map from "@neshan-maps-platform/ol/Map";
 import View from "@neshan-maps-platform/ol/View";
 import { fromLonLat, toLonLat } from "@neshan-maps-platform/ol/proj";
+import { NESHAN_MAP_KEY } from "../config/neshan";
 // ------------------------------------------------------------------------------
 
 const pageClass =
@@ -740,7 +741,7 @@ function AddressesSection({
       map = new Map({
         mapType: "neshan",
         target: mapRef.current,
-        key: "web.7f11b5c6971d4917a6e9272a522d8b9e",
+        key: NESHAN_MAP_KEY,
         poi: true,
         traffic: false,
         view: new View({

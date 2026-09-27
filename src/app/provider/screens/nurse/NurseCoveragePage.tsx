@@ -15,6 +15,7 @@ import { useProviderSession } from "../../store/providerAuthStore";
 import Map from "@neshan-maps-platform/ol/Map";
 import View from "@neshan-maps-platform/ol/View";
 import { fromLonLat, toLonLat } from "@neshan-maps-platform/ol/proj";
+import { NESHAN_MAP_KEY } from "../../../config/neshan";
 import { Button } from "../../../components/ui/button";
 
 const API_BASE_URL = 'https://api.mediraai.com/api/owner/medical-center/coverage';
@@ -118,7 +119,7 @@ export default function MedicalCenterRulesPage() {
         const map = new Map({
             mapType: "neshan",
             target: mapRef.current,
-            key: "web.7f11b5c6971d4917a6e9272a522d8b9e",
+            key: NESHAN_MAP_KEY,
             poi: true,
             traffic: false,
             view: new View({

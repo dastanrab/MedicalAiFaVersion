@@ -1,7 +1,19 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Map from '@neshan-maps-platform/ol/Map';
+import View from '@neshan-maps-platform/ol/View';
+import Feature from '@neshan-maps-platform/ol/Feature';
+import Overlay from '@neshan-maps-platform/ol/Overlay';
+import Point from '@neshan-maps-platform/ol/geom/Point';
+import VectorLayer from '@neshan-maps-platform/ol/layer/Vector';
+import VectorSource from '@neshan-maps-platform/ol/source/Vector';
+import { fromLonLat } from '@neshan-maps-platform/ol/proj';
+import { NESHAN_BASE_OPTIONS } from '../config/neshan';
+import { neshanMarkerStyle } from '../lib/neshanMarker';
 
 const MapPage = () => {
     const mapRef = useRef<HTMLDivElement>(null);
+    const popupRef = useRef<HTMLDivElement>(null);
+    const [selectedName, setSelectedName] = useState<string | null>(null);
 
     const locations = [
         { id: 1, name: "میدان 17 شهریور { کفش فروشی}", lat: 36.2770501, lng: 59.6163380 },
@@ -139,41 +151,50 @@ const MapPage = () => {
     ];
 
     useEffect(() => {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&language=fa`;
-        script.async = true;
-        script.onload = initMap;
-        document.head.appendChild(script);
+        if (!mapRef.current) return;
 
-        return () => {
-            document.head.removeChild(script);
-        };
+        const features = locations.map((location) => {
+            const feature = new Feature({
+                geometry: new Point(fromLonLat([location.lng, location.lat])),
+                name: location.name,
+            });
+            feature.setStyle(neshanMarkerStyle);
+            return feature;
+        });
+
+        const popup = new Overlay({
+            element: popupRef.current ?? undefined,
+            positioning: 'bottom-center',
+            offset: [0, -46],
+            stopEvent: false,
+        });
+
+        const map = new Map({
+            ...NESHAN_BASE_OPTIONS,
+            target: mapRef.current,
+            layers: [new VectorLayer({ source: new VectorSource({ features }), zIndex: 10 })],
+            overlays: [popup],
+            view: new View({ center: fromLonLat([59.6062, 36.2970]), zoom: 12 }),
+        });
+
+        map.on('singleclick', (event) => {
+            const [feature] = map.getFeaturesAtPixel(event.pixel);
+            if (feature) {
+                setSelectedName(feature.get('name'));
+                popup.setPosition((feature.getGeometry() as Point).getCoordinates());
+            } else {
+                setSelectedName(null);
+                popup.setPosition(undefined);
+            }
+        });
+
+        map.on('pointermove', (event) => {
+            map.getTargetElement().style.cursor = map.hasFeatureAtPixel(event.pixel) ? 'pointer' : '';
+        });
+
+        return () => map.setTarget(undefined);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    const initMap = () => {
-        if (!mapRef.current || !window.google) return;
-
-        const map = new window.google.maps.Map(mapRef.current, {
-            center: { lat: 36.2970, lng: 59.6062 },
-            zoom: 12,
-        });
-
-        locations.forEach((location) => {
-            const marker = new window.google.maps.Marker({
-                position: { lat: location.lat, lng: location.lng },
-                map: map,
-                title: location.name,
-            });
-
-            const infoWindow = new window.google.maps.InfoWindow({
-                content: `<div class="p-2 font-sans" dir="rtl"><strong>${location.name}</strong></div>`,
-            });
-
-            marker.addListener('click', () => {
-                infoWindow.open(map, marker);
-            });
-        });
-    };
 
     return (
         <div className="min-h-screen bg-gray-100" dir="rtl">
@@ -184,6 +205,13 @@ const MapPage = () => {
 
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                     <div ref={mapRef} className="w-full h-[600px]" />
+                    <div
+                        ref={popupRef}
+                        className={`rounded-lg bg-white px-3 py-2 text-sm font-bold text-gray-800 shadow-lg ${selectedName ? '' : 'hidden'}`}
+                        dir="rtl"
+                    >
+                        {selectedName}
+                    </div>
                 </div>
 
                 <div className="mt-6 bg-white rounded-lg shadow-lg p-6">

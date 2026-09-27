@@ -15,6 +15,8 @@ import { AppBar } from '../components/AppBar';
 import { AddressesPageSkeleton } from '../components/PageSkeleton';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
+import { NeshanLocationPicker } from '../components/NeshanLocationPicker';
+import { TEHRAN_CENTER } from '../config/neshan';
 import { useAuthStore } from '../store/authStore';
 import { useUserStore } from '../store/useUserStore';
 import {
@@ -96,6 +98,7 @@ export function UserAddresses() {
   const [showForm, setShowForm] = useState(Boolean(navigationState?.openForm));
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
+  const [coords, setCoords] = useState(TEHRAN_CENTER);
 
   useEffect(() => {
     void loadAddresses();
@@ -200,8 +203,8 @@ export function UserAddresses() {
         body: JSON.stringify({
           title: title.trim() || 'آدرس جدید',
           address: details.trim(),
-          lat: null,
-          lng: null,
+          lat: coords.lat,
+          lng: coords.lng,
         }),
       });
 
@@ -223,6 +226,7 @@ export function UserAddresses() {
       persistAddresses(nextAddresses);
       setTitle('');
       setDetails('');
+      setCoords(TEHRAN_CENTER);
       setShowForm(false);
 
       if (returnPath) {
@@ -382,6 +386,16 @@ export function UserAddresses() {
 
           {showForm && (
             <div className="mt-3 space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/30 p-3">
+              <Field label="موقعیت روی نقشه">
+                <NeshanLocationPicker
+                  lat={coords.lat}
+                  lng={coords.lng}
+                  onChange={(lat, lng) => setCoords({ lat, lng })}
+                  className="h-56"
+                />
+                <p className="mt-1 text-[11px] text-gray-400">نقشه را جابه‌جا کنید تا نشانگر روی محل موردنظر قرار گیرد.</p>
+              </Field>
+
               <Field label="عنوان آدرس">
                 <Input
                   placeholder="مثلاً منزل، محل کار"

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { NeshanLocationPicker } from '../../../components/NeshanLocationPicker';
 import { PageHeader } from '../../components';
 import { mockPharmacyProfile } from '../../data/mockData';
 
@@ -58,13 +58,18 @@ export function PharmacyMapPage() {
                     </div>
                 </div>
 
-                <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-teal-200 bg-teal-50/30 p-8 text-center">
-                    <MapPin className="h-12 w-12 text-teal-500" />
-                    <p className="mt-4 text-sm font-medium text-slate-700">پیش‌نمایش نقشه (نمایشی)</p>
-                    <p className="mt-2 text-xs text-slate-500">
-                        {profile.lat}, {profile.lng}
+                <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4">
+                    <NeshanLocationPicker
+                        lat={profile.lat}
+                        lng={profile.lng}
+                        onChange={(lat, lng) =>
+                            setProfile((prev) => ({ ...prev, lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) }))
+                        }
+                        className="min-h-[320px] flex-1"
+                    />
+                    <p className="mt-3 text-center text-xs text-slate-500">
+                        نقشه را جابه‌جا کنید تا نشانگر روی محل داروخانه قرار گیرد — {profile.lat}, {profile.lng}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">{profile.address}</p>
                 </div>
             </div>
         </div>

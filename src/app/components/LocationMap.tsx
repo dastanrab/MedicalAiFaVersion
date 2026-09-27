@@ -1,40 +1,16 @@
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { useEffect, useRef } from "react";
+import Map from "@neshan-maps-platform/ol/Map";
+import View from "@neshan-maps-platform/ol/View";
+import Feature from "@neshan-maps-platform/ol/Feature";
+import Point from "@neshan-maps-platform/ol/geom/Point";
+import VectorLayer from "@neshan-maps-platform/ol/layer/Vector";
+import VectorSource from "@neshan-maps-platform/ol/source/Vector";
+import { defaults as defaultInteractions } from "@neshan-maps-platform/ol/interaction/defaults";
+import { fromLonLat } from "@neshan-maps-platform/ol/proj";
+import { NESHAN_BASE_OPTIONS } from "../config/neshan";
+import { neshanMarkerStyle } from "../lib/neshanMarker";
 
-const defaultIcon = L.icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-L.Marker.prototype.options.icon = defaultIcon;
-
-function MapInvalidator({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
-
-  useEffect(() => {
-    const timers = [50, 200, 400].map((delay) =>
-      window.setTimeout(() => {
-        map.invalidateSize();
-        map.setView([lat, lng], map.getZoom(), { animate: false });
-      }, delay),
-    );
-
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [map, lat, lng]);
-
-  return null;
-}
-
+/** نمایش یک نقطه روی نقشه نشان (فقط نمایشی). */
 export function LocationMap({
   lat,
   lng,
@@ -46,24 +22,52 @@ export function LocationMap({
   label?: string;
   className?: string;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<Map | null>(null);
+  const markerRef = useRef<Feature<Point> | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const marker = new Feature({ geometry: new Point(fromLonLat([lng, lat])) });
+    marker.setStyle(neshanMarkerStyle);
+    markerRef.current = marker;
+
+    const map = new Map({
+      ...NESHAN_BASE_OPTIONS,
+      target: containerRef.current,
+      interactions: defaultInteractions({ mouseWheelZoom: false }),
+      layers: [new VectorLayer({ source: new VectorSource({ features: [marker] }), zIndex: 10 })],
+      view: new View({ center: fromLonLat([lng, lat]), zoom: 15 }),
+    });
+    mapRef.current = map;
+
+    // نقشه داخل مودال/انیمیشن باز می‌شود؛ بعد از مشخص شدن اندازه، دوباره رندر شود
+    const observer = new ResizeObserver(() => map.updateSize());
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+      map.setTarget(undefined);
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const coord = fromLonLat([lng, lat]);
+    markerRef.current?.getGeometry()?.setCoordinates(coord);
+    mapRef.current?.getView().setCenter(coord);
+  }, [lat, lng]);
+
   return (
-    <div className={`overflow-hidden rounded-2xl border border-slate-100 ${className}`}>
-      <MapContainer
-        center={[lat, lng]}
-        zoom={15}
-        scrollWheelZoom={false}
-        className="h-full w-full"
-        style={{ height: "100%", width: "100%", zIndex: 0 }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker position={[lat, lng]}>
-          {label ? <Popup>{label}</Popup> : null}
-        </Marker>
-        <MapInvalidator lat={lat} lng={lng} />
-      </MapContainer>
+    <div
+      className={`relative overflow-hidden rounded-2xl border border-slate-100 ${className}`}
+      title={label}
+      aria-label={label}
+    >
+      <div ref={containerRef} className="absolute inset-0 h-full w-full" style={{ zIndex: 0 }} />
     </div>
   );
 }
