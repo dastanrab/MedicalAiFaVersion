@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useNavigationType } from 'react-router';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { useAuthStore } from '../store/authStore';
 import { getHistoryIndex } from '../navigation/appHistory';
 
@@ -10,20 +11,6 @@ function isAuthPath(path: string) {
 
 function isUserRootPath(path: string) {
   return path === '/home' || isAuthPath(path);
-}
-
-type NativeAppPlugin = {
-  addListener: (
-    event: 'backButton',
-    listener: (info: { canGoBack: boolean }) => void,
-  ) => Promise<{ remove: () => Promise<void> }> | { remove: () => Promise<void> };
-  exitApp: () => Promise<void>;
-};
-
-function getNativeAppPlugin(): NativeAppPlugin | null {
-  const plugins = (window as unknown as { Capacitor?: { Plugins?: { App?: NativeAppPlugin } } })
-    .Capacitor?.Plugins;
-  return plugins?.App ?? null;
 }
 
 export function NativeBackButton() {
@@ -45,9 +32,6 @@ export function NativeBackButton() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-
-    const CapacitorApp = getNativeAppPlugin();
-    if (!CapacitorApp) return;
 
     const listener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       const path = pathRef.current;

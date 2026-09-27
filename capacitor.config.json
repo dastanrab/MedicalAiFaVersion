@@ -12,9 +12,6 @@
     "cleartext": true
   },
   "plugins": {
-    "App": {
-      "disableBackButtonHandler": true
-    },
     "Keyboard": {
       "resizeOnFullScreen": true
     },
