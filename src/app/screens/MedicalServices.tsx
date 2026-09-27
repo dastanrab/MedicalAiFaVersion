@@ -20,8 +20,6 @@ import {
   type ProviderDetails,
 } from '../components/ProviderDetailsDialog';
 
-const DEFAULT_PROVIDER_LOGO = "/logo.svg";
-
 type ListedProvider = ProviderDetails & {
   city: string;
   meta: string;
@@ -252,8 +250,8 @@ export function MedicalServices() {
                           rating={lab.rating}
                           meta={lab.meta}
                           image={lab.image}
-                          iconBg="bg-sky-50"
-                          accent="text-sky-600"
+                          fallbackGradient="from-sky-500 via-blue-600 to-indigo-700"
+                          icon={TestTube}
                           onClick={() => fetchAndOpenDetails(lab.id, 'lab')}
                       />
                   ))}
@@ -277,8 +275,8 @@ export function MedicalServices() {
                           rating={pharmacy.rating}
                           meta={pharmacy.meta}
                           image={pharmacy.image}
-                          iconBg="bg-emerald-50"
-                          accent="text-emerald-600"
+                          fallbackGradient="from-emerald-500 via-teal-600 to-cyan-700"
+                          icon={Pill}
                           onClick={() => fetchAndOpenDetails(pharmacy.id, 'pharmacy')}
                       />
                   ))}
@@ -347,8 +345,8 @@ function ProviderCard({
                         rating,
                         meta,
                         image,
-                        iconBg,
-                        accent,
+                        fallbackGradient,
+                        icon: Icon,
                         onClick
                       }: {
   name: string;
@@ -356,50 +354,56 @@ function ProviderCard({
   rating: number;
   meta: string;
   image?: string | null;
-  iconBg: string;
-  accent: string;
+  fallbackGradient: string;
+  icon: LucideIcon;
   onClick: () => void;
 }) {
-  const [src, setSrc] = useState(image || DEFAULT_PROVIDER_LOGO);
-  const isFallback = !image || src === DEFAULT_PROVIDER_LOGO;
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(image) && !imageFailed;
 
   useEffect(() => {
-    setSrc(image || DEFAULT_PROVIDER_LOGO);
+    setImageFailed(false);
   }, [image]);
 
   return (
       <button
           onClick={onClick}
-          className="w-[260px] flex-none snap-center rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm transition-all active:scale-[0.98]"
+          className="relative h-[180px] w-[260px] flex-none snap-center overflow-hidden rounded-2xl text-right shadow-md shadow-slate-900/10 transition-all active:scale-[0.98]"
       >
-        <div className="flex items-start justify-between">
-          <div
-              className={`flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl ${
-                isFallback ? iconBg : "bg-slate-50 ring-1 ring-slate-100"
-              }`}
-          >
+        {/* پس‌زمینه: عکس مرکز یا گرادیان جایگزین */}
+        {hasImage ? (
             <img
-                src={src}
+                src={image!}
                 alt={name}
-                className={isFallback ? "h-8 w-8 object-contain" : "h-full w-full object-cover"}
-                onError={() => {
-                  if (src !== DEFAULT_PROVIDER_LOGO) {
-                    setSrc(DEFAULT_PROVIDER_LOGO);
-                  }
-                }}
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={() => setImageFailed(true)}
             />
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-600">
-            <Star className="h-3 w-3 fill-amber-500" />
-            <span className="text-[11px] font-bold">{rating.toFixed(1)}</span>
-          </div>
+        ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient}`}>
+              <Icon className="absolute -left-4 -top-4 h-36 w-36 rotate-12 text-white/15" strokeWidth={1.5} />
+            </div>
+        )}
+
+        {/* لایه‌ی تیره برای خوانایی متن */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+
+        {/* نشان‌های بالا */}
+        <div className="absolute inset-x-3 top-3 flex items-center justify-between">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-800 shadow-sm backdrop-blur-sm">
+            <Icon className="h-3 w-3" />
+            {meta}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-white backdrop-blur-sm">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+            <span className="text-[11px] font-bold">{rating.toLocaleString('fa-IR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+          </span>
         </div>
 
-        <div className="mt-4">
-          <div className={`text-[10px] font-bold ${accent}`}>{meta}</div>
-          <h3 className="mt-1 truncate text-sm font-bold text-slate-800">{name}</h3>
-          <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
-            <MapPin className="h-3.5 w-3.5" />
+        {/* نام و شهر */}
+        <div className="absolute inset-x-0 bottom-0 p-3.5">
+          <h3 className="line-clamp-2 text-base font-bold leading-6 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">{name}</h3>
+          <div className="mt-1 flex items-center gap-1 text-xs text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{city}</span>
           </div>
         </div>
