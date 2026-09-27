@@ -315,7 +315,7 @@ export default function LabShiftsPage() {
                     <div className="relative flex h-[350px] w-full flex-col overflow-hidden rounded-3xl border border-slate-200 shadow-sm lg:h-full">
                         <div className="absolute left-0 right-0 top-0 z-20 flex bg-gradient-to-b from-slate-900/60 to-transparent p-4"><span className="text-sm font-bold text-white drop-shadow-md">مرکز ثقل آزمایشگاه روی نقشه</span></div>
                         <div ref={mapRef} className="absolute inset-0 h-full w-full" />
-                        <NeshanLocateButton mapRef={mapInstanceRef} />
+                        <NeshanLocateButton mapRef={mapInstanceRef} className="bottom-4 right-4" />
                         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                             <div className="relative -top-6"><MapPin className="h-12 w-12 text-rose-600 drop-shadow-lg" fill="currentColor" /></div>
                         </div>

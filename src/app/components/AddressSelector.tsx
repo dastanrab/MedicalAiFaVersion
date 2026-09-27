@@ -223,7 +223,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
                 {/* کانتینر نقشه */}
                 <div className="relative w-full flex-1 overflow-hidden">
                     <div ref={mapRef} className="absolute inset-0 h-full w-full" />
-                    {viewState === 'map' && <NeshanLocateButton mapRef={mapInstanceRef} className="bottom-4 left-4" />}
+                    {viewState === 'map' && <NeshanLocateButton mapRef={mapInstanceRef} className="bottom-4 right-4" />}
 
                     {/* نشانگر مرکز نقشه */}
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">

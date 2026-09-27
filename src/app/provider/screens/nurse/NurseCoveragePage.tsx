@@ -381,7 +381,7 @@ export default function MedicalCenterRulesPage() {
                         </div>
 
                         <div ref={mapRef} className="absolute inset-0 h-full w-full" />
-                        <NeshanLocateButton mapRef={mapInstanceRef} />
+                        <NeshanLocateButton mapRef={mapInstanceRef} className="bottom-4 right-4" />
 
                         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                             <div className="relative -top-6 transition-transform duration-200">

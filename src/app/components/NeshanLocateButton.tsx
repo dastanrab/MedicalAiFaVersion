@@ -16,7 +16,7 @@ const GEO_ERRORS: Record<number, string> = {
  */
 export function NeshanLocateButton({
   mapRef,
-  className = "bottom-3 left-3",
+  className = "bottom-3 right-3",
 }: {
   mapRef: RefObject<Map | null>;
   className?: string;
