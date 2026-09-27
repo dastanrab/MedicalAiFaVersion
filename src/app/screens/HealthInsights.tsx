@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import {
   Brain,
@@ -16,6 +16,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Ruler,
+  Scale,
+  Loader2,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
 import { Button } from '../components/ui/button';
@@ -28,10 +30,18 @@ import {
   loadHealthInsights,
   recentDayTotals,
   saveHealthInsights,
+  IDEAL_WEIGHT_MAX,
+  IDEAL_WEIGHT_MIN,
   type HealthInsightsData,
   type MealEntry,
   type MealType,
 } from '../services/healthInsightsStorage';
+import {
+  fetchHealthGoal,
+  HealthGoalUnavailableError,
+  submitIdealWeight,
+  type HealthGoal,
+} from '../services/healthGoalApi';
 
 const MEAL_TYPES: { id: MealType; label: string; icon: React.ReactNode }[] = [
   { id: 'breakfast', label: 'صبحانه', icon: <Coffee className="h-4 w-4" /> },
@@ -174,6 +184,7 @@ function buildInsights(
 
 export default function HealthInsights() {
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const userId = user?.id ?? 'guest';
 
   const [data, setData] = useState<HealthInsightsData>(() => loadHealthInsights(userId));
@@ -184,6 +195,11 @@ export default function HealthInsights() {
   const [mealName, setMealName] = useState('');
   const [mealCalories, setMealCalories] = useState('');
   const [selectedInsight, setSelectedInsight] = useState<InsightItem | null>(null);
+  const [showWeightEdit, setShowWeightEdit] = useState(false);
+  const [weightInput, setWeightInput] = useState('');
+  const [savingWeight, setSavingWeight] = useState(false);
+  const [weightError, setWeightError] = useState<string | null>(null);
+  const [weightNotice, setWeightNotice] = useState<string | null>(null);
 
   const today = getLocalDateString();
   const todayLog = getDayLog(data, today);
@@ -200,6 +216,73 @@ export default function HealthInsights() {
   const persist = (next: HealthInsightsData) => {
     setData(next);
     saveHealthInsights(userId, next);
+  };
+
+  const applyServerGoal = (goal: HealthGoal) => {
+    setData((prev) => {
+      const next = {
+        ...prev,
+        dailyGoal: goal.dailyCalorieGoal,
+        idealWeight: goal.idealWeight ?? prev.idealWeight,
+      };
+      saveHealthInsights(userId, next);
+      return next;
+    });
+  };
+
+  // هدف ذخیره‌شده در سرور، منبع اصلی است؛ اگر سرویس در دسترس نبود داده‌ی محلی می‌ماند
+  useEffect(() => {
+    if (!accessToken) return;
+    let cancelled = false;
+    fetchHealthGoal(accessToken).then((goal) => {
+      if (!cancelled && goal) applyServerGoal(goal);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, userId]);
+
+  const openWeightEdit = () => {
+    setWeightInput(data.idealWeight != null ? String(data.idealWeight) : '');
+    setWeightError(null);
+    setShowWeightEdit(true);
+  };
+
+  const handleSaveIdealWeight = async () => {
+    const value = Math.round(Number(weightInput.replace(/[٫,]/g, '.')) * 10) / 10;
+    if (!Number.isFinite(value) || value < IDEAL_WEIGHT_MIN || value > IDEAL_WEIGHT_MAX) {
+      setWeightError(
+        `وزن ایده‌آل باید بین ${IDEAL_WEIGHT_MIN.toLocaleString('fa-IR')} تا ${IDEAL_WEIGHT_MAX.toLocaleString('fa-IR')} کیلوگرم باشد.`,
+      );
+      return;
+    }
+    if (!accessToken) {
+      setWeightError('برای محاسبه‌ی هدف کالری ابتدا وارد حساب کاربری شوید.');
+      return;
+    }
+
+    setSavingWeight(true);
+    setWeightError(null);
+    try {
+      const goal = await submitIdealWeight(accessToken, value);
+      applyServerGoal({ ...goal, idealWeight: goal.idealWeight ?? value });
+      setWeightNotice(
+        `هدف کالری روزانه‌ی شما بر اساس وزن ایده‌آل ${value.toLocaleString('fa-IR')} کیلوگرم به ${goal.dailyCalorieGoal.toLocaleString('fa-IR')} کیلوکالری تغییر کرد.`,
+      );
+      setShowWeightEdit(false);
+    } catch (error) {
+      if (error instanceof HealthGoalUnavailableError) {
+        // سرویس هنوز در بک‌اند فعال نیست: وزن را نگه می‌داریم تا بعداً ارسال شود
+        persist({ ...data, idealWeight: value });
+        setWeightNotice('وزن ایده‌آل ذخیره شد. محاسبه‌ی هدف کالری به‌زودی از طرف سرور انجام می‌شود.');
+        setShowWeightEdit(false);
+      } else {
+        setWeightError(error instanceof Error ? error.message : 'خطا در ذخیره‌ی وزن ایده‌آل');
+      }
+    } finally {
+      setSavingWeight(false);
+    }
   };
 
   const handleSaveGoal = () => {
@@ -375,6 +458,39 @@ export default function HealthInsights() {
               style={{ width: `${Math.min(progress * 100, 100)}%` }}
             />
           </div>
+        </section>
+
+        {/* وزن ایده‌آل: مبنای محاسبه‌ی هدف کالری در سرور */}
+        <section className="mb-5 rounded-[1.5rem] bg-white p-4 shadow-sm ring-1 ring-indigo-50">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+              <Scale className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-bold text-gray-900">وزن ایده‌آل</h2>
+              <p className="mt-0.5 text-[11px] leading-5 text-gray-500">
+                {data.idealWeight != null
+                  ? `${data.idealWeight.toLocaleString('fa-IR')} کیلوگرم · هدف کالری بر این اساس محاسبه می‌شود`
+                  : 'وزن ایده‌آل خود را وارد کنید تا هدف کالری روزانه برایتان محاسبه شود.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openWeightEdit}
+              className="shrink-0 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"
+            >
+              {data.idealWeight != null ? 'ویرایش' : 'ثبت وزن'}
+            </button>
+          </div>
+          {weightNotice && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-emerald-50/80 px-3 py-2 text-[11px] leading-5 text-emerald-800">
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">{weightNotice}</span>
+              <button type="button" onClick={() => setWeightNotice(null)} className="shrink-0 text-emerald-600">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </section>
 
         {/* وعده‌های امروز */}
@@ -620,6 +736,71 @@ export default function HealthInsights() {
                 onClick={handleSaveGoal}
               >
                 ذخیره هدف
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال وزن ایده‌آل */}
+      {showWeightEdit && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 px-4 pb-6 backdrop-blur-sm sm:items-center"
+          onClick={() => !savingWeight && setShowWeightEdit(false)}
+        >
+          <div
+            className="w-full max-w-sm overflow-hidden rounded-[2rem] bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h3 className="text-base font-bold text-gray-900">وزن ایده‌آل</h3>
+              <button
+                type="button"
+                onClick={() => setShowWeightEdit(false)}
+                disabled={savingWeight}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-4 px-5 py-5">
+              <p className="text-xs leading-relaxed text-gray-500">
+                وزنی که می‌خواهید به آن برسید را به کیلوگرم وارد کنید. هدف کالری روزانه بر اساس این وزن و اطلاعات پروفایل شما محاسبه می‌شود.
+              </p>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={IDEAL_WEIGHT_MIN}
+                  max={IDEAL_WEIGHT_MAX}
+                  step="0.5"
+                  inputMode="decimal"
+                  placeholder="مثلاً ۶۸"
+                  value={weightInput}
+                  onChange={(e) => setWeightInput(e.target.value)}
+                  className="w-full rounded-2xl bg-[#F6F8FC] px-4 py-3 text-center text-lg font-bold text-gray-800 outline-none ring-1 ring-emerald-100 focus:ring-2 focus:ring-emerald-300"
+                />
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                  کیلوگرم
+                </span>
+              </div>
+              {weightError && (
+                <p className="whitespace-pre-line rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-600">
+                  {weightError}
+                </p>
+              )}
+              <Button
+                className="w-full rounded-2xl bg-emerald-600 py-6 text-white hover:bg-emerald-700"
+                onClick={handleSaveIdealWeight}
+                disabled={savingWeight || !weightInput.trim()}
+              >
+                {savingWeight ? (
+                  <>
+                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    در حال محاسبه‌ی هدف...
+                  </>
+                ) : (
+                  'ذخیره و محاسبه‌ی هدف کالری'
+                )}
               </Button>
             </div>
           </div>
