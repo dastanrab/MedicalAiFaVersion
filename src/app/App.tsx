@@ -313,7 +313,7 @@ function App() {
                     path="/login"
                     element={
                         <PublicRoute>
-                            <AppContainer variant="transparent">
+                            <AppContainer variant="transparent" forceNavbarOnPhone={false}>
                                 <Login />
                             </AppContainer>
                         </PublicRoute>
@@ -323,7 +323,7 @@ function App() {
                     path="/verify"
                     element={
                         <PublicRoute>
-                            <AppContainer variant="transparent">
+                            <AppContainer variant="transparent" forceNavbarOnPhone={false}>
                                 <OTPVerification />
                             </AppContainer>
                         </PublicRoute>

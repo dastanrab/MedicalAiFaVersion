@@ -239,7 +239,7 @@ export function DoctorList() {
       <div className="h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto pb-24 text-right font-[YekanBakhFaNum]">
         <AppBar backTo="/home" />
 
-        <div className="px-6 pt-24 py-8">
+        <div className="px-4 pt-24 py-6">
           <div className="relative mb-6">
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 px-5 pt-5 pb-14 shadow-[0_8px_32px_rgba(37,99,235,0.28)]">
               <div className="pointer-events-none absolute -top-10 -left-10 h-36 w-36 rounded-full bg-white/10" />
@@ -426,7 +426,7 @@ export function DoctorList() {
             </div>
 
           </div>
-          <div className="mt-5 -mx-6 px-6">
+          <div className="mt-5 -mx-4 px-4">
             <div className="flex overflow-x-auto gap-2.5 pb-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {specialties.map((specialty) => {
                 // بررسی می‌کنیم که آیا متن جستجو دقیقاً برابر با این تخصص است یا خیر
@@ -498,44 +498,29 @@ export function DoctorList() {
                     key={doctor.id}
                     dir="rtl"
                     onClick={() => handleDoctorClick(doctor.id)}
-                    className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow cursor-pointer text-right"
+                    className="gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-0 text-right shadow-[0_2px_16px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] cursor-pointer"
                 >
-                  <div className="flex items-start gap-3">
-                    <img
-                        src={doctor.image}
-                        alt={`${doctor.firstName} ${doctor.lastName || ''}`}
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = getDoctorAvatarFallback(
-                              `${doctor.firstName} ${doctor.lastName || ''}`
-                          );
-                        }}
-                        className="h-[72px] w-[72px] flex-shrink-0 rounded-full bg-gray-100 object-cover ring-2 ring-gray-100"
-                    />
-                    <div className="min-w-0 flex-1 space-y-1.5 text-right">
-                      <h3 className="text-base font-bold text-gray-900 leading-snug">
-                        دکتر {doctor.firstName} {doctor.lastName || ''}
-                      </h3>
-                      <p className="text-sm text-gray-500">{doctor.specialty}</p>
-
-                      <div className="flex items-center gap-1.5 text-sm">
-                        <Star className="h-4 w-4 flex-shrink-0 fill-amber-400 text-amber-400" />
-                        <span className="font-medium text-gray-900">{parseFloat(doctor.rating).toLocaleString('fa-IR')}</span>
-                        <span className="text-gray-500">({doctor.reviews.toLocaleString('fa-IR')} نظر)</span>
+                  <div className="p-4">
+                    {/* سربرگ: عکس، نام، تخصص و علاقه‌مندی */}
+                    <div className="flex items-center gap-3">
+                      <img
+                          src={doctor.image}
+                          alt={`${doctor.firstName} ${doctor.lastName || ''}`}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = getDoctorAvatarFallback(
+                                `${doctor.firstName} ${doctor.lastName || ''}`
+                            );
+                          }}
+                          className="h-14 w-14 flex-shrink-0 rounded-full bg-gray-100 object-cover ring-2 ring-gray-100"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="line-clamp-2 text-sm font-bold leading-6 text-gray-900">
+                          دکتر {doctor.firstName} {doctor.lastName || ''}
+                        </h3>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">{doctor.specialty}</p>
                       </div>
-
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <ThumbsUp className="h-4 w-4 flex-shrink-0 fill-emerald-500 text-emerald-500" />
-                        <span>{doctor.recommendation.toLocaleString('fa-IR')}٪ پیشنهاد کاربران</span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <BadgeCheck className="h-4 w-4 flex-shrink-0 text-blue-500" />
-                        <span>{doctor.visit_count.toLocaleString('fa-IR')} نوبت موفق</span>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-center self-start">
                       <button
                           type="button"
                           aria-label={
@@ -544,65 +529,92 @@ export function DoctorList() {
                                 : 'افزودن به علاقه‌مندی‌ها'
                           }
                           onClick={(e) => toggleFavorite(doctor.id, e)}
-                          className={`group flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 active:scale-90 ${
+                          className={`group flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-full transition-all duration-300 active:scale-90 ${
                               favoriteDoctors.includes(doctor.id)
                                   ? 'bg-gradient-to-br from-rose-500 to-red-500 shadow-lg shadow-red-500/30 ring-2 ring-red-100/80'
                                   : 'bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)] ring-1 ring-gray-100 hover:ring-red-200 hover:shadow-red-100/60'
                           }`}
                       >
                         <Heart
-                            className={`h-[18px] w-[18px] transition-all duration-300 ${
+                            className={`h-4 w-4 transition-all duration-300 ${
                                 favoriteDoctors.includes(doctor.id)
                                     ? 'fill-white text-white scale-110'
                                     : 'text-gray-400 group-hover:scale-110 group-hover:text-rose-400'
                             }`}
                         />
                       </button>
-                      {doctor.aiApproved && (
-                          <span className="mt-3 inline-flex flex-nowrap items-center gap-1.5 text-[10px] font-semibold leading-snug">
-                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-cyan-500" />
-                      <span className="bg-gradient-to-l from-cyan-600 to-violet-600 bg-clip-text text-transparent">
-                        مورد تایید هوش مصنوعی
-                      </span>
-                    </span>
-                      )}
+                    </div>
+
+                    {/* آمار: امتیاز، پیشنهاد، نوبت موفق */}
+                    <div className="mt-3 grid grid-cols-3 divide-x divide-gray-100 rounded-xl bg-gray-50/80 py-2 text-center">
+                      <div className="flex flex-col items-center gap-0.5 px-1">
+                        <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          {parseFloat(doctor.rating).toLocaleString('fa-IR')}
+                        </span>
+                        <span className="text-[10px] text-gray-500">{doctor.reviews.toLocaleString('fa-IR')} نظر</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5 px-1">
+                        <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
+                          <ThumbsUp className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
+                          {doctor.recommendation.toLocaleString('fa-IR')}٪
+                        </span>
+                        <span className="text-[10px] text-gray-500">پیشنهاد کاربران</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5 px-1">
+                        <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
+                          <BadgeCheck className="h-3.5 w-3.5 text-blue-500" />
+                          {doctor.visit_count.toLocaleString('fa-IR')}
+                        </span>
+                        <span className="text-[10px] text-gray-500">نوبت موفق</span>
+                      </div>
+                    </div>
+
+                    {doctor.tags.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {doctor.tags.slice(0, 3).map((tag) => (
+                              <span
+                                  key={tag}
+                                  className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700"
+                              >
+                                {tag}
+                              </span>
+                          ))}
+                        </div>
+                    )}
+
+                    <div className="mt-3 flex items-center gap-1.5 text-[11px] text-gray-500">
+                      <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+                      <span className="flex-1 truncate">{doctor.address}</span>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                      <p className="min-w-0 text-[11px] leading-5 text-gray-500">
+                        اولین نوبت آزاد:{' '}
+                        <span className="font-semibold text-gray-700">{getAvailabilityText(doctor.availability)}</span>
+                      </p>
+                      <Button
+                          size="sm"
+                          className="shrink-0 rounded-full bg-gradient-to-l from-blue-600 to-blue-500 px-4 text-xs font-semibold text-white shadow-md shadow-blue-500/30 transition-all duration-200 hover:from-blue-700 hover:to-blue-600 active:scale-[0.98]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDoctorClick(doctor.id);
+                          }}
+                      >
+                        رزرو نوبت
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="my-1 h-px bg-gray-100" />
-
-                  <div className="flex flex-wrap gap-1.5 mb-1">
-                    {doctor.tags.slice(0, 3).map((tag) => (
-                        <span
-                            key={tag}
-                            className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
-                        >
-                    {tag}
-                  </span>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-xs text-gray-600">
-                    <MapPin className="w-4 h-4 flex-shrink-0 text-gray-400" />
-                    <span className="flex-1 truncate">{doctor.address}</span>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <p className="text-xs text-gray-500 text-right">
-                      اولین نوبت آزاد مطب: <span className="font-medium text-gray-700">{getAvailabilityText(doctor.availability)}</span>
-                    </p>
-                    <Button
-                        size="sm"
-                        className="shrink-0 rounded-full bg-gradient-to-l from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/30 hover:from-blue-700 hover:to-blue-600 hover:shadow-lg hover:shadow-blue-500/35 active:scale-[0.98] transition-all duration-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // جایگزین کردن هندلر کلیک در دکمه
-                          handleDoctorClick(doctor.id);
-                        }}
-                    >
-                      رزرو نوبت
-                    </Button>
-                  </div>
+                  {/* نوار تایید هوش مصنوعی چسبیده به پایین کارت */}
+                  {doctor.aiApproved && (
+                      <div className="flex items-center justify-center gap-1.5 border-t border-cyan-100 bg-gradient-to-l from-cyan-50 to-violet-50 py-2 text-[11px] font-semibold">
+                        <Sparkles className="h-3.5 w-3.5 shrink-0 text-cyan-500" />
+                        <span className="bg-gradient-to-l from-cyan-600 to-violet-600 bg-clip-text text-transparent">
+                          مورد تایید هوش مصنوعی
+                        </span>
+                      </div>
+                  )}
                 </Card>
             ))}
           </div>

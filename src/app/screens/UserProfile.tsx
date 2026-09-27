@@ -42,6 +42,7 @@ import Map from "@neshan-maps-platform/ol/Map";
 import View from "@neshan-maps-platform/ol/View";
 import { fromLonLat, toLonLat } from "@neshan-maps-platform/ol/proj";
 import { NESHAN_MAP_KEY } from "../config/neshan";
+import { NeshanLocateButton } from "../components/NeshanLocateButton";
 // ------------------------------------------------------------------------------
 
 const pageClass =
@@ -882,6 +883,7 @@ function AddressesSection({
                 <div className="relative h-48 w-full overflow-hidden rounded-xl border border-gray-200 shadow-sm z-0 bg-gray-100">
                   {/* نگهدارنده نقشه */}
                   <div ref={mapRef} className="w-full h-full absolute inset-0" />
+                  <NeshanLocateButton mapRef={mapInstance} />
 
                   {/* پین مرکزی ثابت به عنوان نشانگر */}
                   <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">

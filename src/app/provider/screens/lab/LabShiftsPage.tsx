@@ -13,6 +13,7 @@ import Map from "@neshan-maps-platform/ol/Map";
 import View from "@neshan-maps-platform/ol/View";
 import { fromLonLat, toLonLat } from "@neshan-maps-platform/ol/proj";
 import { NESHAN_MAP_KEY } from "../../../config/neshan";
+import { NeshanLocateButton } from "../../../components/NeshanLocateButton";
 
 const API_BASE_URL = 'https://api.mediraai.com/api/owner/lab/rules';
 
@@ -35,6 +36,7 @@ interface Region { id: number; name: string; }
 export default function LabShiftsPage() {
     const { token } = useProviderSession('lab');
     const mapRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<Map | null>(null);
 
     // --- State: وضعیت‌ها ---
     const [isFetching, setIsFetching] = useState(true);
@@ -108,6 +110,9 @@ export default function LabShiftsPage() {
             view: new View({ center: fromLonLat([mapLng, mapLat]), zoom: 13 }),
         });
 
+        mapInstanceRef.current = map;
+
+
         map.on('moveend', () => {
             const center = map.getView().getCenter();
             if (center) {
@@ -117,7 +122,10 @@ export default function LabShiftsPage() {
             }
         });
 
-        return () => map.setTarget(undefined);
+        return () => {
+            map.setTarget(undefined);
+            mapInstanceRef.current = null;
+        };
     }, [isFetching]);
 
     const handleSaveRules = async () => {
@@ -307,6 +315,7 @@ export default function LabShiftsPage() {
                     <div className="relative flex h-[350px] w-full flex-col overflow-hidden rounded-3xl border border-slate-200 shadow-sm lg:h-full">
                         <div className="absolute left-0 right-0 top-0 z-20 flex bg-gradient-to-b from-slate-900/60 to-transparent p-4"><span className="text-sm font-bold text-white drop-shadow-md">مرکز ثقل آزمایشگاه روی نقشه</span></div>
                         <div ref={mapRef} className="absolute inset-0 h-full w-full" />
+                        <NeshanLocateButton mapRef={mapInstanceRef} />
                         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                             <div className="relative -top-6"><MapPin className="h-12 w-12 text-rose-600 drop-shadow-lg" fill="currentColor" /></div>
                         </div>

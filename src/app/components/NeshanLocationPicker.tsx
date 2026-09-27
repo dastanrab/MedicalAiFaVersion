@@ -4,6 +4,7 @@ import Map from "@neshan-maps-platform/ol/Map";
 import View from "@neshan-maps-platform/ol/View";
 import { fromLonLat, toLonLat } from "@neshan-maps-platform/ol/proj";
 import { NESHAN_BASE_OPTIONS, TEHRAN_CENTER } from "../config/neshan";
+import { NeshanLocateButton } from "./NeshanLocateButton";
 
 /**
  * انتخاب موقعیت با نقشه نشان: کاربر نقشه را جابه‌جا می‌کند و مرکز نقشه
@@ -69,6 +70,7 @@ export function NeshanLocationPicker({
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-slate-100 ${className}`}>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+      <NeshanLocateButton mapRef={mapRef} />
       <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
         <div className="relative -top-5">
           <MapPin className="h-10 w-10 text-red-500 drop-shadow-md" fill="currentColor" />

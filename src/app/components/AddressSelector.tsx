@@ -9,6 +9,7 @@ import Map from "@neshan-maps-platform/ol/Map";
 import View from "@neshan-maps-platform/ol/View";
 import { fromLonLat, toLonLat } from "@neshan-maps-platform/ol/proj";
 import { NESHAN_MAP_KEY } from "../config/neshan";
+import { NeshanLocateButton } from "./NeshanLocateButton";
 
 const API_BASE_URL = "https://api.mediraai.com";
 
@@ -46,6 +47,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
     const [apiError, setApiError] = useState<string | null>(null);
 
     const mapRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<Map | null>(null);
     const addressDropdownRef = useRef<HTMLDivElement>(null);
 
     const selectedAddress = addresses.find((item) => item.id === selectedAddressId) ?? null;
@@ -122,6 +124,8 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
                 }),
             });
 
+            mapInstanceRef.current = map;
+
             map.on('moveend', () => {
                 const center = map?.getView().getCenter();
                 if (center) {
@@ -135,6 +139,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
         return () => {
             if (map) {
                 map.setTarget(undefined);
+                mapInstanceRef.current = null;
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,6 +223,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
                 {/* کانتینر نقشه */}
                 <div className="relative w-full flex-1 overflow-hidden">
                     <div ref={mapRef} className="absolute inset-0 h-full w-full" />
+                    {viewState === 'map' && <NeshanLocateButton mapRef={mapInstanceRef} className="bottom-4 left-4" />}
 
                     {/* نشانگر مرکز نقشه */}
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
