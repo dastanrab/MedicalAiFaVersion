@@ -11,6 +11,7 @@ import {
 import { KpiCard, PageHeader, formatPrice } from '../../components';
 import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from "../store/doctorAuthStore";
+import { formatPriceInput, parsePriceInput } from '../../../utils/formatNumber';
 
 interface TransactionRow {
     id: number;
@@ -328,7 +329,7 @@ export function DoctorFinancePage() {
                                                     : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                                             }`}
                                         >
-                                            {amount.toLocaleString('fa-IR')} تومان
+                                            {formatPrice(amount)} تومان
                                         </button>
                                     ))}
                                 </div>
@@ -340,10 +341,11 @@ export function DoctorFinancePage() {
                                 </label>
                                 <div className="relative">
                                     <input
-                                        type="number"
-                                        value={chargeAmount}
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formatPriceInput(chargeAmount)}
                                         onChange={(e) => {
-                                            setChargeAmount(e.target.value);
+                                            setChargeAmount(parsePriceInput(e.target.value));
                                             setChargeError(null);
                                         }}
                                         disabled={isCharging}
@@ -355,7 +357,7 @@ export function DoctorFinancePage() {
                                 </div>
                                 {chargeAmount && Number(chargeAmount) > 0 && (
                                     <p className="mt-1.5 text-[11px] text-emerald-600 text-left" dir="ltr">
-                                        {Number(chargeAmount).toLocaleString('fa-IR')} تومان
+                                        {formatPrice(chargeAmount)} تومان
                                     </p>
                                 )}
                             </div>

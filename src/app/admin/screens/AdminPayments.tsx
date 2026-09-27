@@ -33,6 +33,7 @@ import { useAdminAuthStore } from '../store/adminAuthStore';
 import { useAdminDataStore } from '../store/adminDataStore';
 import { fetchAdminPayments, refundAdminPayment } from '../services/adminApi';
 import { pricingPlans } from '../../data/pricingPlans';
+import { formatPrice } from '../../utils/formatNumber';
 
 const PAGE_SIZE = 8;
 
@@ -51,8 +52,8 @@ function formatDateTime(iso: string) {
     }
 }
 
-function formatAmount(amount: number) {
-    return amount.toLocaleString('fa-IR');
+function formatAmount(amount: number | string) {
+    return formatPrice(amount);
 }
 
 function downloadPaymentsExcel(rows: AdminPaymentRow[]) {

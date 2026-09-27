@@ -18,6 +18,7 @@ import {
 import { LocationMap, MASHHAD_FALLBACK } from "./LocationMap";
 import { DialogSkeleton } from "./PageSkeleton";
 import { Skeleton } from "./ui/skeleton";
+import { formatPrice } from '../utils/formatNumber';
 
 export type ProviderReview = {
   author: string;
@@ -199,7 +200,7 @@ export function ProviderDetailsDialog({
                         {service.name}
                       </span>
                             <span className="shrink-0 text-[11px] font-normal text-slate-800">
-                        {service.price.toLocaleString("fa-IR")}{" "}
+                        {formatPrice(service.price)}{" "}
                               <span className="text-[9px] text-slate-500">تومان</span>
                       </span>
                           </div>

@@ -10,6 +10,7 @@ import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
 import { AppBar } from '../components/AppBar';
 import { PageLoader } from '../components/PageLoader';
+import { formatToman, formatFaNumber } from '../utils/formatNumber';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,8 +98,7 @@ function isValidIranPhone(phone: string): boolean {
     return /^09[0-9]{9}$/.test(phone.replace(/\s/g, ''));
 }
 
-const formatPrice = (price: number) =>
-    `${new Intl.NumberFormat('fa-IR').format(price)} تومان`;
+const formatPrice = (price: number | string) => formatToman(price);
 
 const formatDate = (dateString: string) => {
     try {
@@ -1123,7 +1123,7 @@ export function DoctorProfileV1() {
                                     <div>
                                         <h4 className="font-bold mb-1">با اطمینان نوبت خود را ثبت کنید</h4>
                                         <p className="text-emerald-700 text-[11px] leading-relaxed">
-                                            مبلغ ویزیت پزشک (معادل <strong>{doctorData.visit_price.toLocaleString('fa-IR')} تومان</strong>) را باید به صورت حضوری در مطب پرداخت نمایید. مبلغ پرداختی در این مرحله صرفاً بابت هزینه زیرساخت و خدمات است.
+                                            مبلغ ویزیت پزشک (معادل <strong>{formatFaNumber(doctorData.visit_price)} تومان</strong>) را باید به صورت حضوری در مطب پرداخت نمایید. مبلغ پرداختی در این مرحله صرفاً بابت هزینه زیرساخت و خدمات است.
                                         </p>
                                     </div>
                                 </div>

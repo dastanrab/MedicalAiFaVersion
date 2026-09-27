@@ -6,6 +6,7 @@ import { PageLoader } from '../components/PageLoader';
 import { Card } from '../components/ui/card';
 import { useAuthStore } from '../store/authStore';
 import { toJalaliDate } from "../components/orders/utils";
+import { formatPrice, toNumber } from '../utils/formatNumber';
 
 const API_BASE_URL = 'https://api.mediraai.com/api/user/plans';
 
@@ -263,7 +264,7 @@ function CurrentPlanStatus({ currentPlan, remainingDays }: { currentPlan: Curren
 function PlanCard({ plan, isActive, onSelect }: { plan: ApiPlan; isActive: boolean; onSelect: () => void }) {
     const isPro = plan.slug === 'pro';
     const isPremium = plan.slug === 'premium';
-    const isFree = plan.price === 0;
+    const isFree = toNumber(plan.price) === 0;
 
     return (
         <Card
@@ -314,7 +315,7 @@ function PlanCard({ plan, isActive, onSelect }: { plan: ApiPlan; isActive: boole
                     ) : (
                         <div className="flex flex-col items-center justify-center">
                             <span className="text-xs sm:text-base font-black text-gray-900 tracking-tight">
-                                {plan.price.toLocaleString('fa-IR')}
+                                {formatPrice(plan.price)}
                             </span>
                             <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium -mt-0.5">تومان</span>
                         </div>
@@ -371,7 +372,7 @@ function PurchaseHistory({ history }: { history: PlanHistoryItem[] }) {
                         </div>
                         <div className="text-left flex flex-col items-end gap-1">
                             <span className="font-bold text-gray-900">
-                                {item.paid_price === 0 ? 'رایگان' : `${item.paid_price.toLocaleString('fa-IR')} ت`}
+                                {toNumber(item.paid_price) === 0 ? 'رایگان' : `${formatPrice(item.paid_price)} ت`}
                             </span>
                             <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full ${
                                 item.payment_status === 1 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
@@ -400,7 +401,7 @@ function PurchaseHistory({ history }: { history: PlanHistoryItem[] }) {
                             <td className="px-4 py-3 font-bold text-gray-800">{item.plan_name}</td>
                             <td className="px-4 py-3 text-gray-500">{toJalaliDate(item.created_at)}</td>
                             <td className="px-4 py-3 font-medium text-gray-800">
-                                {item.paid_price === 0 ? 'رایگان' : `${item.paid_price.toLocaleString('fa-IR')} تومان`}
+                                {toNumber(item.paid_price) === 0 ? 'رایگان' : `${formatPrice(item.paid_price)} تومان`}
                             </td>
                             <td className="px-4 py-3 text-center">
                                     <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full inline-block ${
@@ -461,7 +462,7 @@ function PaymentModal({
                     <div className="flex justify-between items-center pt-2 border-t border-gray-200/50">
                         <span className="text-gray-500">مبلغ نهایی:</span>
                         <span className="font-black text-blue-600 text-sm sm:text-base">
-                            {plan.price === 0 ? 'رایگان' : `${plan.price.toLocaleString('fa-IR')} تومان`}
+                            {toNumber(plan.price) === 0 ? 'رایگان' : `${formatPrice(plan.price)} تومان`}
                         </span>
                     </div>
                 </div>

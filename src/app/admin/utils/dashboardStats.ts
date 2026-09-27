@@ -205,9 +205,7 @@ export function computePaymentStats(payments: AdminPaymentRow[]): PaymentDashboa
     };
 }
 
-export function formatFaNumber(value: number) {
-    return value.toLocaleString('fa-IR');
-}
+export { formatFaNumber } from '../../utils/formatNumber';
 
 export function formatFaDateTime(iso: string) {
     if (!iso) return '—';

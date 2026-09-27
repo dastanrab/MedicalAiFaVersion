@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Check } from 'lucide-react';
+import { formatToman } from '../utils/formatNumber';
 
 // ─── Validation & Format Helpers ───
 export function isValidNationalCode(code: string): boolean {
@@ -16,8 +17,7 @@ export function isValidIranPhone(phone: string): boolean {
     return /^09[0-9]{9}$/.test(phone.replace(/\s/g, ''));
 }
 
-export const formatPrice = (price: number) =>
-    `${new Intl.NumberFormat('fa-IR').format(price)} تومان`;
+export const formatPrice = (price: number | string) => formatToman(price);
 
 export const formatDate = (dateString: string) => {
     try {

@@ -1,4 +1,5 @@
 import { FileText, Building2 } from "lucide-react";
+import { formatToman, formatPrice, toNumber } from '../../utils/formatNumber';
 
 export type TestPack = {
     id: number;
@@ -55,8 +56,8 @@ export const stepsData = [
 
 export const formatPriceRange = (minPrice: number | null, maxPrice: number | null) => {
     if (minPrice == null || maxPrice == null) return "قیمت نامشخص";
-    if (minPrice === maxPrice) return `${minPrice.toLocaleString("fa-IR")} تومان`;
-    return `${minPrice.toLocaleString("fa-IR")} تا ${maxPrice.toLocaleString("fa-IR")} تومان`;
+    if (toNumber(minPrice) === toNumber(maxPrice)) return formatToman(minPrice);
+    return `${formatPrice(minPrice)} تا ${formatPrice(maxPrice)} تومان`;
 };
 
 export const getServicePrice = (test: TestPack) => {

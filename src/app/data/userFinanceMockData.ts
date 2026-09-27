@@ -1,3 +1,4 @@
+import { toNumber, formatPrice as formatFaPrice } from '../utils/formatNumber';
 export type UserOrderStatus = 'pending' | 'paid' | 'processing' | 'completed' | 'cancelled' | 'refunded';
 export type UserTransactionType = 'payment' | 'wallet_charge' | 'refund' | 'subscription' | 'withdrawal';
 export type UserTransactionStatus = 'success' | 'pending' | 'failed';
@@ -280,6 +281,6 @@ export const serviceTypeLabels: Record<UserOrder['serviceType'], string> = {
   other: 'سایر',
 };
 
-export function formatPrice(amount: number): string {
-  return Math.abs(amount).toLocaleString('fa-IR');
+export function formatPrice(amount: number | string): string {
+  return formatFaPrice(Math.abs(toNumber(amount)));
 }

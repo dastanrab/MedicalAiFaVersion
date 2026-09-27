@@ -13,6 +13,7 @@ import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { nurseStatusLabels, nurseStatusStyles } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
 import {useProviderSession} from "../../store/providerAuthStore";
+import { formatPrice } from '../../../utils/formatNumber';
 
 const chartConfig = { count: { label: 'ویزیت', color: '#f43f5e' } } satisfies ChartConfig;
 
@@ -163,7 +164,7 @@ export function NurseDashboard() {
                 <KpiCard label="درخواست‌های جدید" value={String(data.stats.newCount)} icon={ClipboardList} tone="blue" />
                 <KpiCard label="ویزیت‌های امروز" value={String(data.stats.todayVisits)} icon={Calendar} tone="rose" />
                 <KpiCard label="تکمیل این ماه" value={String(data.stats.completedThisMonth)} icon={MapPin} tone="emerald" />
-                <KpiCard label="درآمد" value={`${data.stats.revenue.toLocaleString('fa-IR')} ت`} icon={Wallet} tone="indigo" />
+                <KpiCard label="درآمد" value={`${formatPrice(data.stats.revenue)} ت`} icon={Wallet} tone="indigo" />
                 <KpiCard label="امتیاز" value={data.profile.rating ? data.profile.rating.toLocaleString('fa-IR') : '۰'} icon={Star} tone="amber" />
             </div>
 

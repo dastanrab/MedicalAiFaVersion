@@ -148,10 +148,4 @@ export function Timeline({ entries }: TimelineProps) {
     );
 }
 
-export function formatPrice(n: number) {
-    return n.toLocaleString('fa-IR');
-}
-
-export function formatFaNumber(n: number) {
-    return n.toLocaleString('fa-IR');
-}
+export { formatPrice, formatFaNumber } from '../../utils/formatNumber';

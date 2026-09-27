@@ -13,6 +13,8 @@ import {
 } from "../components/ui/dialog";
 import { LocationMap, MASHHAD_FALLBACK } from "../components/LocationMap";
 import { AddressSelector } from "../components/AddressSelector"; // <--- وارد کردن کامپوننت مجزای آدرس
+import { LabShiftPicker, getShiftLabel } from "../components/labs/LabShiftPicker";
+import { ErrorDialog } from "../components/ErrorDialog";
 import {
     UploadCloud,
     TestTube,
@@ -32,6 +34,7 @@ import {
     Star,
     MessageCircleMore,
 } from "lucide-react";
+import { formatToman, formatPrice, toNumber } from '../utils/formatNumber';
 
 const API_BASE_URL = "https://api.mediraai.com";
 
@@ -129,6 +132,7 @@ type LabsDraft = {
     openSection: "code" | "upload" | null;
     selectedTests: number[];
     selectedLab: number | null;
+    shiftType: number | null;
     selectedAddressId: number | null;
 };
 
@@ -148,6 +152,7 @@ function loadLabsDraft(): LabsDraft | null {
                 ? parsed.selectedTests.filter((id) => typeof id === "number")
                 : [],
             selectedLab: typeof parsed.selectedLab === "number" ? parsed.selectedLab : null,
+            shiftType: typeof parsed.shiftType === "number" ? parsed.shiftType : null,
             selectedAddressId:
                 typeof parsed.selectedAddressId === "number" ? parsed.selectedAddressId : null,
         };
@@ -178,6 +183,7 @@ export function LabsFlow() {
     const [selectedTests, setSelectedTests] = useState<number[]>(initialDraft?.selectedTests ?? []);
     const [labs, setLabs] = useState<LabCenter[]>([]);
     const [selectedLab, setSelectedLab] = useState<number | null>(initialDraft?.selectedLab ?? null);
+    const [shiftType, setShiftType] = useState<number | null>(initialDraft?.shiftType ?? null);
     const [labDetails, setLabDetails] = useState<LabDetails | null>(null);
     const [reviewRating, setReviewRating] = useState(0);
     const [reviewText, setReviewText] = useState("");
@@ -198,10 +204,10 @@ export function LabsFlow() {
         if (minPrice == null || maxPrice == null) {
             return "قیمت نامشخص";
         }
-        if (minPrice === maxPrice) {
-            return `${minPrice.toLocaleString("fa-IR")} تومان`;
+        if (toNumber(minPrice) === toNumber(maxPrice)) {
+            return formatToman(minPrice);
         }
-        return `${minPrice.toLocaleString("fa-IR")} تا ${maxPrice.toLocaleString("fa-IR")} تومان`;
+        return `${formatPrice(minPrice)} تا ${formatPrice(maxPrice)} تومان`;
     };
 
     const getSelectedMode = (): RequestType | null => {
@@ -321,10 +327,11 @@ export function LabsFlow() {
                 openSection,
                 selectedTests,
                 selectedLab,
+                shiftType,
                 selectedAddressId,
             } satisfies LabsDraft),
         );
-    }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId]);
+    }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, shiftType, selectedAddressId]);
 
     const submitLabRequest = async () => {
         const requestType = getSelectedMode();
@@ -354,6 +361,10 @@ export function LabsFlow() {
                     setApiError("لطفاً آزمایشگاه مورد نظر را انتخاب کنید.");
                     return false;
                 }
+                if (!shiftType) {
+                    setApiError("لطفاً زمان مراجعه نمونه‌گیر (شیفت) را انتخاب کنید.");
+                    return false;
+                }
                 res = await fetch(`${API_BASE_URL}/api/user/labs/requests`, {
                     method: "POST",
                     headers: {
@@ -366,6 +377,7 @@ export function LabsFlow() {
                         lab_id: selectedLab,
                         test_pack_ids: selectedTests,
                         user_address_id: selectedAddressId,
+                        shift_type: shiftType,
                     }),
                 });
                 setSuccessMessage(`درخواست آزمایش شما برای آزمایشگاه ${selectedLabInfo?.name || ""} ثبت شد.`);
@@ -405,7 +417,7 @@ export function LabsFlow() {
             const json = await res.json();
             if (!res.ok || !json.success) {
                 const validationErrors = json?.errors
-                    ? Object.values(json.errors).flat().join(" - ")
+                    ? Object.values(json.errors).flat().join("\n")
                     : null;
                 setApiError(validationErrors || json?.message || "خطا در ثبت درخواست");
                 return false;
@@ -587,14 +599,7 @@ export function LabsFlow() {
                     </div>
                 </div>
 
-                {apiError && (
-                    <div className="mb-4 flex items-center justify-between rounded-2xl bg-red-50 p-3 text-sm text-red-600">
-                        <span>{apiError}</span>
-                        <button onClick={() => setApiError(null)}>
-                            <X className="h-4 w-4 text-red-400" />
-                        </button>
-                    </div>
-                )}
+                <ErrorDialog message={apiError} onClose={() => setApiError(null)} />
 
                 {isMixedSelection && (
                     <div className="mb-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-700">
@@ -831,6 +836,13 @@ export function LabsFlow() {
 
                             {selectedLabInfo && (
                                 <div className="space-y-4 rounded-3xl border border-blue-50 bg-white p-5 shadow-sm">
+                                    <LabShiftPicker
+                                        labId={selectedLabInfo.id}
+                                        accessToken={accessToken}
+                                        value={shiftType}
+                                        onChange={setShiftType}
+                                    />
+                                    <div className="h-px w-full bg-slate-100" />
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-slate-500">تعداد آزمایش‌ها</span>
                                         <span className="font-bold text-slate-800">{selectedTests.length} مورد</span>
@@ -843,13 +855,17 @@ export function LabsFlow() {
                                         <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
                                         <div className="text-left">
                                             <span className="text-2xl font-black tracking-tight text-blue-600">
-                                                {selectedLabInfo.total_price.toLocaleString("fa-IR")}
+                                                {formatPrice(selectedLabInfo.total_price)}
                                             </span>
                                             <span className="mr-1 text-xs text-slate-500">تومان</span>
                                         </div>
                                     </div>
                                     <p className="pt-1 text-xs leading-relaxed text-slate-500">
-                                        زمان مراجعه نمونه‌گیر پس از تأیید درخواست توسط آزمایشگاه با شما هماهنگ می‌شود.
+                                        {shiftType ? (
+                                            <>زمان دقیق مراجعه‌ی نمونه‌گیر پس از تأیید درخواست، در شیفت <strong className="text-blue-600">{getShiftLabel(shiftType)}</strong> با شما هماهنگ می‌شود.</>
+                                        ) : (
+                                            <span className="text-amber-600">لطفاً یک شیفت برای مراجعه‌ی نمونه‌گیر انتخاب کنید.</span>
+                                        )}
                                     </p>
                                 </div>
                             )}
@@ -900,7 +916,7 @@ export function LabsFlow() {
                         {step === 2 && (
                             <Button
                                 className="h-12 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-10 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:shadow-xl hover:shadow-blue-600/40"
-                                disabled={selectedLab === null || loadingLabs || submitting || !selectedAddressId}
+                                disabled={selectedLab === null || !shiftType || loadingLabs || submitting || !selectedAddressId}
                                 onClick={submitLabRequest}
                             >
                                 {submitting ? (
@@ -1005,7 +1021,7 @@ export function LabsFlow() {
                                                     <span className="shrink-0 text-[11px] font-normal text-slate-800">
                                                         {service.price != null ? (
                                                             <>
-                                                                {service.price.toLocaleString("fa-IR")}{" "}
+                                                                {formatPrice(service.price)}{" "}
                                                                 <span className="text-[9px] text-slate-500">تومان</span>
                                                             </>
                                                         ) : (

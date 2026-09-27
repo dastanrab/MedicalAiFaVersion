@@ -7,6 +7,7 @@ import type { NurseService } from '../data/mockData';
 import type { NurseServiceInput } from '../store/nurseStore';
 import { isPositiveNumber } from '../utils/validation';
 import {useProviderSession} from "../store/providerAuthStore";
+import { formatPriceInput, parsePriceInput } from '../../utils/formatNumber';
 
 
 
@@ -132,8 +133,9 @@ export function AddEditServiceModal({ open, onClose, onSubmit, initial }: AddEdi
                 <ProviderFormField label="نرخ خدمت (تومان)" required error={errors.price}>
                     <input
                         className={`${inputClass} dir-ltr text-left`}
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
+                        value={formatPriceInput(price)}
+                        onChange={(e) => setPrice(parsePriceInput(e.target.value))}
+                        inputMode="numeric"
                         placeholder="450000"
                         dir="ltr"
                     />

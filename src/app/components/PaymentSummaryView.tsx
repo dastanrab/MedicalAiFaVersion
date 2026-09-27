@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Info, ShieldCheck, CreditCard, Loader2 } from 'lucide-react';
 import { DoctorData, TimeSlot, UserProfile, OtherPatient, Gateway, ViewState } from './types';
 import { formatDate, Stepper, CountdownTimer } from './shared';
+import { formatToman, formatPrice } from '../utils/formatNumber';
 
 interface Props {
     doctorData: DoctorData;
@@ -37,7 +38,7 @@ export function PaymentSummaryView({
     // فرض بر این است که قیمت چت در visit_price است (یا chat_price اگر به API اضافه کرده‌اید)
     const chatPrice = (doctorData as any).chat_price ?? doctorData.visit_price ?? 50000;
     const finalAmount = isChat ? chatPrice : 15000;
-    const formattedAmount = `${finalAmount.toLocaleString('fa-IR')} تومان`;
+    const formattedAmount = formatToman(finalAmount);
 
     // تنظیم آیتم‌های خلاصه وضعیت بر اساس نوع سفارش
     const summaryItems = isChat ? [
@@ -114,7 +115,7 @@ export function PaymentSummaryView({
                                 <p className="text-emerald-700 text-[11px] leading-relaxed">
                                     {isChat
                                         ? 'با پرداخت این مبلغ، اتاق چت شما با پزشک فوراً فعال شده و می‌توانید مدارک و پیام‌های خود را ارسال کنید.'
-                                        : `مبلغ ویزیت پزشک (معادل ${doctorData.visit_price.toLocaleString('fa-IR')} تومان) را باید به صورت حضوری در مطب پرداخت نمایید. مبلغ پرداختی در این مرحله صرفاً بابت هزینه زیرساخت و خدمات است.`
+                                        : `مبلغ ویزیت پزشک (معادل ${formatPrice(doctorData.visit_price)} تومان) را باید به صورت حضوری در مطب پرداخت نمایید. مبلغ پرداختی در این مرحله صرفاً بابت هزینه زیرساخت و خدمات است.`
                                     }
                                 </p>
                             </div>

@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { useAuthStore } from "../store/authStore";
 import { AppBar } from '../components/AppBar';
 import { PageLoader } from '../components/PageLoader';
+import { formatToman } from '../utils/formatNumber';
 
 interface DoctorData {
   id: number;
@@ -303,9 +304,7 @@ export function DoctorProfile() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
-  };
+  const formatPrice = (price: number | string) => formatToman(price);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

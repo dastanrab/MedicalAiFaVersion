@@ -13,6 +13,7 @@ import {
     mockDrugInventory,
     type DrugInventoryItem,
 } from '../../data/mockData';
+import { formatPriceInput, parsePriceInput } from '../../../utils/formatNumber';
 
 type DrugForm = {
     name: string;
@@ -250,11 +251,11 @@ export function PharmacyInventoryPage() {
                             inputMode="numeric"
                             className={`${inputClass} text-left`}
                             dir="ltr"
-                            value={form.price}
+                            value={formatPriceInput(form.price)}
                             onChange={(e) => {
                                 setForm((prev) => ({
                                     ...prev,
-                                    price: e.target.value.replace(/[^\d]/g, ''),
+                                    price: parsePriceInput(e.target.value),
                                 }));
                                 setFormError('');
                             }}

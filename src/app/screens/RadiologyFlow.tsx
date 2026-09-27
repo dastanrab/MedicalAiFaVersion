@@ -36,6 +36,7 @@ import {
     Smartphone,
     MessageCircleMore,
 } from "lucide-react";
+import { formatPrice } from '../utils/formatNumber';
 
 const mockExams = [
     { id: 1, name: "رادیوگرافی ساده", desc: "عکس‌برداری ساده (X-Ray)", price: 180000, icon: Radiation },
@@ -367,7 +368,7 @@ export function RadiologyFlow() {
                                             <p className="text-[10px] text-slate-500 mb-4 flex-1">{exam.desc}</p>
 
                                             <div className="text-left mt-auto">
-                                                <span className="text-base font-black text-slate-800">{exam.price.toLocaleString("fa-IR")}</span>
+                                                <span className="text-base font-black text-slate-800">{formatPrice(exam.price)}</span>
                                                 <span className="text-[9px] text-slate-400 mr-1">تومان</span>
                                             </div>
                                         </div>
@@ -515,7 +516,7 @@ export function RadiologyFlow() {
                                     <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
                                     <div className="text-left">
                                         <span className="text-2xl font-black text-slate-800 tracking-tight">
-                                            {totalPrice.toLocaleString("fa-IR")}
+                                            {formatPrice(totalPrice)}
                                         </span>
                                         <span className="text-xs text-slate-500 mr-1">تومان</span>
                                     </div>
@@ -668,7 +669,7 @@ export function RadiologyFlow() {
                                                     {service.name}
                                                 </span>
                                                 <span className="shrink-0 text-[11px] font-normal text-slate-800">
-                                                    {service.price.toLocaleString("fa-IR")}{" "}
+                                                    {formatPrice(service.price)}{" "}
                                                     <span className="text-[9px] text-slate-500">تومان</span>
                                                 </span>
                                             </div>

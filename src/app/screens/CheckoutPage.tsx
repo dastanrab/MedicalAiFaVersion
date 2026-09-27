@@ -40,7 +40,7 @@ function AmountWithToman({
   amountClassName?: string;
   tomanClassName?: string;
 }) {
-  const value = typeof amount === 'number' ? formatPrice(amount) : amount;
+  const value = formatPrice(amount);
   return (
     <span className="inline-flex items-baseline gap-1">
       <span className={amountClassName}>

@@ -1,3 +1,4 @@
+import { formatPrice } from '../utils/formatNumber';
 /** Unified user-facing order / request history (fulfillment-focused). */
 
 export type UserRequestServiceType =
@@ -91,8 +92,8 @@ export function matchesStatusGroup(
   return status === 'cancelled';
 }
 
-export function formatOrderPrice(amount: number): string {
-  return amount.toLocaleString('fa-IR');
+export function formatOrderPrice(amount: number | string): string {
+  return formatPrice(amount);
 }
 
 

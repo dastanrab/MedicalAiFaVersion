@@ -6,6 +6,7 @@ import { useAdminDataStore, type AdminProvider } from '../store/adminDataStore';
 import { fetchAllAdminUsers } from '../services/adminApi';
 import { userTypeLabels } from '../config/userOptions';
 import { CardGridSkeleton } from '../../components/PageSkeleton';
+import { formatPrice } from '../../utils/formatNumber';
 
 const typeLabels: Record<AdminProvider['type'], string> = {
     doctor: 'پزشک',
@@ -112,7 +113,7 @@ export function AdminProviders() {
                             </div>
                         </div>
                         <p className="mt-2 text-xs text-slate-500">{p.province} — {p.city}</p>
-                        {p.fee && <p className="mt-1 text-sm text-slate-700">{p.fee.toLocaleString('fa-IR')} تومان</p>}
+                        {p.fee && <p className="mt-1 text-sm text-slate-700">{formatPrice(p.fee)} تومان</p>}
                         <div className="mt-4 flex items-center justify-between">
                             <Link to={`/admin/users/${p.userId}`} className="text-xs text-indigo-600 hover:underline">مشاهده پروفایل</Link>
                             <button

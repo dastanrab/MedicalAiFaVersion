@@ -7,6 +7,7 @@ import {
     paymentServiceStyles,
     type AdminPaymentRow,
 } from '../config/paymentOptions';
+import { formatToman } from '../../utils/formatNumber';
 
 interface PaymentDetailsModalProps {
     payment: AdminPaymentRow;
@@ -28,8 +29,8 @@ function formatDateTime(iso: string) {
     }
 }
 
-function formatAmount(amount: number) {
-    return `${amount.toLocaleString('fa-IR')} تومان`;
+function formatAmount(amount: number | string) {
+    return formatToman(amount);
 }
 
 export function PaymentDetailsModal({ payment, onClose }: PaymentDetailsModalProps) {

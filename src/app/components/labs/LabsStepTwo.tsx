@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, CheckCircle2, Clock3, Info, Sun, Sunset, Moon, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { LabCenter } from "./labs.types";
+import { formatPrice } from '../../utils/formatNumber';
 
 interface ShiftData {
     isActive: boolean;
@@ -188,7 +189,7 @@ export function LabsStepTwo({
                     <div className="flex items-end justify-between pt-2">
                         <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
                         <div className="text-left">
-                            <span className="text-2xl font-black tracking-tight text-blue-600">{selectedLabInfo.total_price.toLocaleString("fa-IR")}</span>
+                            <span className="text-2xl font-black tracking-tight text-blue-600">{formatPrice(selectedLabInfo.total_price)}</span>
                             <span className="mr-1 text-xs text-slate-500">تومان</span>
                         </div>
                     </div>

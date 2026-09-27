@@ -14,6 +14,7 @@ import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { providerPath } from '../../config/providerNav';
 import { useProviderSession } from "../../store/providerAuthStore";
 import { SecureFileLink } from "../../components/SecureFileLink";
+import { formatPriceInput, parsePriceInput } from '../../../utils/formatNumber';
 
 // ================== STATUS CONFIG ==================
 const statusConfig: Record<number, { label: string; style: string }> = {
@@ -779,10 +780,14 @@ export function PharmacyRequestDetailPage({ requestId }: { requestId: number }) 
                                         <div>
                                             <label className="text-sm font-medium text-slate-700 mb-1.5 block">قیمت واحد (تومان)</label>
                                             <input
-                                                type="number"
-                                                min="0"
-                                                value={addPrice}
-                                                onChange={e => setAddPrice(Number(e.target.value))}
+                                                type="text"
+                                                inputMode="numeric"
+                                                dir="ltr"
+                                                value={formatPriceInput(addPrice)}
+                                                onChange={e => {
+                                                    const digits = parsePriceInput(e.target.value);
+                                                    setAddPrice(digits === '' ? '' : Number(digits));
+                                                }}
                                                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-500/10"
                                             />
                                         </div>

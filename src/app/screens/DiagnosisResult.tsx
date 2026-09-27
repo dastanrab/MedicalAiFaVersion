@@ -5,6 +5,7 @@ import { AppBar } from '../components/AppBar';
 import type { SymptomFormState } from './SymptomSelection';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from "../store/authStore";
+import { formatToman } from '../utils/formatNumber';
 
 interface Doctor {
     id: number;
@@ -203,9 +204,7 @@ export function DiagnosisResult() {
         return () => clearInterval(typingInterval);
     }, [result, fullText, loading]);
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
-    };
+    const formatPrice = (price: number | string) => formatToman(price);
 
     // حالت خطا
     if (error) {

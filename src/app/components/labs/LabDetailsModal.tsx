@@ -3,6 +3,7 @@ import { Building2, Info, Clock3, Smartphone, MapPin, TestTube, MessageCircleMor
 import { Button } from "../ui/button";
 import { LocationMap, MASHHAD_FALLBACK } from "../LocationMap";
 import { LabDetails } from "./labs.types";
+import { formatPrice } from '../../utils/formatNumber';
 
 interface Props {
     labDetails: LabDetails | null;
@@ -55,7 +56,7 @@ export function LabDetailsModal({ labDetails, setLabDetails, selectedLabServices
                                     {selectedLabServices.length > 0 ? selectedLabServices.map((service, index) => (
                                         <div key={service.id} className={`flex items-center justify-between gap-3 px-4 py-3.5 ${index !== selectedLabServices.length - 1 ? "border-b border-slate-100" : ""}`}>
                                             <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-slate-700"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-400" />{service.name}</span>
-                                            <span className="shrink-0 text-[11px] font-normal text-slate-800">{service.price != null ? <>{service.price.toLocaleString("fa-IR")} <span className="text-[9px] text-slate-500">تومان</span></> : <span className="text-[10px] text-slate-400">نامشخص</span>}</span>
+                                            <span className="shrink-0 text-[11px] font-normal text-slate-800">{service.price != null ? <>{formatPrice(service.price)} <span className="text-[9px] text-slate-500">تومان</span></> : <span className="text-[10px] text-slate-400">نامشخص</span>}</span>
                                         </div>
                                     )) : <div className="px-4 py-3.5 text-xs text-slate-500">خدمت آزمایشی یافت نشد.</div>}
                                 </div>

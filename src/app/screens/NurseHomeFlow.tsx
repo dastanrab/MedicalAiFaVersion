@@ -31,6 +31,7 @@ import {
     CheckCircle2,
 } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
+import { formatPrice } from '../utils/formatNumber';
 
 const API_BASE_URL = "https://api.mediraai.com/api/user";
 
@@ -486,7 +487,7 @@ export function NurseHomeFlow() {
                                                                 <span className="font-bold text-slate-700">۵.۰</span>
                                                             </div>
                                                             <div className="text-[12px] font-bold text-rose-600">
-                                                                {parseFloat(c.total_estimated_price).toLocaleString("fa-IR")} تومان
+                                                                {formatPrice(c.total_estimated_price)} تومان
                                                             </div>
                                                         </div>
                                                     </div>
@@ -544,7 +545,7 @@ export function NurseHomeFlow() {
                                         <span className="text-sm font-bold text-slate-800">مبلغ قابل پرداخت</span>
                                         <div className="text-left">
                                             <span className="text-2xl font-black tracking-tight text-rose-600">
-                                                {finalPrice.toLocaleString("fa-IR")}
+                                                {formatPrice(finalPrice)}
                                             </span>
                                             <span className="mr-1 text-xs text-slate-500">تومان</span>
                                         </div>

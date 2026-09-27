@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { ProviderModal, ProviderFormField, inputClass } from './ProviderModal';
 import { isPositiveNumber } from '../utils/validation';
 import {useProviderSession} from "../store/providerAuthStore";
+import { formatPriceInput, parsePriceInput } from '../../utils/formatNumber';
 
 export interface ApiTestPack {
     id: number;
@@ -175,8 +176,9 @@ export function AddEditLabTestModal({ open, onClose, onSubmit, initial }: AddEdi
                 <ProviderFormField label="نرخ آزمایش (تومان)" required error={errors.price}>
                     <input
                         className={`${inputClass} text-left`}
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))}
+                        value={formatPriceInput(price)}
+                        onChange={(e) => setPrice(parsePriceInput(e.target.value))}
+                        inputMode="numeric"
                         placeholder="120000"
                         dir="ltr"
                     />

@@ -7,6 +7,7 @@ import {
 } from '../../data/mockData';
 import type { ProviderRole } from '../../config/providerNav';
 import {useProviderSession} from "../../store/providerAuthStore";
+import { formatPriceInput, parsePriceInput } from '../../../utils/formatNumber';
 
 interface ProviderSettingsPageProps {
     role: ProviderRole;
@@ -114,7 +115,7 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
                     <Field label="ساعات کاری" value={lab.work_hours} onChange={(v) => setLab({ ...lab, work_hours: v })} />
                     <Field label="آدرس" value={lab.address} onChange={(v) => setLab({ ...lab, address: v })} full />
                     <Toggle label="فعال" checked={lab.status === 1} onChange={(v) => setLab({ ...lab, status: v ? 1 : 0 })} />
-                    <Field label="حداقل مبلغ سفارش (تومان)" value={String(lab.min_order_amount)} onChange={(v) => setLab({ ...lab, min_order_amount: Number(v) || 0 })} />
+                    <Field label="حداقل مبلغ سفارش (تومان)" value={formatPriceInput(lab.min_order_amount)} onChange={(v) => setLab({ ...lab, min_order_amount: Number(parsePriceInput(v)) || 0 })} />
                 </div>
             )}
 

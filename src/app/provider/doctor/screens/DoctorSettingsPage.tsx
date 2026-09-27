@@ -4,6 +4,7 @@ import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
 import { Camera, User } from 'lucide-react';
 import {ProvinceCitySelector} from "../../../components/ProvinceCitySelector";
+import { formatPriceInput, parsePriceInput } from '../../../utils/formatNumber';
 // توجه: مسیر ایمپورت ProvinceCitySelector را بر اساس ساختار پوشه‌های خود تنظیم کنید
 
 
@@ -221,19 +222,19 @@ export function DoctorSettingsPage() {
                     label="هزینه ویزیت حضوری"
                     value={profile.visit_price}
                     onChange={(v) => setProfile({ ...profile, visit_price: v })}
-                    type="number"
+                    type="price"
                 />
                 <Field
                     label="هزینه مشاوره تلفنی"
                     value={profile.phone_consultation_price}
                     onChange={(v) => setProfile({ ...profile, phone_consultation_price: v })}
-                    type="number"
+                    type="price"
                 />
                 <Field
                     label="هزینه مشاوره ویدیویی"
                     value={profile.video_consultation_price}
                     onChange={(v) => setProfile({ ...profile, video_consultation_price: v })}
-                    type="number"
+                    type="price"
                 />
             </div>
 
@@ -264,13 +265,16 @@ function Field({
     disabled?: boolean;
     type?: string;
 }) {
+    const isPrice = type === 'price';
     return (
         <label className={`flex flex-col gap-1 ${full ? 'md:col-span-2' : ''} ${disabled ? 'opacity-70' : ''}`}>
             <span className="text-xs text-slate-500">{label}</span>
             <input
-                type={type}
-                value={value ?? ''}
-                onChange={(e) => onChange(e.target.value)}
+                type={isPrice ? 'text' : type}
+                inputMode={isPrice ? 'numeric' : undefined}
+                dir={isPrice ? 'ltr' : undefined}
+                value={isPrice ? formatPriceInput(value) : value ?? ''}
+                onChange={(e) => onChange(isPrice ? parsePriceInput(e.target.value) : e.target.value)}
                 disabled={disabled}
                 className={`rounded-xl border px-3 py-2 text-sm outline-none transition-colors ${
                     disabled
