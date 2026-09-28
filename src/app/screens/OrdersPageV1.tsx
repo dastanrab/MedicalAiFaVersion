@@ -12,7 +12,7 @@ import { OrderCard } from '../components/orders/OrderCard';
 import { OrderDetailSheet } from '../components/orders/OrderDetailSheet'
 
 const pageClass = 'h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-y-auto bg-gradient-to-b from-blue-50 to-white pb-28 text-right font-[YekanBakhFaNum] [-webkit-overflow-scrolling:touch]';
-const statusGroups: UserRequestStatusGroup[] = ['all', 'active', 'completed', 'cancelled'];
+const statusGroups: UserRequestStatusGroup[] = [ 'active', 'completed', 'cancelled','all'];
 const serviceFilters: { key: ServiceFilter; label: string }[] = [
     { key: 'all', label: 'همه' },
     { key: 'chat', label: 'چت آنلاین' },
