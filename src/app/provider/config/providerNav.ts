@@ -41,7 +41,7 @@ export const labNavItems: ProviderNavItem[] = [
     { label: 'درخواست‌های آزمایش', segment: 'requests', icon: ClipboardList },
     { label: 'کاتالوگ آزمایش‌ها', segment: 'catalog', icon: FlaskConical },
     { label: 'قوانین نوبت دهی', segment: 'coverage', icon: CalendarDays },
-    // { label: 'زمان‌بندی نمونه‌گیری', segment: 'schedule', icon: CalendarDays },
+    { label: 'زمان‌بندی نمونه‌گیری', segment: 'schedule', icon: CalendarDays },
     //{ label: 'نمونه‌گیری در منزل', segment: 'home-sampling', icon: Home },
     { label: 'نتایج آزمایش', segment: 'results', icon: FileText },
     { label: 'پلن‌ها و اشتراک', segment: 'plans', icon: Crown },

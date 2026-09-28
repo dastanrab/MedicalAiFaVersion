@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowRight, User, FileText, Activity, Upload, Image as ImageIcon, Trash2, CheckSquare, PlusCircle, Info, FileCheck } from 'lucide-react';
+import { ArrowRight, User, FileText, Activity, Upload, Image as ImageIcon, Trash2, CheckSquare, PlusCircle, Info, FileCheck, CalendarClock } from 'lucide-react';
 import { formatPrice } from '../../components';
 import { PanelPageSkeleton, CardGridSkeleton } from '../../../components/PageSkeleton';
 import { Skeleton } from '../../../components/ui/skeleton';
@@ -18,15 +18,24 @@ const statusColors: Record<number, string> = {
     6: 'bg-red-100 text-red-700'
 };
 
+const shiftLabels: Record<number, string> = {
+    1: 'شیفت صبح',
+    2: 'شیفت ظهر / عصر',
+    3: 'شیفت شب'
+};
+
 interface LabRequest {
     id: number;
     code: string;
     is_assigned: boolean;
     status: number;
     type: 'home' | 'in-person';
-    scheduledDate: string;
+    scheduledDate: string; // تاریخ میلادی/شمسی ایجاد درخواست
+    appointmentDate?: string; // تاریخ رزرو شیفت
+    shiftType?: number;       // شناسه شیفت
     patientName: string;
     patientPhone: string;
+    address?: string;
     prescriptionType: 'digital' | 'file' | 'none';
     prescriptionCode?: string;
     prescriptionFiles?: string[];
@@ -48,15 +57,18 @@ export function LabRequestDetailPage() {
     const [request, setRequest] = useState<LabRequest | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // استیت‌های زمان‌بندی
+    const [appointmentDate, setAppointmentDate] = useState<string>('');
+    const [shiftType, setShiftType] = useState<number>(1);
+    const [updatingSchedule, setUpdatingSchedule] = useState(false);
+
+    // بقیه استیت‌ها
     const [uploadingTestId, setUploadingTestId] = useState<number | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [downloadingTestId, setDownloadingTestId] = useState<number | null>(null);
     const [downloadingPrescriptionIndex, setDownloadingPrescriptionIndex] = useState<number | null>(null);
-
-    // استیت مربوط به پذیرش درخواست
     const [isAccepting, setIsAccepting] = useState(false);
-
-    // استیت‌های مربوط به انتخاب و تخصیص آزمایش‌ها
     const [availableTests, setAvailableTests] = useState<AvailableTest[]>([]);
     const [selectedTestIds, setSelectedTestIds] = useState<number[]>([]);
     const [assigning, setAssigning] = useState(false);
@@ -69,28 +81,21 @@ export function LabRequestDetailPage() {
         try {
             const response = await fetch(fileUrl, {
                 method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${labSession?.token}`,
-                }
+                headers: { 'Authorization': `Bearer ${labSession?.token}` }
             });
 
-            if (!response.ok) {
-                throw new Error('خطا در دریافت فایل');
-            }
+            if (!response.ok) throw new Error('خطا در دریافت فایل');
 
             const blob = await response.blob();
             const blobUrl = window.URL.createObjectURL(blob);
-
             const link = document.createElement('a');
             link.href = blobUrl;
             link.target = '_blank';
-
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
 
             setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-
         } catch (error) {
             console.error(error);
             alert('خطا در دریافت فایل نسخه. لطفاً دوباره تلاش کنید.');
@@ -98,6 +103,7 @@ export function LabRequestDetailPage() {
             setDownloadingPrescriptionIndex(null);
         }
     };
+
     const handleViewResult = async (fileUrl: string, testPackId: number) => {
         if (!fileUrl) return;
         setDownloadingTestId(testPackId);
@@ -105,36 +111,21 @@ export function LabRequestDetailPage() {
         try {
             const response = await fetch(fileUrl, {
                 method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${labSession?.token}`,
-                    // 'Accept' header depends on the file type, but generally not strictly needed for blobs
-                }
+                headers: { 'Authorization': `Bearer ${labSession?.token}` }
             });
 
-            if (!response.ok) {
-                throw new Error('خطا در دریافت فایل');
-            }
+            if (!response.ok) throw new Error('خطا در دریافت فایل');
 
-            // تبدیل پاسخ سرور به فایل (Blob)
             const blob = await response.blob();
-
-            // ساخت یک URL موقت برای فایل در حافظه مرورگر
             const blobUrl = window.URL.createObjectURL(blob);
-
-            // ایجاد یک تگ a مجازی برای باز کردن فایل در تب جدید
             const link = document.createElement('a');
             link.href = blobUrl;
             link.target = '_blank';
-            // در صورتی که می‌خواهید فایل مستقیماً دانلود شود (به جای باز شدن) خط زیر را از کامنت در بیاورید
-            // link.download = 'result_file';
-
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
 
-            // پاکسازی URL موقت پس از چند ثانیه برای آزاد شدن مموری
             setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-
         } catch (error) {
             console.error(error);
             alert('خطا در دریافت فایل نتیجه. لطفاً دوباره تلاش کنید.');
@@ -168,12 +159,17 @@ export function LabRequestDetailPage() {
                     scheduledDate: jalaliDate,
                     status: Number(item.status),
                     tests: item.tests || [],
-                    is_assigned: Boolean(item.is_assigned)
+                    is_assigned: Boolean(item.is_assigned),
+                    shiftType: item.shift_type ? Number(item.shift_type) : 1,
+                    appointmentDate: item.appointment_date
                 };
 
                 setRequest(parsedRequest);
 
-                // اگر تستی تخصیص داده نشده بود، لیست آزمایش‌های قابل انتخاب آزمایشگاه را دریافت کن
+                // ست کردن مقادیر اولیه برای فرم تاریخ و شیفت
+                setAppointmentDate(item.appointment_date || new Date().toISOString().split('T')[0]);
+                setShiftType(item.shift_type ? Number(item.shift_type) : 1);
+
                 if (parsedRequest.is_assigned && (!parsedRequest.tests || parsedRequest.tests.length === 0)) {
                     fetchAvailableTests();
                 }
@@ -191,10 +187,7 @@ export function LabRequestDetailPage() {
         try {
             setLoadingTests(true);
             const response = await fetch(`https://api.mediraai.com/api/owner/lab/tests/available`, {
-                headers: {
-                    'Authorization': `Bearer ${labSession?.token}`,
-                    'Accept': 'application/json'
-                }
+                headers: { 'Authorization': `Bearer ${labSession?.token}`, 'Accept': 'application/json' }
             });
             const result = await response.json();
             if (response.ok && result.status) {
@@ -214,20 +207,30 @@ export function LabRequestDetailPage() {
     }, [id, labSession?.token]);
 
     const handleAcceptRequest = async () => {
+        if (!appointmentDate) {
+            alert('لطفاً تاریخ مراجعه را مشخص کنید.');
+            return;
+        }
+
         setIsAccepting(true);
         try {
             const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/accept`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${labSession?.token}`,
+                    'Content-Type': 'application/json',
                     'Accept': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    appointment_date: appointmentDate,
+                    shift_type: shiftType
+                })
             });
             const result = await response.json();
 
             if (response.ok && result.status) {
                 alert(result.message || 'درخواست با موفقیت پذیرفته شد.');
-                setRequest(prev => prev ? { ...prev, is_assigned: true } : null);
+                setRequest(prev => prev ? { ...prev, is_assigned: true, appointmentDate, shiftType } : null);
                 fetchAvailableTests();
             } else {
                 alert(result.message || 'خطا در پذیرش درخواست');
@@ -236,6 +239,36 @@ export function LabRequestDetailPage() {
             alert('خطا در ارتباط با سرور');
         } finally {
             setIsAccepting(false);
+        }
+    };
+
+    const handleUpdateSchedule = async () => {
+        if (!appointmentDate) return;
+        setUpdatingSchedule(true);
+        try {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/schedule`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${labSession?.token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    appointment_date: appointmentDate,
+                    shift_type: shiftType
+                })
+            });
+            const result = await response.json();
+            if (response.ok && result.status) {
+                alert('زمان‌بندی با موفقیت بروزرسانی شد.');
+                setRequest(prev => prev ? { ...prev, appointmentDate, shiftType } : null);
+            } else {
+                alert(result.message || 'خطا در تغییر زمان');
+            }
+        } catch (error) {
+            alert('خطا در ارتباط با سرور');
+        } finally {
+            setUpdatingSchedule(false);
         }
     };
 
@@ -285,10 +318,7 @@ export function LabRequestDetailPage() {
             if (response.ok) {
                 setRequest(prev => prev ? { ...prev, status: 4 } : null);
                 fetchRequestDetails();
-                console.log('done')
                 alert('نتیجه با موفقیت آپلود شد.');
-
-               // دریافت مجدد داده‌ها برای بروزرسانی لینک فایل نتیجه
             } else {
                 alert(result.message || 'خطا در آپلود فایل');
             }
@@ -300,11 +330,7 @@ export function LabRequestDetailPage() {
     };
 
     const toggleTestSelection = (testId: number) => {
-        setSelectedTestIds(prev =>
-            prev.includes(testId)
-                ? prev.filter(id => id !== testId)
-                : [...prev, testId]
-        );
+        setSelectedTestIds(prev => prev.includes(testId) ? prev.filter(id => id !== testId) : [...prev, testId]);
     };
 
     const handleAssignTests = async () => {
@@ -345,16 +371,11 @@ export function LabRequestDetailPage() {
         try {
             const response = await fetch(`https://api.mediraai.com/api/owner/lab/requests/${id}/assign-tests`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${labSession?.token}`,
-                    'Accept': 'application/json'
-                }
+                headers: { 'Authorization': `Bearer ${labSession?.token}`, 'Accept': 'application/json' }
             });
             const result = await response.json();
             if (response.ok && result.status) {
-                if (request?.tests) {
-                    setSelectedTestIds(request.tests.map(t => t.test_pack_id));
-                }
+                if (request?.tests) setSelectedTestIds(request.tests.map(t => t.test_pack_id));
                 fetchRequestDetails();
             } else {
                 alert(result.message || 'خطا در حذف آزمایش‌ها');
@@ -372,27 +393,51 @@ export function LabRequestDetailPage() {
         .reduce((sum, t) => sum + Number(t.price), 0);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 text-right font-[YekanBakhFaNum]" dir="rtl">
 
-            {/* بنر وضعیت درخواست برای نمایش دکمه پذیرش */}
+            {/* بنر وضعیت درخواست برای نمایش فرم پذیرش زمان و شیفت */}
             {!request.is_assigned && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-start md:items-center gap-3 text-amber-800">
-                        <Info className="h-6 w-6 text-amber-600 mt-1 md:mt-0 shrink-0" />
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-start gap-3 text-amber-800 mb-4">
+                        <Info className="h-6 w-6 text-amber-600 mt-1 shrink-0" />
                         <div>
                             <h3 className="font-semibold text-base">درخواست جدید (در انتظار پذیرش)</h3>
                             <p className="text-sm text-amber-700 mt-1">
-                                این درخواست هنوز توسط آزمایشگاهی پذیرفته نشده است. برای تخصیص آزمایش و بارگذاری نتایج، ابتدا باید متصدی انجام آن شوید.
+                                برای پذیرش این درخواست، لطفاً تاریخ و شیفت انجام نمونه‌گیری را مشخص کنید.
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleAcceptRequest}
-                        disabled={isAccepting}
-                        className="shrink-0 w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
-                    >
-                        {isAccepting ? "در حال پردازش..." : "پذیرش این درخواست"}
-                    </button>
+
+                    <div className="flex flex-col md:flex-row items-end gap-4 bg-white p-4 rounded-xl border border-amber-100">
+                        <div className="w-full md:w-auto flex-1">
+                            <label className="block text-xs font-medium text-slate-600 mb-1">تاریخ مراجعه</label>
+                            <input
+                                type="date"
+                                value={appointmentDate}
+                                onChange={(e) => setAppointmentDate(e.target.value)}
+                                className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-amber-500"
+                            />
+                        </div>
+                        <div className="w-full md:w-auto flex-1">
+                            <label className="block text-xs font-medium text-slate-600 mb-1">شیفت کاری</label>
+                            <select
+                                value={shiftType}
+                                onChange={(e) => setShiftType(Number(e.target.value))}
+                                className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-amber-500"
+                            >
+                                <option value={1}>شیفت صبح</option>
+                                <option value={2}>شیفت ظهر/عصر</option>
+                                <option value={3}>شیفت شب</option>
+                            </select>
+                        </div>
+                        <button
+                            onClick={handleAcceptRequest}
+                            disabled={isAccepting || !appointmentDate}
+                            className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+                        >
+                            {isAccepting ? "در حال پردازش..." : "پذیرش درخواست"}
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -423,7 +468,6 @@ export function LabRequestDetailPage() {
                     >
                         {Object.entries(statusLabels).map(([val, label]) => {
                             const numVal = Number(val);
-                            // غیرفعال کردن وضعیت 1 (در انتظار پرداخت) اگر تستی انتخاب و ثبت نشده است
                             const isPendingPaymentDisabled = numVal === 1 && (!request.tests || request.tests.length === 0);
                             return (
                                 <option key={val} value={val} disabled={isPendingPaymentDisabled}>
@@ -436,16 +480,55 @@ export function LabRequestDetailPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
+
+                {/* کارت ویرایش زمان‌بندی (فقط وقتی درخواست پذیرفته شده و وضعیت کمتر مساوی 2 است) */}
+                {request.is_assigned && request.status <= 2 && (
+                    <div className="md:col-span-2 rounded-2xl border border-blue-100 bg-blue-50/30 p-6 shadow-sm">
+                        <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-800">
+                            <CalendarClock className="h-5 w-5 text-blue-500" /> زمان‌بندی و شیفت مراجعه
+                        </h2>
+                        <div className="flex flex-col sm:flex-row items-end gap-4">
+                            <div className="w-full sm:w-1/3">
+                                <label className="block text-xs font-medium text-slate-600 mb-1">تاریخ مراجعه (تنظیم شده: <span dir="ltr">{request.appointmentDate || 'ندارد'}</span>)</label>
+                                <input
+                                    type="date"
+                                    value={appointmentDate}
+                                    onChange={(e) => setAppointmentDate(e.target.value)}
+                                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-blue-500"
+                                />
+                            </div>
+                            <div className="w-full sm:w-1/3">
+                                <label className="block text-xs font-medium text-slate-600 mb-1">شیفت کاری</label>
+                                <select
+                                    value={shiftType}
+                                    onChange={(e) => setShiftType(Number(e.target.value))}
+                                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-blue-500"
+                                >
+                                    <option value={1}>شیفت صبح</option>
+                                    <option value={2}>شیفت ظهر/عصر</option>
+                                    <option value={3}>شیفت شب</option>
+                                </select>
+                            </div>
+                            <button
+                                onClick={handleUpdateSchedule}
+                                disabled={updatingSchedule || !appointmentDate}
+                                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+                            >
+                                {updatingSchedule ? "در حال ثبت..." : "بروزرسانی زمان‌بندی"}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* کارت اطلاعات بیمار */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-800"><User className="h-5 w-5 text-amber-500" />اطلاعات بیمار</h2>
                     <div className="space-y-3 text-sm">
                         <div className="flex justify-between border-b pb-2"><span className="text-slate-500">نام:</span><span className="font-medium text-slate-800">{request.patientName}</span></div>
                         <div className="flex justify-between border-b pb-2"><span className="text-slate-500">موبایل:</span><span className="font-medium text-slate-800" dir="ltr">{request.patientPhone}</span></div>
-                        <div className="flex justify-between border-b pb-2"><span className="text-slate-500">تاریخ مراجعه:</span><span className="font-medium text-slate-800" dir="ltr">{request.scheduledDate}</span></div>
+                        <div className="flex justify-between border-b pb-2"><span className="text-slate-500">تاریخ ثبت سیستم:</span><span className="font-medium text-slate-800" dir="ltr">{request.scheduledDate}</span></div>
                         <div className="flex justify-between pt-1"><span className="text-slate-500">نوع نمونه‌گیری:</span><span className="font-medium text-slate-800">{request.type === 'home' ? 'در محل' : 'حضوری'}</span></div>
-                        <div className="flex justify-between pt-1"><span className="text-slate-500">آدرس:</span><span className="font-medium text-slate-800">{request.type === 'home' ? request.address ?? '-'  : 'حضوری'}</span></div>
-
+                        <div className="flex justify-between pt-1"><span className="text-slate-500">آدرس:</span><span className="font-medium text-slate-800 text-left line-clamp-2">{request.type === 'home' ? request.address ?? '-'  : 'مراجعه حضوری به آزمایشگاه'}</span></div>
                     </div>
                 </div>
 
@@ -468,9 +551,9 @@ export function LabRequestDetailPage() {
 
                         {request.prescriptionType === 'file' && request.prescriptionFiles && request.prescriptionFiles.length > 0 && (
                             <div className="pt-2">
-        <span className="text-slate-500 mb-3 flex items-center gap-2 font-medium">
-            <ImageIcon className="w-4 h-4" /> فایل‌های ضمیمه شده:
-        </span>
+                                <span className="text-slate-500 mb-3 flex items-center gap-2 font-medium">
+                                    <ImageIcon className="w-4 h-4" /> فایل‌های ضمیمه شده:
+                                </span>
                                 <div className="flex flex-wrap gap-3">
                                     {request.prescriptionFiles.map((fileUrl, index) => (
                                         <button
@@ -495,7 +578,6 @@ export function LabRequestDetailPage() {
                                 </div>
                             </div>
                         )}
-
                     </div>
                 </div>
 
@@ -584,8 +666,6 @@ export function LabRequestDetailPage() {
                                             <td className="px-4 py-3.5 font-medium text-slate-800">{test.name}</td>
                                             <td className="px-4 py-3.5 text-left text-slate-600 font-mono">{formatPrice(test.price)}</td>
                                             <td className="px-4 py-3.5 flex items-center justify-center gap-2">
-                                                {/* اگر فایلی وجود داشته باشد دکمه مشاهده نتیجه نمایش داده میشود */}
-                                                {/* اگر فایلی وجود داشته باشد دکمه مشاهده نتیجه نمایش داده میشود */}
                                                 {test.result_file && (
                                                     <button
                                                         onClick={() => handleViewResult(test.result_file!, test.test_pack_id)}

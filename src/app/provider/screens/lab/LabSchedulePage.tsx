@@ -9,13 +9,14 @@ import { useProviderSession } from '../../store/providerAuthStore';
 import { labStatusLabels, labStatusStyles } from '../../config/statusOptions';
 import { providerPath } from '../../config/providerNav';
 import { formatJalali, todayJalali, toFaDigits, type JalaliDate } from '../../utils/jalali';
+import {toJalaali} from "jalaali-js";
 
 export function LabSchedulePage() {
+    const [loading, setLoading] = useState(true);
     const labSession = useProviderSession('lab');
     const setRequests = useLabStore((state) => state.setRequests);
     const requests = useLabStore((s) => s.requests);
 
-    const [loading, setLoading] = useState(false);
     const today = todayJalali();
     const [selectedDate, setSelectedDate] = useState<JalaliDate>(today);
 
@@ -23,7 +24,10 @@ export function LabSchedulePage() {
 
     useEffect(() => {
         const fetchSchedule = async () => {
-            if (!labSession?.token) return;
+            if (!labSession?.token) {
+                setLoading(false); // توکن نیست، لودر را ببند تا صفحه قفل نماند
+                return;
+            }
 
             try {
                 setLoading(true);
@@ -47,10 +51,14 @@ export function LabSchedulePage() {
                         }).format(dateObj);
 
                         let statusString = 'جدید';
-                        if (item.status === 1) statusString = 'قبول شده';
-                        if (item.status === 2) statusString = 'در حال انجام';
-                        if (item.status === 3) statusString = 'تکمیل شده';
-                        if (item.status === 4) statusString = 'کنسل شده';
+                        if (item.status === 0) statusString = 'درخواست جدید';
+                        if (item.status === 1) statusString = 'در انتظار پرداخت';
+                        if (item.status === 2) statusString = 'در انتظار نمونه‌گیری';
+                        if (item.status === 3) statusString = 'در انتظار اعلام نتیجه';
+                        if (item.status === 4) statusString = 'تکمیل شده';
+                        if (item.status === 5) statusString = 'انجام شده';
+                        if (item.status === 6) statusString = 'لغو شده';
+
 
                         return {
                             ...item,
@@ -77,12 +85,19 @@ export function LabSchedulePage() {
         () => requests.filter((r) => r.scheduledDate === selectedKey),
         [requests, selectedKey]
     );
-
+    function gregorianToJalaliKey(date: string): string {
+        const [gy, gm, gd] = date.split('-').map(Number);
+        const j = toJalaali(gy, gm, gd);
+        return `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
+    }
     const markedDates = useMemo(() => {
-        const map: Record<string, number> = {};
+        const map: Record<string, string> = {};
         for (const r of requests) {
             if (r.status !== 'canceled') {
-                map[r.scheduledDate] = (map[r.scheduledDate] ?? 0) + 1;
+                const existing = map[r.scheduledDate];
+                const count = existing ? parseInt(existing.split('\n')[0]) + 1 : 1;
+                // خط اول: تعداد کل — خطوط دوم و سوم خالی تا تقویم خطا نده
+                map[r.scheduledDate] = `${count} نوبت\n\n`;
             }
         }
         return map;
@@ -97,6 +112,18 @@ export function LabSchedulePage() {
         }
         return days;
     }, [requests]);
+    if (loading) {
+        return (
+            <div className="flex min-h-[60vh] items-center justify-center p-6">
+                <div className="w-full max-w-xs space-y-3">
+                    <Skeleton className="h-8 w-full rounded-xl bg-slate-200/80" />
+                    <Skeleton className="h-40 w-full rounded-2xl bg-slate-200/60" />
+                    <Skeleton className="h-8 w-2/3 rounded-xl bg-slate-200/70" />
+                </div>
+            </div>
+        );
+    }
+    console.log(requests)
 
     return (
         <div className="space-y-6">
