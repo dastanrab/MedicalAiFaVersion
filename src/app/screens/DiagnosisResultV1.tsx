@@ -61,7 +61,6 @@ interface ChatResponse {
     form?: Form;
 }
 
-// وضعیت جدید asking_who اضافه شد
 type AgeGenderFormState = 'idle' | 'asking_who' | 'waiting' | 'submitted';
 
 export function DiagnosisResultV1() {
@@ -96,8 +95,11 @@ export function DiagnosisResultV1() {
     const [isTyping, setIsTyping] = useState(false);
     const [showContent, setShowContent] = useState(false);
 
-    // حالت‌های فرم سن و جنسیت
     const [ageGenderForm, setAgeGenderForm] = useState<AgeGenderFormState>('idle');
+
+    // استیت جدید برای نگهداری انتخاب فعلی کاربر
+    const [patientType, setPatientType] = useState<'me' | 'other' | null>(null);
+
     const [age, setAge] = useState<string>('');
     const [gender, setGender] = useState<'male' | 'female' | ''>('');
     const [isPregnant, setIsPregnant] = useState<boolean | undefined>(undefined);
@@ -195,7 +197,7 @@ export function DiagnosisResultV1() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`
                 },
-                body: JSON.stringify({ messages: newMessages , session_id: sessionId,}),
+                body: JSON.stringify({ messages: newMessages, session_id: sessionId }),
             });
 
             const json = await response.json();
@@ -247,8 +249,11 @@ export function DiagnosisResultV1() {
         setStatus('complete');
     };
 
-    // تابع انتخاب اینکه بیمار چه کسی است
     const handleSelectPatientType = (type: 'me' | 'other') => {
+        // بررسی میکنیم که آیا کاربر در حال تغییر گزینه (سوئیچ کردن) است یا خیر
+        const isSwitching = ageGenderForm === 'waiting';
+        setPatientType(type);
+
         const typeMessage: Message = {
             role: 'user',
             content: type === 'me' ? 'برای خودم' : 'برای دیگری'
@@ -261,25 +266,36 @@ export function DiagnosisResultV1() {
             if (hasAge && hasGender) {
                 const userGender = profile.gender === 0 ? 'male' : 'female';
                 const userAge = profile.age.toString();
-                // به دلیل آپدیت نشدن لحظه‌ای استیت، پیام جدید را مستقیماً به تابع پاس می‌دهیم
-                submitAgeGender(userAge, userGender, [...messages, typeMessage]);
+
+                let baseMessages = [...messages];
+                if (isSwitching) {
+                    // در صورت تغییر تصمیم، ۲ پیام قبلی مرتبط با انتخاب شخص دیگر را حذف می‌کنیم
+                    baseMessages = baseMessages.slice(0, -2);
+                }
+
+                submitAgeGender(userAge, userGender, [...baseMessages, typeMessage]);
             } else {
-                setMessages(prev => [...prev, typeMessage, {
-                    role: 'assistant',
-                    content: 'لطفاً سن و جنسیت خود را وارد کنید:'
-                }]);
+                setMessages(prev => {
+                    const newPrev = isSwitching ? prev.slice(0, -2) : prev;
+                    return [...newPrev, typeMessage, {
+                        role: 'assistant',
+                        content: 'لطفاً سن و جنسیت خود را وارد کنید:'
+                    }];
+                });
                 setAgeGenderForm('waiting');
             }
         } else {
-            setMessages(prev => [...prev, typeMessage, {
-                role: 'assistant',
-                content: 'لطفاً سن و جنسیت بیمار را وارد کنید:'
-            }]);
+            setMessages(prev => {
+                const newPrev = isSwitching ? prev.slice(0, -2) : prev;
+                return [...newPrev, typeMessage, {
+                    role: 'assistant',
+                    content: 'لطفاً سن و جنسیت بیمار را وارد کنید:'
+                }];
+            });
             setAgeGenderForm('waiting');
         }
     };
 
-    // قابلیت دریافت مقادیر سفارشی برای استفاده‌ی خودکار پروفایل
     const submitAgeGender = async (overrideAge?: string, overrideGender?: 'male' | 'female', previousMessages?: Message[]) => {
         const finalAge = overrideAge || age;
         const finalGender = overrideGender || gender;
@@ -292,7 +308,6 @@ export function DiagnosisResultV1() {
         let userResponse = `سن: ${finalAge} سال، جنسیت: ${finalGender === 'male' ? 'مرد' : 'زن'}`;
         const ageNum = parseInt(finalAge);
 
-        // اعمال منطق بارداری و اضافه کردن به رشته پاسخ
         if (!overrideGender && finalGender === 'female' && ageNum >= 15 && ageNum <= 50) {
             if (isPregnant === undefined) {
                 alert('لطفاً وضعیت بارداری را مشخص کنید.');
@@ -315,7 +330,7 @@ export function DiagnosisResultV1() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`
                 },
-                body: JSON.stringify({ messages: newMessages ,  session_id: sessionId,}),
+                body: JSON.stringify({ messages: newMessages, session_id: sessionId }),
 
             });
 
@@ -433,7 +448,6 @@ export function DiagnosisResultV1() {
                         );
                     })}
 
-                    {/* فرم انتخاب شخص (خودم یا دیگری) */}
                     {ageGenderForm === 'asking_who' && (
                         <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-2">
                             <div className="flex items-center gap-2 mb-3">
@@ -459,14 +473,32 @@ export function DiagnosisResultV1() {
                         </div>
                     )}
 
-                    {/* فرم دریافت سن و جنسیت به صورت دستی */}
                     {ageGenderForm === 'waiting' && (
                         <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+
+                            {/* Toggle Button برای تغییر انتخاب */}
+                            <div className="flex bg-gray-100 p-1 rounded-xl mb-5">
+                                <button
+                                    onClick={() => patientType !== 'me' && handleSelectPatientType('me')}
+                                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${patientType === 'me' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    برای خودم
+                                </button>
+                                <button
+                                    onClick={() => patientType !== 'other' && handleSelectPatientType('other')}
+                                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${patientType === 'other' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    برای دیگری
+                                </button>
+                            </div>
+
                             <div className="flex items-center gap-2 mb-3">
                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                                     <UserCircle className="w-4 h-4 text-white" />
                                 </div>
-                                <h3 className="font-medium text-gray-800">لطفاً اطلاعات زیر را تکمیل کنید:</h3>
+                                <h3 className="font-medium text-gray-800">
+                                    {patientType === 'me' ? 'لطفاً اطلاعات خود را تکمیل کنید:' : 'لطفاً اطلاعات بیمار را تکمیل کنید:'}
+                                </h3>
                             </div>
 
                             <div className="space-y-4">
@@ -561,7 +593,6 @@ export function DiagnosisResultV1() {
                     <div ref={bottomRef} />
                 </div>
 
-                {/* ورودی چت */}
                 {status === 'chatting' && !loading && ageGenderForm === 'idle' && (
                     <div className="bg-white rounded-2xl border border-gray-200 p-2 flex gap-2 shadow-sm shrink-0  animate-in fade-in slide-in-from-bottom-2">
                         <input
@@ -582,7 +613,6 @@ export function DiagnosisResultV1() {
                     </div>
                 )}
 
-                {/* بخش نمایش نتایج نهایی */}
                 {status === 'complete' && finalResult && (
                     <div className={`transition-all duration-700 shrink-0 ${!showContent ? 'blur-md opacity-0 pointer-events-none translate-y-4' : 'blur-0 opacity-100 translate-y-0'}`}>
                         <div className="space-y-5 mb-5">
@@ -664,7 +694,6 @@ export function DiagnosisResultV1() {
                 )}
             </div>
 
-            {/* پاپ‌آپ ارتقا پلن کاربری */}
             {showPlanModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 fade-in duration-200">

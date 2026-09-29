@@ -80,6 +80,11 @@ export interface LabRequestDetail {
     visit_type: number;
     visit_type_label: string;
     request_date: string;
+    appointment_date?: string; // اضافه شد
+    shift_type?: number;       // اضافه شد
+    shift_label?: string;      // اضافه شد
+    shift_time?: string;       // اضافه شد
+    daily_queue_number?: number; // اضافه شد
     lab_name: string;
     address: string | null;
     tests: {

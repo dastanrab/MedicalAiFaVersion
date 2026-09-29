@@ -489,25 +489,85 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     )}
 
                     {order.serviceType === 'lab' && labData && !detailLoading && (
-                        <>
-                            <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2">
-                                <h4 className="mb-2 font-semibold text-gray-800">آزمایش‌های درخواستی</h4>
-                                {labData.tests.map((test) => (
-                                    <div key={test.id} className="flex flex-col gap-1 bg-gray-50 px-3 py-2 rounded-lg">
-                                        <div className="flex justify-between"><span className="text-gray-700">{test.test_name}</span><span className="text-gray-900 font-medium">{formatOrderPrice(test.price)} ت</span></div>
-                                        {test.result_file && (
-                                            <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
-                                                <FileText className="h-4 w-4" /><span>نتیجه: </span>
-                                                <button onClick={() => handleViewResult(test.result_file!, test.id)} disabled={downloadingTestId === test.id} className="underline hover:text-blue-800 flex items-center gap-1 disabled:opacity-60 disabled:cursor-wait disabled:no-underline">
-                                                    {downloadingTestId === test.id ? <><Loader2 className="h-3 w-3 animate-spin" /><span>در حال باز کردن...</span></> : <><Download className="h-3 w-3" /><span>دانلود / مشاهده</span></>}
-                                                </button>
-                                            </div>
+                        <div className="space-y-4">
+                            {/* ---------- اطلاعات زمان‌بندی و شیفت ---------- */}
+                            <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 text-sm space-y-3 shadow-sm">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <CalendarClock className="h-4 w-4 text-blue-600" />
+                                    <h4 className="font-semibold text-gray-800">زمان مراجعه نمونه‌گیر</h4>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-white rounded-xl p-3 border border-blue-100/60 shadow-sm">
+                                        <span className="block text-[11px] text-gray-500 mb-1">تاریخ</span>
+                                        <span className="font-semibold text-gray-900" dir="ltr">
+                                            {labData.appointment_date ? toJalaliDate(labData.appointment_date) : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-3 border border-blue-100/60 shadow-sm">
+                                        <span className="block text-[11px] text-gray-500 mb-1">شیفت / زمان</span>
+                                        <span className="font-semibold text-blue-700 block">
+                                            {labData.shift_label || '-'}
+                                        </span>
+                                        {labData.shift_time && (
+                                            <span className="text-[10px] text-gray-500 block mt-0.5" dir="ltr">
+                                                {labData.shift_time}
+                                            </span>
                                         )}
                                     </div>
-                                ))}
+                                </div>
+
+                                {labData.daily_queue_number && (
+                                    <div className="flex items-center justify-between border-t border-blue-100 pt-2.5 mt-1">
+                                        <span className="text-xs font-medium text-gray-600">شماره نوبت صف:</span>
+                                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg font-bold text-sm">
+                                            {labData.daily_queue_number}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                            <DetailRow label="آزمایشگاه" value={labData.lab_name} />
-                        </>
+
+                            {/* ---------- لیست آزمایش‌ها ---------- */}
+                            <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2 shadow-sm">
+                                <h4 className="mb-2 font-semibold text-gray-800">آزمایش‌های درخواستی</h4>
+                                {labData.tests && labData.tests.length > 0 ? (
+                                    labData.tests.map((test) => (
+                                        <div key={test.id} className="flex flex-col gap-1 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100/50">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-700 font-medium text-xs">{test.test_name}</span>
+                                                <span className="text-gray-900 font-bold text-xs">{formatOrderPrice(test.price)} ت</span>
+                                            </div>
+                                            {test.result_file && (
+                                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/60">
+                                                    <span className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium">
+                                                        <FileText className="h-3.5 w-3.5" /> فایل نتیجه آماده است
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleViewResult(test.result_file!, test.id)}
+                                                        disabled={downloadingTestId === test.id}
+                                                        className="flex items-center gap-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2 py-1 rounded-md text-[11px] font-bold transition-colors disabled:opacity-60 disabled:cursor-wait"
+                                                    >
+                                                        {downloadingTestId === test.id ? (
+                                                            <><Loader2 className="h-3 w-3 animate-spin" /> در حال باز کردن</>
+                                                        ) : (
+                                                            <><Download className="h-3 w-3" /> دانلود / مشاهده</>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                        <p className="text-xs text-gray-500">لیست آزمایش‌ها در انتظار تایید و ثبت توسط آزمایشگاه است.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <DetailRow label="نام آزمایشگاه" value={labData.lab_name} />
+                            {labData.address && (
+                                <DetailRow label="آدرس آزمایشگاه" value={labData.address} />
+                            )}
+                        </div>
                     )}
 
                     {order.amount != null && !detailLoading && (
