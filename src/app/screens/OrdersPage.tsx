@@ -63,12 +63,12 @@ const doctorStatusLabelMap: Record<string, string> = {
 };
 
 const mapToStatusGroup = (type: string, rawStatus: string | number): UserRequestStatusGroup => {
-    const s = String(rawStatus);
+    const s = String(rawStatus).toLowerCase();
 
     switch (type) {
         case 'doctor':
             if (s === 'completed' || s === '3' || s === 'done') return 'completed';
-            if (s === 'cancelled') return 'cancelled';
+            if (s === 'cancelled' || s === 'canceled') return 'cancelled';
             return 'active';
         case 'lab':
             if (s === '4' || s === '5') return 'completed';
@@ -213,7 +213,7 @@ const serviceFilters: { key: ServiceFilter; label: string }[] = [
     { key: 'nurse', label: 'پرستاری' },
 ];
 
-const statusGroups: UserRequestStatusGroup[] = ['all', 'active', 'completed', 'cancelled'];
+const statusGroups: UserRequestStatusGroup[] = ['active', 'completed', 'cancelled'];
 
 const serviceIcons: Record<UserRequestServiceType, LucideIcon> = {
     consultation: Stethoscope,
@@ -237,7 +237,7 @@ export function OrdersPage() {
     const { accessToken } = useAuthStore();
 
     const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all');
-    const [statusGroup, setStatusGroup] = useState<UserRequestStatusGroup>('all');
+    const [statusGroup, setStatusGroup] = useState<UserRequestStatusGroup>('active');
     const [selected, setSelected] = useState<UserRequestOrder | null>(null);
 
     const [orders, setOrders] = useState<UserRequestOrder[]>([]);
@@ -317,7 +317,7 @@ export function OrdersPage() {
     const filtered = useMemo(() => {
         return orders.filter((o) => {
             const typeOk = serviceFilter === 'all' || o.serviceType === serviceFilter;
-            const statusOk = statusGroup === 'all' || o.status === statusGroup;
+            const statusOk = o.status === statusGroup;
             return typeOk && statusOk;
         });
     }, [orders, serviceFilter, statusGroup]);
@@ -400,7 +400,7 @@ export function OrdersPage() {
                     })}
                 </div>
 
-                <div className="mb-4 grid grid-cols-4 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-gray-100">
+                <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-gray-100">
                     {statusGroups.map((group) => {
                         const active = statusGroup === group;
                         return (

@@ -27,14 +27,14 @@ export const doctorStatusLabelMap: Record<string, string> = {
 };
 
 export const mapToStatusGroup = (type: string, rawStatus: string | number): UserRequestStatusGroup => {
-    const s = String(rawStatus);
+    const s = String(rawStatus).toLowerCase();
     switch (type) {
         case 'chat':
             if (s === '3' || s === '4' || s === '5') return 'cancelled';
             return 'active';
         case 'doctor':
             if (s === 'completed' || s === '3' || s === 'done') return 'completed';
-            if (s === 'cancelled') return 'cancelled';
+            if (s === 'cancelled' || s === 'canceled') return 'cancelled';
             return 'active';
         case 'lab':
             if (s === '4' || s === '5') return 'completed';
