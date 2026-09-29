@@ -9,8 +9,10 @@ import {
     Receipt,
     Hash,
     Copy,
-    Check
+    Check,
+    Smartphone
 } from 'lucide-react';
+import { buildPaymentReturnIntent, isAndroidBrowser } from '../native/appDeepLink';
 
 export const PaymentResultPage: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -27,6 +29,10 @@ export const PaymentResultPage: React.FC = () => {
     const reasonId = searchParams.get('reason_id');
     const reasonRef = searchParams.get('reason_ref');
     const role = searchParams.get('role');
+
+    // پرداخت از اپ شروع شده و نتیجه در مرورگر بیرونی باز شده است
+    const showReturnToApp = isAndroidBrowser();
+    const returnToAppHref = buildPaymentReturnIntent(searchParams.toString());
 
     const isSuccess = status === 'success';
     const isError = status === 'error' || status === 'failed' || !status;
@@ -239,6 +245,15 @@ export const PaymentResultPage: React.FC = () => {
 
                     {/* دکمه‌های عملیاتی */}
                     <div className="pt-2 space-y-2">
+                        {showReturnToApp && (
+                            <a
+                                href={returnToAppHref}
+                                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center justify-center gap-2"
+                            >
+                                <Smartphone className="w-4 h-4" />
+                                <span>بازگشت به اپ مدیرا</span>
+                            </a>
+                        )}
                         {isSuccess ? (
                             <button
                                 onClick={() => navigate(successAction.path)}

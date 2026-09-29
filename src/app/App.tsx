@@ -36,6 +36,7 @@ import { PricingPlans } from './screens/PricingPlans';
 import { UserFinance } from './screens/UserFinance';
 import { CheckoutPage } from './screens/CheckoutPage';
 import { PaymentCallbackPage } from './screens/PaymentCallbackPage';
+import { PaymentResultPage } from './screens/PaymentResultPage';
 import { OrdersPage } from './screens/OrdersPage';
 import ExerciseExtractor from "./screens/ExerciseExtractor";
 import { AdminLogin } from './admin/screens/AdminLogin';
@@ -91,6 +92,7 @@ import {useUserStore} from "./store/useUserStore";
  import {PharmacyFlow} from "./screens/PharmacyFlow";
 import PartnerJoin from "./screens/PartnerJoin";
 import { NativeBackButton } from "./native/NativeBackButton";
+import { NativeDeepLinks } from "./native/NativeDeepLinks";
 
 // کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
 function PartnerInviteHandler() {
@@ -254,6 +256,7 @@ function App() {
         <BrowserRouter>
             <SplashScreen />
             <NativeBackButton />
+            <NativeDeepLinks />
             <Routes>
                 {/* Redirect root to login */}
                 <Route path="/" element={<Navigate to="/login" replace />} />
@@ -432,6 +435,8 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                {/* نتیجه پرداخت درگاه؛ بدون لاگین تا در مرورگر بیرونی هم باز شود */}
+                <Route path="/payment/result" element={<PaymentResultPage />} />
                 <Route
                     path="/payment/callback"
                     element={
