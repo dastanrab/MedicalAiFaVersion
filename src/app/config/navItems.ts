@@ -30,15 +30,12 @@ export const mainNavItems: NavItem[] = [
 ];
 
 export const sidebarNavItems: NavItem[] = [
-  ...mainNavItems,
   { icon: User, label: 'پروفایل', path: '/profile' },
-  { icon: MapPinned, label: 'آدرس‌ها', path: '/addresses' },
   { icon: ClipboardList, label: 'سفارش‌ها', path: '/orders' },
-  { icon: MessageCircle, label: 'پیام‌ها', path: '/chats' },
+  { icon: Crown, label: 'پلن‌ها', path: '/plans' },
+  { icon: MapPinned, label: 'آدرس‌ها', path: '/addresses' },
  // { icon: Calendar, label: 'تقویم قاعدگی', path: '/period-tracker' },
-  { icon: Ruler, label: 'اندازه‌گیری بدن', path: '/body-measurement' },
  // { icon: UtensilsCrossed, label: 'برنامه غذایی', path: '/meal-plan' },
   { icon: Brain, label: 'بینش سلامت', path: '/health-insights' },
-  { icon: Crown, label: 'پلن‌ها', path: '/plans' },
   { icon: Wallet, label: 'مالی', path: '/finance' },
 ];

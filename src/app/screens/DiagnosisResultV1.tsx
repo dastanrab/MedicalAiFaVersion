@@ -5,6 +5,7 @@ import { AppBar } from '../components/AppBar';
 import type { SymptomFormState } from './SymptomSelection';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from "../store/authStore";
+import { useUserStore } from "../store/useUserStore";
 
 // --- Interfaces ---
 interface Doctor {
@@ -60,10 +61,11 @@ interface ChatResponse {
     form?: Form;
 }
 
-// حالت‌های مختلف برای فرم سن و جنسیت
-type AgeGenderFormState = 'idle' | 'waiting' | 'submitted';
+// وضعیت جدید asking_who اضافه شد
+type AgeGenderFormState = 'idle' | 'asking_who' | 'waiting' | 'submitted';
 
 export function DiagnosisResultV1() {
+    const profile = useUserStore(s => s.user);
     const location = useLocation();
     const navigate = useNavigate();
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -76,7 +78,6 @@ export function DiagnosisResultV1() {
 
     const handleApiResponse = (json: any): ChatResponse => {
         if (!json.success) throw new Error(json.message || 'خطا در عملیات');
-        // اگر session_id اومد و هنوز ذخیره نشده، ذخیره کن
         if (json.session_id && !sessionId) {
             setSessionId(json.session_id);
         }
@@ -99,30 +100,23 @@ export function DiagnosisResultV1() {
     const [ageGenderForm, setAgeGenderForm] = useState<AgeGenderFormState>('idle');
     const [age, setAge] = useState<string>('');
     const [gender, setGender] = useState<'male' | 'female' | ''>('');
-    const [isPregnant, setIsPregnant] = useState<boolean>(false);
+    const [isPregnant, setIsPregnant] = useState<boolean | undefined>(undefined);
 
-    // حالت‌های پاپ‌آپ ارتقا پلن
     const [showPlanModal, setShowPlanModal] = useState(false);
     const [planModalMessage, setPlanModalMessage] = useState('');
 
     const bottomRef = useRef<HTMLDivElement>(null);
     const isFirstRun = useRef(true);
 
-    // اسکرول خودکار به پایین
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, loading, ageGenderForm]);
 
-    // شروع خودکار چت با علائم دریافتی از صفحه قبل
     useEffect(() => {
         if (requestPayload?.symptoms && isFirstRun.current) {
             isFirstRun.current = false;
-
-            // پیام اولیه کاربر شامل علائم
             const initialMessage = requestPayload.symptoms;
             setMessages([{ role: 'user', content: initialMessage }]);
-
-            // شروع چت با سرور
             startChatWithServer(initialMessage);
         }
     }, [requestPayload]);
@@ -147,11 +141,10 @@ export function DiagnosisResultV1() {
 
             const json = await response.json();
 
-            // بررسی خطای پایان محدودیت پلن
             if (response.status === 400 && !json.success && json.data && 'daily_limit' in json.data) {
                 setPlanModalMessage(json.message);
                 setShowPlanModal(true);
-                return; // توقف ادامه اجرا تا بلاک catch اجرا نشود
+                return;
             }
 
             if (!response.ok && response.status !== 400) throw new Error('خطا در دریافت پاسخ از سرور');
@@ -163,10 +156,10 @@ export function DiagnosisResultV1() {
                 const isAgeGenderQuestion = message.includes('سن') && message.includes('جنسیت');
 
                 if (isAgeGenderQuestion) {
-                    setAgeGenderForm('waiting');
+                    setAgeGenderForm('asking_who');
                     setMessages(prev => [...prev, {
                         role: 'assistant',
-                        content: 'لطفاً سن و جنسیت خود را مشخص کنید:'
+                        content: 'این مشاوره برای چه کسی است؟'
                     }]);
                 } else {
                     setMessages(prev => [...prev, { role: 'assistant', content: message }]);
@@ -207,11 +200,9 @@ export function DiagnosisResultV1() {
 
             const json = await response.json();
 
-            // بررسی خطای پایان محدودیت پلن
             if (response.status === 400 && !json.success && json.data && 'daily_limit' in json.data) {
                 setPlanModalMessage(json.message);
                 setShowPlanModal(true);
-                // پیام کاربری که ارسال شده ولی به دلیل خطای لیمیت ناموفق بوده رو هم میتونید از لیست حذف کنید یا نگه دارید. اینجا نگه داشتیم.
                 return;
             }
 
@@ -224,10 +215,10 @@ export function DiagnosisResultV1() {
                 const isAgeGenderQuestion = message.includes('سن') && message.includes('جنسیت');
 
                 if (isAgeGenderQuestion) {
-                    setAgeGenderForm('waiting');
+                    setAgeGenderForm('asking_who');
                     setMessages(prev => [...prev, {
                         role: 'assistant',
-                        content: 'لطفاً سن و جنسیت خود را مشخص کنید:'
+                        content: 'این مشاوره برای چه کسی است؟'
                     }]);
                 } else {
                     setMessages(prev => [...prev, { role: 'assistant', content: message }]);
@@ -256,21 +247,63 @@ export function DiagnosisResultV1() {
         setStatus('complete');
     };
 
-    // ارسال اطلاعات سن و جنسیت
-    const submitAgeGender = async () => {
-        if (!age.trim() || !gender) {
-            alert('لطفاً سن و جنسیت خود را وارد کنید.');
+    // تابع انتخاب اینکه بیمار چه کسی است
+    const handleSelectPatientType = (type: 'me' | 'other') => {
+        const typeMessage: Message = {
+            role: 'user',
+            content: type === 'me' ? 'برای خودم' : 'برای دیگری'
+        };
+
+        if (type === 'me') {
+            const hasAge = !!profile?.age;
+            const hasGender = profile?.gender !== undefined && profile?.gender !== null;
+
+            if (hasAge && hasGender) {
+                const userGender = profile.gender === 0 ? 'male' : 'female';
+                const userAge = profile.age.toString();
+                // به دلیل آپدیت نشدن لحظه‌ای استیت، پیام جدید را مستقیماً به تابع پاس می‌دهیم
+                submitAgeGender(userAge, userGender, [...messages, typeMessage]);
+            } else {
+                setMessages(prev => [...prev, typeMessage, {
+                    role: 'assistant',
+                    content: 'لطفاً سن و جنسیت خود را وارد کنید:'
+                }]);
+                setAgeGenderForm('waiting');
+            }
+        } else {
+            setMessages(prev => [...prev, typeMessage, {
+                role: 'assistant',
+                content: 'لطفاً سن و جنسیت بیمار را وارد کنید:'
+            }]);
+            setAgeGenderForm('waiting');
+        }
+    };
+
+    // قابلیت دریافت مقادیر سفارشی برای استفاده‌ی خودکار پروفایل
+    const submitAgeGender = async (overrideAge?: string, overrideGender?: 'male' | 'female', previousMessages?: Message[]) => {
+        const finalAge = overrideAge || age;
+        const finalGender = overrideGender || gender;
+
+        if (!finalAge.toString().trim() || !finalGender) {
+            alert('لطفاً سن و جنسیت را وارد کنید.');
             return;
         }
 
-        let userResponse = `سن: ${age} سال، جنسیت: ${gender === 'male' ? 'مرد' : 'زن'}`;
+        let userResponse = `سن: ${finalAge} سال، جنسیت: ${finalGender === 'male' ? 'مرد' : 'زن'}`;
+        const ageNum = parseInt(finalAge);
 
-        const ageNum = parseInt(age);
-        if (gender === 'female' && ageNum >= 15 && ageNum <= 50) {
-            // منطق بارداری
+        // اعمال منطق بارداری و اضافه کردن به رشته پاسخ
+        if (!overrideGender && finalGender === 'female' && ageNum >= 15 && ageNum <= 50) {
+            if (isPregnant === undefined) {
+                alert('لطفاً وضعیت بارداری را مشخص کنید.');
+                return;
+            }
+            userResponse += `، وضعیت بارداری: ${isPregnant ? 'بله' : 'خیر'}`;
         }
 
-        const newMessages = [...messages, { role: 'user', content: userResponse }];
+        const baseMessages = previousMessages || messages;
+        const newMessages = [...baseMessages, { role: 'user', content: userResponse }];
+
         setMessages(newMessages);
         setAgeGenderForm('submitted');
         setLoading(true);
@@ -288,11 +321,10 @@ export function DiagnosisResultV1() {
 
             const json = await response.json();
 
-            // بررسی خطای پایان محدودیت پلن
             if (response.status === 400 && !json.success && json.data && 'daily_limit' in json.data) {
                 setPlanModalMessage(json.message);
                 setShowPlanModal(true);
-                setAgeGenderForm('idle'); // فرم رو برمیگردونیم که کاربر گیر نکنه
+                setAgeGenderForm('idle');
                 return;
             }
 
@@ -319,7 +351,6 @@ export function DiagnosisResultV1() {
         }
     };
 
-    // افکت تایپ نویسی فقط برای پیام نهایی
     useEffect(() => {
         if (status !== 'complete' || !finalResult) return;
 
@@ -359,11 +390,10 @@ export function DiagnosisResultV1() {
     }
 
     return (
-        <div className="flex flex-col h-dvh bg-gradient-to-b from-blue-50 to-white" dir="rtl">
+        <div className="flex flex-col h-dvh bg-gradient-to-b from-blue-50 to-white mb-20" dir="rtl">
             <AppBar backTo="/symptoms" backState={symptomFormState} />
 
             <div className="flex-1 overflow-y-auto w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-4 flex flex-col">
-                {/* محیط چت باکس */}
                 <div className="flex-1 space-y-4 mb-4">
                     {messages.map((msg, idx) => {
                         const isLastAndComplete = status === 'complete' && idx === messages.length - 1;
@@ -403,7 +433,33 @@ export function DiagnosisResultV1() {
                         );
                     })}
 
-                    {/* فرم سن و جنسیت */}
+                    {/* فرم انتخاب شخص (خودم یا دیگری) */}
+                    {ageGenderForm === 'asking_who' && (
+                        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                    <UserCircle className="w-4 h-4 text-white" />
+                                </div>
+                                <h3 className="font-medium text-gray-800">این مشاوره برای چه کسی است؟</h3>
+                            </div>
+                            <div className="flex gap-3 mt-4">
+                                <Button
+                                    onClick={() => handleSelectPatientType('me')}
+                                    className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-none"
+                                >
+                                    برای خودم
+                                </Button>
+                                <Button
+                                    onClick={() => handleSelectPatientType('other')}
+                                    className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-none"
+                                >
+                                    برای دیگری
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* فرم دریافت سن و جنسیت به صورت دستی */}
                     {ageGenderForm === 'waiting' && (
                         <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
                             <div className="flex items-center gap-2 mb-3">
@@ -452,11 +508,11 @@ export function DiagnosisResultV1() {
 
                                 {gender === 'female' && parseInt(age) >= 15 && parseInt(age) <= 50 && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">آیا باردار هستید؟</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">آیا بیمار باردار است؟</label>
                                         <div className="flex gap-3">
                                             <button
                                                 onClick={() => setIsPregnant(true)}
-                                                className={`flex-1 py-2 px-4 rounded-lg border ${isPregnant
+                                                className={`flex-1 py-2 px-4 rounded-lg border ${isPregnant === true
                                                     ? 'bg-green-50 border-green-500 text-green-700'
                                                     : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'}`}
                                             >
@@ -464,7 +520,7 @@ export function DiagnosisResultV1() {
                                             </button>
                                             <button
                                                 onClick={() => setIsPregnant(false)}
-                                                className={`flex-1 py-2 px-4 rounded-lg border ${!isPregnant && isPregnant !== undefined
+                                                className={`flex-1 py-2 px-4 rounded-lg border ${isPregnant === false
                                                     ? 'bg-red-50 border-red-500 text-red-700'
                                                     : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'}`}
                                             >
@@ -475,7 +531,7 @@ export function DiagnosisResultV1() {
                                 )}
 
                                 <Button
-                                    onClick={submitAgeGender}
+                                    onClick={() => submitAgeGender()}
                                     disabled={!age.trim() || !gender || loading}
                                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                                 >
@@ -492,7 +548,7 @@ export function DiagnosisResultV1() {
                         </div>
                     )}
 
-                    {loading && status !== 'complete' && ageGenderForm !== 'waiting' && (
+                    {loading && status !== 'complete' && ageGenderForm !== 'waiting' && ageGenderForm !== 'asking_who' && (
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                                 <Stethoscope className="w-4 h-4 text-white" />
@@ -507,7 +563,7 @@ export function DiagnosisResultV1() {
 
                 {/* ورودی چت */}
                 {status === 'chatting' && !loading && ageGenderForm === 'idle' && (
-                    <div className="bg-white rounded-2xl border border-gray-200 p-2 flex gap-2 shadow-sm shrink-0 mb-20 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="bg-white rounded-2xl border border-gray-200 p-2 flex gap-2 shadow-sm shrink-0  animate-in fade-in slide-in-from-bottom-2">
                         <input
                             className="flex-1 outline-none text-sm px-3 bg-transparent"
                             placeholder="پاسخ خود را اینجا بنویسید..."
