@@ -8,10 +8,10 @@ import {
 import { Info } from 'lucide-react';
 // import { useUserStore } from '@/store/useUserStore';
 
-// ================= کامپوننت آپدیت عنوان تب (خارج از محیط سایت) =================
+// ================= کامپوننت آپدیت عنوان تب =================
 const TabTitleUpdater = () => {
     const { unseenCount } = useNotifications();
-    const originalTitle = useRef(document.title); // ذخیره عنوان اصلی سایت
+    const originalTitle = useRef(document.title);
 
     useEffect(() => {
         if (unseenCount > 0) {
@@ -21,22 +21,24 @@ const TabTitleUpdater = () => {
         }
     }, [unseenCount]);
 
-    return null; // این کامپوننت چیزی در صفحه رندر نمی‌کند
+    return null;
 };
 
-// ================= کامپوننت آیتم سفارشی (ظاهر تمیز و مدرن) =================
+// ================= کامپوننت آیتم سفارشی آپدیت‌شده =================
 const NotificationItem = ({
                               notification,
                               handleNotificationClick,
                           }) => {
     const { markAsRead } = useNotifications();
-    const payload = notification?.payload || {};
     const isRead = notification?.read === true;
-    const content = notification?.content;
 
-    // لینک را ابتدا از payload.link و در غیر این صورت از cta می‌گیریم
+    // استخراج دیتای سفارشی از payload
+    const payload = notification?.payload || {};
+    const title = payload.title || '';
+    const msg = payload.msg || '';
+
+    // دریافت لینک (اولویت با payload و سپس cta نوو)
     const actionLink = payload.link || notification?.cta?.data?.url;
-    // آواتار ارسالی از نوو
     const avatarUrl = notification?.avatar;
 
     const handleClick = () => {
@@ -54,7 +56,7 @@ const NotificationItem = ({
                 isRead ? 'bg-white opacity-80' : 'bg-blue-50/40'
             }`}
         >
-            {/* نشانگر خوانده نشدن (نقطه آبی) */}
+            {/* نشانگر خوانده نشدن */}
             {!isRead && (
                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-blue-600 shadow-sm" />
             )}
@@ -70,10 +72,17 @@ const NotificationItem = ({
                 </div>
 
                 {/* محتوای اعلان */}
-                <div className="flex-1 space-y-1.5 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                        {/* اگر Novu عنوان مجزایی ندارد، فقط تاریخ را بالا می‌گذاریم و content را زیر آن نمایش می‌دهیم */}
-                        <span className="text-[11px] font-medium text-slate-400 mr-auto">
+                <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 mb-1">
+                        {/* عنوان اعلان از payload.title */}
+                        {title && (
+                            <h4 className="text-sm font-semibold text-slate-800 m-0">
+                                {title}
+                            </h4>
+                        )}
+
+                        {/* تاریخ */}
+                        <span className="text-[11px] font-medium text-slate-400 mr-auto shrink-0 mt-0.5">
                             {notification?.createdAt
                                 ? new Date(notification.createdAt).toLocaleDateString('fa-IR', {
                                     month: 'short',
@@ -85,12 +94,11 @@ const NotificationItem = ({
                         </span>
                     </div>
 
-                    {/* رندر کردن محتوای HTML از فیلد content */}
-                    {content && (
-                        <div
-                            className="text-sm leading-6 text-slate-700 prose prose-sm prose-p:my-0 prose-br:my-0"
-                            dangerouslySetInnerHTML={{ __html: content }}
-                        />
+                    {/* متن پیام از payload.msg */}
+                    {msg && (
+                        <p className="text-sm leading-6 text-slate-600 m-0">
+                            {msg}
+                        </p>
                     )}
 
                     {/* لینک اکشن (در صورت وجود) */}
@@ -117,10 +125,10 @@ const NotificationItem = ({
 const NotificationBellWidget = ({
                                     subscriberId = "8a9dc60c-d6a1-42d6-8d6b-9e763c75ccc8",
                                     applicationIdentifier = "m-_DUfjoPvc4",
-                                    backendUrl = "http://185.222.163.113:3000",
-                                    socketUrl = "http://185.222.163.113:3002"
+                                    backendUrl = "https://novu.mediraai.com",
+                                    socketUrl  = "https://ws-novu.mediraai.com"
+
                                 }) => {
-    // گرفتن subscriber_id از استیت Zustand
     // const subscriberId = useUserStore((state) => state.user?.novu_subscriber_id
 
     if (!subscriberId) return null;
@@ -138,7 +146,6 @@ const NotificationBellWidget = ({
                 backendUrl={backendUrl}
                 socketUrl={socketUrl}
             >
-                {/* فعال‌ساز تغییر عنوان تب اضافه شد */}
                 <TabTitleUpdater />
 
                 <PopoverNotificationCenter
