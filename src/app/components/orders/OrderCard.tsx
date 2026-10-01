@@ -1,27 +1,71 @@
-import React from 'react';
-import { ChevronLeft, CalendarClock, Building2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, CalendarClock, Building2, Timer } from 'lucide-react';
 import { Card } from '../ui/card';
-import { UserRequestOrder, formatOrderPrice, serviceTypeLabels } from '../../data/userOrdersMockData';
+import { formatOrderPrice, serviceTypeLabels } from '../../data/userOrdersMockData';
 import { serviceIcons, serviceIconStyles, getStatusClass } from './utils';
 
 interface OrderCardProps {
-    order: UserRequestOrder;
+    order: any;
     onOpen: () => void;
 }
 
 export function OrderCard({ order, onOpen }: OrderCardProps) {
     const Icon = serviceIcons[order.serviceType];
-    const statusClass = getStatusClass(order.status);
 
-    // بررسی وضعیت سفارش برای کمرنگ کردن
-    const isInactive = order.status === 'completed' || order.status === 'cancelled';
+    // ----- منطق تایمر زنده -----
+    const isExpirable = ['lab', 'pharmacy', 'nurse'].includes(order.serviceType) && (order.rawStatus === 0 || order.rawStatus === 1) && !order.isExpired;
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    const [liveExpired, setLiveExpired] = useState(order.isExpired || false);
+
+    useEffect(() => {
+        if (!isExpirable || !order.rawCreatedAt || liveExpired) return;
+
+        const calculateTimeLeft = () => {
+            const created = new Date(order.rawCreatedAt).getTime();
+            const expires = created + 30 * 60 * 1000;
+            return expires - Date.now();
+        };
+
+        const initialTime = calculateTimeLeft();
+        if (initialTime <= 0) {
+            setLiveExpired(true);
+            return;
+        }
+
+        setTimeLeft(initialTime);
+
+        const timer = setInterval(() => {
+            const tl = calculateTimeLeft();
+            if (tl <= 0) {
+                setLiveExpired(true);
+                setTimeLeft(0);
+                clearInterval(timer);
+            } else {
+                setTimeLeft(tl);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isExpirable, order.rawCreatedAt, liveExpired]);
+
+    const formatTime = (ms: number) => {
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+    // ------------------------------------
+
+    const isInactive = order.status === 'completed' || order.status === 'cancelled' || liveExpired;
+    const displayStatus = liveExpired ? 'تاریخ گذشته' : order.status_label;
+    const statusClass = getStatusClass(liveExpired ? 'cancelled' : order.status);
 
     return (
         <button type="button" onClick={onOpen} className="block w-full text-right">
             <Card
                 dir="rtl"
                 className={`gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] ${
-                    isInactive ? 'opacity-60 hover:opacity-80' : ''
+                    isInactive ? 'opacity-60 hover:opacity-80 grayscale-[20%]' : ''
                 }`}
             >
                 <div className="flex items-start gap-3">
@@ -35,8 +79,16 @@ export function OrderCard({ order, onOpen }: OrderCardProps) {
                                 {serviceTypeLabels[order.serviceType]}
                             </span>
                             <span className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusClass}`}>
-                                {order.status_label}
+                                {displayStatus}
                             </span>
+
+                            {/* نمایش تایمر در صورتی که سفارش فعال است */}
+                            {isExpirable && !liveExpired && timeLeft !== null && (
+                                <span className="flex items-center gap-1 rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600 ring-1 ring-orange-200" dir="ltr">
+                                    <Timer className="h-3 w-3" />
+                                    {formatTime(timeLeft)}
+                                </span>
+                            )}
                         </div>
 
                         <h3 className="mt-2 text-sm font-bold leading-snug text-gray-900">

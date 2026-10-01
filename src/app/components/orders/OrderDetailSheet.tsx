@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, CalendarClock, User, FileText, Download, CreditCard, Star, Trash2 } from 'lucide-react';
+import { Loader2, CalendarClock, User, FileText, Download, CreditCard, Star, Trash2, Timer } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../ui/sheet';
 import { useAuthStore } from '../../store/authStore';
 import { formatOrderPrice, serviceTypeLabels, UserRequestOrder } from '../../data/userOrdersMockData';
@@ -16,7 +16,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 interface OrderDetailSheetProps {
-    order: UserRequestOrder | null;
+    order: any | null; // Changed to any to accept rawCreatedAt and isExpired gracefully without strict TS errors
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onOrderUpdate?: (updated: UserRequestOrder) => void;
@@ -44,9 +44,13 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
     const [reviewLoading, setReviewLoading] = useState(false);
     const [reviewMessage, setReviewMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    // Live Expiration State for the modal
+    const [liveExpired, setLiveExpired] = useState(false);
+
     useEffect(() => {
         if (!order) return;
         setRating(0); setComment(''); setReviewMessage(null); setSelectedGateway('saman'); setDetailError(null);
+        setLiveExpired(order.isExpired || false);
 
         const fetchData = async () => {
             setDetailLoading(true); setDetailError(null);
@@ -76,7 +80,27 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
 
         setDetailData(null); setNurseData(null); setLabData(null); setDoctorData(null);
         fetchData();
-    }, [order?.id, order?.serviceType, accessToken]);
+    }, [order?.id, order?.serviceType, accessToken, order?.isExpired]);
+
+    // Live expiration checker inside the sheet
+    useEffect(() => {
+        if (!order || !open || liveExpired) return;
+        const isOrderExpirable = ['lab', 'pharmacy', 'nurse'].includes(order.serviceType) && (order.rawStatus === 0 || order.rawStatus === 1);
+
+        if (isOrderExpirable && order.rawCreatedAt) {
+            const createdTime = new Date(order.rawCreatedAt).getTime();
+            const checkExpiration = () => {
+                if (Date.now() - createdTime > 30 * 60 * 1000) {
+                    setLiveExpired(true);
+                }
+            };
+
+            checkExpiration(); // Initial check
+            const interval = setInterval(checkExpiration, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [order, open, liveExpired]);
+
 
     const getDoctorPatientInfo = () => {
         if (!doctorData?.extra_detail) return null;
@@ -171,7 +195,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                 throw new Error(json.message || 'خطا در لغو درخواست');
             }
 
-            const updatedOrder: UserRequestOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
+            const updatedOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
             if (onOrderUpdate) onOrderUpdate(updatedOrder);
             setLabData((prev) => prev ? { ...prev, status: 4, status_label: 'لغو شده' } : null);
             if (refreshOrders) refreshOrders();
@@ -228,7 +252,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                 throw new Error(json.message || 'خطا در لغو درخواست');
             }
 
-            const updatedOrder: UserRequestOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
+            const updatedOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
             if (onOrderUpdate) onOrderUpdate(updatedOrder);
             setDetailData((prev) => prev ? { ...prev, status: 7, status_label: 'لغو شده' } : null);
             if (refreshOrders) refreshOrders();
@@ -285,7 +309,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                 throw new Error(json.message || 'خطا در لغو درخواست');
             }
 
-            const updatedOrder: UserRequestOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
+            const updatedOrder = { ...order, status: 'cancelled', status_label: 'لغو شده' };
             if (onOrderUpdate) onOrderUpdate(updatedOrder);
             setNurseData((prev: any) => prev ? { ...prev, status: 5, status_label: 'لغو شده' } : null);
             if (refreshOrders) refreshOrders();
@@ -315,16 +339,17 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
     if (!order) return null;
 
     const Icon = serviceIcons[order.serviceType];
-    const statusClass = getStatusClass(order.status);
+    const displayStatus = liveExpired ? 'تاریخ گذشته' : order.status_label;
+    const statusClass = getStatusClass(liveExpired ? 'cancelled' : order.status);
 
     const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
-    const showLabPayButton = order.serviceType === 'lab' && labData && labData.status === 1 && order.order_id !== null;
-    const showPharmacyPayButton = order.serviceType === 'pharmacy' && detailData && detailData.status === 1 && order.order_id !== null;
-    const showNursePayButton = order.serviceType === 'nurse' && nurseData && nurseData.status === 0 && order.order_id !== null;
+    const showLabPayButton = !liveExpired && order.serviceType === 'lab' && labData && labData.status === 1 && order.order_id !== null;
+    const showPharmacyPayButton = !liveExpired && order.serviceType === 'pharmacy' && detailData && detailData.status === 1 && order.order_id !== null;
+    const showNursePayButton = !liveExpired && order.serviceType === 'nurse' && nurseData && nurseData.status === 0 && order.order_id !== null;
 
-    const showLabCancelButton = order.serviceType === 'lab' && labData && (labData.status === 0 || labData.status === 1);
-    const showPharmacyCancelButton = order.serviceType === 'pharmacy' && detailData && (detailData.status === 0 || detailData.status === 1);
-    const showNurseCancelButton = order.serviceType === 'nurse' && nurseData && (nurseData.status === 0 || nurseData.status === 1);
+    const showLabCancelButton = !liveExpired && order.serviceType === 'lab' && labData && (labData.status === 0 || labData.status === 1);
+    const showPharmacyCancelButton = !liveExpired && order.serviceType === 'pharmacy' && detailData && (detailData.status === 0 || detailData.status === 1);
+    const showNurseCancelButton = !liveExpired && order.serviceType === 'nurse' && nurseData && (nurseData.status === 0 || nurseData.status === 1);
 
     const isCompleted = order.status === 'completed';
     const patientInfo = getDoctorPatientInfo();
@@ -344,7 +369,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                     {serviceTypeLabels[order.serviceType]}
                                 </span>
                                 <span className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusClass}`}>
-                                    {order.status_label}
+                                    {displayStatus}
                                 </span>
                             </div>
                             <SheetTitle className="mt-2 text-base font-bold text-gray-900">{order.title}</SheetTitle>
@@ -357,14 +382,24 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     {detailLoading && <div className="flex items-center justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>}
                     {detailError && <div className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">{detailError}</div>}
 
+                    {/* Timeout Warning Message */}
+                    {liveExpired && (
+                        <div className="rounded-2xl bg-red-50 p-3 mt-4 border border-red-100 flex items-start gap-2">
+                            <Timer className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                            <p className="text-xs text-red-700 leading-relaxed font-medium">
+                                زمان ۳۰ دقیقه‌ای شما برای تکمیل، پرداخت یا تایید این درخواست به پایان رسیده است. این درخواست اکنون تاریخ‌گذشته محسوب می‌شود.
+                            </p>
+                        </div>
+                    )}
+
                     {/* اطلاعات پایه سفارش در یک ردیف */}
-                    <div className="flex w-full items-stretch gap-2">
+                    <div className="flex w-full items-stretch gap-2 mt-4">
                         {order.summary && order.serviceType !== 'consultation' && (
                             <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white p-2 text-center">
                                 <span className="text-[10px] font-medium text-gray-500">خلاصه درخواست</span>
                                 <span className="text-xs font-semibold text-gray-800 line-clamp-1" title={order.summary}>
-                {order.summary}
-            </span>
+                                    {order.summary}
+                                </span>
                             </div>
                         )}
                         <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white p-2 text-center">
@@ -378,7 +413,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     </div>
 
                     {order.serviceType === 'consultation' && doctorData && !detailLoading && (
-                        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-3 shadow-sm">
+                        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-3 shadow-sm mt-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <CalendarClock className="h-4 w-4 text-blue-600" />
                                 <h4 className="font-semibold text-gray-800">جزئیات نوبت</h4>
@@ -407,7 +442,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     )}
 
                     {order.serviceType === 'nurse' && nurseData && !detailLoading && (
-                        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-4 shadow-sm">
+                        <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-4 shadow-sm mt-4">
                             <h4 className="font-semibold text-gray-800">جزئیات خدمات پرستاری</h4>
                             <div className="space-y-2">
                                 {nurseData.services?.map((svc: any, idx: number) => (
@@ -473,8 +508,8 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     )}
 
                     {order.serviceType === 'pharmacy' && detailData && !detailLoading && (
-                        <>
-                            <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2">
+                        <div className="mt-4 space-y-4">
+                            <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2 shadow-sm">
                                 <h4 className="mb-2 font-semibold text-gray-800">داروهای سفارش‌داده‌شده</h4>
                                 {detailData.medicines.map((med) => (
                                     <div key={med.id} className="flex justify-between bg-gray-50 px-3 py-2 rounded-lg">
@@ -484,11 +519,11 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                 ))}
                             </div>
                             <DetailRow label="داروخانه" value={detailData.pharmacy_name} />
-                        </>
+                        </div>
                     )}
 
                     {order.serviceType === 'lab' && labData && !detailLoading && (
-                        <div className="space-y-4">
+                        <div className="mt-4 space-y-4">
                             <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 text-sm space-y-3 shadow-sm">
                                 <div className="flex items-center gap-2 mb-1">
                                     <CalendarClock className="h-4 w-4 text-blue-600" />

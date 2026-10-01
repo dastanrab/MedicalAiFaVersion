@@ -49,9 +49,9 @@ export function OrdersPageV1() {
 
     const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all');
     const [statusGroup, setStatusGroup] = useState<UserRequestStatusGroup>('active');
-    const [selected, setSelected] = useState<UserRequestOrder | null>(null);
+    const [selected, setSelected] = useState<any | null>(null);
 
-    const [orders, setOrders] = useState<UserRequestOrder[]>([]);
+    const [orders, setOrders] = useState<any[]>([]);
     const [counts, setCounts] = useState({ doctor: 0, lab: 0, pharmacy: 0, nurse: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -69,11 +69,24 @@ export function OrdersPageV1() {
             const json: ApiOrdersResponse = await res.json();
             if (!json.success) throw new Error('پاسخ API نامعتبر است.');
 
-            const mapped: UserRequestOrder[] = json.data.orders.map((item) => {
+            const mapped = json.data.orders.map((item) => {
                 const serviceType = serviceTypeMap[item.type] ?? 'lab';
-                const group = mapToStatusGroup(item.type, item.status);
-
+                let group = mapToStatusGroup(item.type, item.status);
                 let finalStatusLabel = item.status_label;
+                let isExpired = false;
+
+                // ----- بخش اضافه شده برای محاسبه تاریخ گذشتگی (۳۰ دقیقه) -----
+                if (['lab', 'pharmacy', 'nurse'].includes(item.type) && (item.status === 0 || item.status === 1)) {
+                    const createdAtTime = new Date(item.created_at).getTime();
+                    const now = Date.now();
+                    if (now - createdAtTime > 30 * 60 * 1000) {
+                        isExpired = true;
+                        group = 'cancelled'; // انتقال به تب لغو شده‌ها
+                        finalStatusLabel = 'تاریخ گذشته';
+                    }
+                }
+                // -----------------------------------------------------------------
+
                 if (item.type === 'doctor') {
                     const rawStatus = String(item.status).toLowerCase();
                     finalStatusLabel = doctorStatusLabelMap[rawStatus] ?? item.status_label;
@@ -86,6 +99,8 @@ export function OrdersPageV1() {
                     providerName: item.name, summary: item.detail !== '-' ? item.detail : '',
                     amount: item.price, code: `#ORD-${item.id}`,
                     scheduledAt: null, createdAt: toJalaliDate(item.created_at),
+                    rawCreatedAt: item.created_at, // زمان خام برای تایمر زنده
+                    isExpired: isExpired,
                     updatedAt: null, address: null, details: [],
                 };
             });
@@ -192,12 +207,9 @@ export function OrdersPageV1() {
                                 key={`${order.id}-${order.serviceType}`}
                                 order={order}
                                 onOpen={() => {
-                                    // اگر سفارش از نوع چت بود، بدون باز کردن مودال مستقیم برو به صفحه چت
                                     if (order.serviceType === 'chat') {
-                                        // order.id در اینجا به خاطر کوئری جدید بک‌اند، معادل room_id است
                                         navigate(`/consultation/${order.id}`);
                                     } else {
-                                        // در غیر این صورت Sheet جزئیات رو باز کن
                                         setSelected(order);
                                     }
                                 }}
