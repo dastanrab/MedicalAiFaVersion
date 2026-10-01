@@ -76,9 +76,12 @@ export function OrdersPageV1() {
                 let isExpired = false;
 
                 // ----- بخش اضافه شده برای محاسبه تاریخ گذشتگی (۳۰ دقیقه) -----
-                if (['lab', 'pharmacy', 'nurse'].includes(item.type) && (item.status === 0 || item.status === 1)) {
-                    const createdAtTime = new Date(item.created_at).getTime();
+                if (['lab', 'pharmacy', 'nurse'].includes(item.type) && (Number(item.status) === 0 || Number(item.status) === 1)) {
+
+                    const safeDateStr = String(item.created_at).replace(' ', 'T');
+                    const createdAtTime = new Date(safeDateStr).getTime();
                     const now = Date.now();
+
                     if (now - createdAtTime > 30 * 60 * 1000) {
                         isExpired = true;
                         group = 'cancelled'; // انتقال به تب لغو شده‌ها

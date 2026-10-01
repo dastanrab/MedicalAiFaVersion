@@ -82,13 +82,20 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         fetchData();
     }, [order?.id, order?.serviceType, accessToken, order?.isExpired]);
 
-    // Live expiration checker inside the sheet
+    // این متغیر در بالای return قرار دارد:
+    const isOrderExpirable = ['lab', 'pharmacy', 'nurse'].includes(order?.serviceType) &&
+        (Number(order?.rawStatus) === 0 || Number(order?.rawStatus) === 1);
+
+    // و در داخل useEffect مربوط به تایمر:
     useEffect(() => {
         if (!order || !open || liveExpired) return;
-        const isOrderExpirable = ['lab', 'pharmacy', 'nurse'].includes(order.serviceType) && (order.rawStatus === 0 || order.rawStatus === 1);
+        const isOrderExpirableLocal = ['lab', 'pharmacy', 'nurse'].includes(order.serviceType) &&
+            (Number(order.rawStatus) === 0 || Number(order.rawStatus) === 1);
 
-        if (isOrderExpirable && order.rawCreatedAt) {
-            const createdTime = new Date(order.rawCreatedAt).getTime();
+        if (isOrderExpirableLocal && order.rawCreatedAt) {
+            const safeDateStr = String(order.rawCreatedAt).replace(' ', 'T');
+            const createdTime = new Date(safeDateStr).getTime();
+
             const checkExpiration = () => {
                 if (Date.now() - createdTime > 30 * 60 * 1000) {
                     setLiveExpired(true);

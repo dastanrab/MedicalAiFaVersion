@@ -13,7 +13,10 @@ export function OrderCard({ order, onOpen }: OrderCardProps) {
     const Icon = serviceIcons[order.serviceType];
 
     // ----- منطق تایمر زنده -----
-    const isExpirable = ['lab', 'pharmacy', 'nurse'].includes(order.serviceType) && (order.rawStatus === 0 || order.rawStatus === 1) && !order.isExpired;
+    const isExpirable = ['lab', 'pharmacy', 'nurse'].includes(order.serviceType) &&
+        (Number(order.rawStatus) === 0 || Number(order.rawStatus) === 1) &&
+        !order.isExpired;
+
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [liveExpired, setLiveExpired] = useState(order.isExpired || false);
 
@@ -21,7 +24,12 @@ export function OrderCard({ order, onOpen }: OrderCardProps) {
         if (!isExpirable || !order.rawCreatedAt || liveExpired) return;
 
         const calculateTimeLeft = () => {
-            const created = new Date(order.rawCreatedAt).getTime();
+            // تغییر ۲: جایگزینی فاصله با T برای پشتیبانی در تمام مرورگرها (مانند سافاری)
+            const safeDateStr = String(order.rawCreatedAt).replace(' ', 'T');
+            const created = new Date(safeDateStr).getTime();
+
+            // در صورتی که تایم‌زون سرور با سیستم شما تفاوت دارد و ساعت صفر یا نامعتبر می‌شود
+            // ممکن است نیاز باشد زمان را اصلاح کنید. اما در حالت عادی همین کد صحیح است:
             const expires = created + 30 * 60 * 1000;
             return expires - Date.now();
         };
