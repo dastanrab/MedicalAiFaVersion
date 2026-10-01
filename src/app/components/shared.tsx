@@ -87,10 +87,8 @@ export function CountdownTimer({ expiresAt, onExpire }: { expiresAt: string, onE
     const hasExpired = useRef(false);
 
     useEffect(() => {
-        let safeExpiresAt = expiresAt.replace(' ', 'T');
-        if (!safeExpiresAt.endsWith('Z') && !safeExpiresAt.includes('+')) {
-            safeExpiresAt += 'Z';
-        }
+        // فقط فاصله‌ها را با T جایگزین می‌کنیم و هیچ Z یا تایم‌زونی اضافه نمی‌کنیم
+        const safeExpiresAt = expiresAt.replace(' ', 'T');
         const targetTime = new Date(safeExpiresAt).getTime();
 
         const calculate = () => {

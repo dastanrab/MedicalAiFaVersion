@@ -1,23 +1,18 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router';
 import { useEffect, useState } from 'react';
 import { Login } from './screens/Login';
 import { OTPVerification } from './screens/OTPVerification';
 import { UserProfile } from './screens/UserProfile';
-import { UserAddresses } from './screens/UserAddresses';
 import { SymptomSelection } from './screens/SymptomSelection';
 import { Questionnaire } from './screens/Questionnaire';
-import { AIResults } from './screens/AIResults';
 import { DoctorList } from './screens/DoctorList';
-import { DoctorProfile } from './screens/DoctorProfile';
-import { Consultation } from './screens/Consultation';
 import { Home } from './screens/Home';
 import { BodyMeasurement } from './screens/BodyMeasurement';
 import { MealPlan } from './screens/MealPlan';
 import HealthInsights from './screens/HealthInsights';
 import { AppContainer } from './components/AppContainer';
-import { PageLoader } from './components/PageLoader';
+import { Spinner } from './components/PageLoader';
 import { SplashScreen } from './components/SplashScreen';
-import type { PageSkeletonVariant } from './components/PageSkeleton';
 import { useAuthStore } from './store/authStore';
 import {DiagnosisResult} from "./screens/DiagnosisResult";
 import {QuestionnaireV1} from "./screens/QuestionnaireV1";
@@ -89,9 +84,61 @@ import MainWorkoutPage from "./screens/MainWorkoutPage";
 import {useUserStore} from "./store/useUserStore";
 // import HealthPage from "./screens/HealthPage";
 // import CoachesPage from "./screens/CoachesPage";
- import {PharmacyFlow} from "./screens/PharmacyFlow";
+import {PharmacyFlow} from "./screens/PharmacyFlow";
 import PartnerJoin from "./screens/PartnerJoin";
-import { NativeBackButton } from "./native/NativeBackButton";
+import DateInvite from "./screens/DateInvite";
+import MusicPage from "./screens/MusicPage";
+// import YogaPage from "./screens/YogaPage";
+// import YogaCourseDetailPage from "./screens/YogaCourseDetailPage";
+// import DashboardHome from "./screens/coach/DashboardHome";
+// import ProfessionalDashboard from "./screens/coach/ProfessionalDashboard";
+// import StudentsPage from "./screens/coach/StudentsPage";
+// import DashboardLayout from "./layouts/DashboardLayout";
+// import WorkoutPlansPage from "./screens/coach/WorkoutPlansPage";
+// import DietPlansPage from "./screens/coach/DietPlansPage";
+// import TasksPage from "./screens/coach/TasksPage";
+// import ChatPage from "./screens/coach/ChatPage";
+// import DastanTheater from "./screens/DastanTheater";
+// import MovieRecommendations from "./screens/MovieRecommendations";
+import TourInvitePage from "./screens/TourInvitePage";
+import TourLeaderDashboard from "./screens/TourLeaderDashboard";
+import {HealthAssessment} from "./screens/HealthAssessment";
+// import CoachDetailsPage from "./screens/CoachDetailsPage";
+// import CalendarPage from "./screens/coach/CalendarPage";
+// import Finances from "./screens/coach/Finances";
+// import Analytics from "./screens/coach/Analytics";
+// import Settings from "./screens/coach/Settings";
+// import {NotificationsNone} from "@mui/icons-material";
+// import NotificationTest from "./screens/NotificationTest";
+// import ServicesPage from "./screens/ServicesPage";
+// import FitServices from "./screens/FitServices";
+// import BluetoothTestPage from "./screens/BluetoothTestPage";
+// import MyProfilePage from "./screens/MyProfilePage";
+// import MyWorkoutPage from "./screens/MyWorkoutPage";
+// import FitnessAppV2 from "./screens/FitnessAppV2";
+// import LandingPage from "./screens/LandingPage";
+// import CourseDetail from "./screens/CourseDetail";
+// import ReaderPage from "./screens/ReaderPage";
+// import BookStoreUI from "./provider/screens/BookStoreUI";
+// import BooksApp from "./screens/BooksApp";
+// import BookLibraryUI from "./screens/BookLibraryUI";
+// import BookUI from "./screens/BooksUI";
+// import ReaderPageV1 from "./screens/ReaderPageV1";
+// import ReaderPageV2 from "./screens/ReaderPageV2";
+// import PaymentRedirect from "./screens/PaymentRedirect";
+// import {DoctorProfileV1} from "./screens/DoctorProfileV1";
+import {DoctorProfileV2} from "./screens/DoctorProfileV2";
+import {OrdersPageV1} from "./screens/OrdersPageV1";
+import {LabsFlowV1} from "./components/LabsFlowV1";
+import {Skeleton} from "./components/ui/skeleton";
+
+// ==========================================
+// تنظیمات محیط توسعه / سوییچ شروع برنامه
+// ==========================================
+// اگر مقدار زیر true باشد، صفحه اصلی ('/') به بخش فیتنس ('/fit') هدایت می‌شود.
+// اگر مقدار زیر false باشد، روال عادی طی شده و به صفحه لاگین ('/login') می‌رود.
+const START_WITH_FITNESS = false;
+// ==========================================
 import { NativeDeepLinks } from "./native/NativeDeepLinks";
 
 // کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
@@ -116,9 +163,9 @@ function PartnerInviteHandler() {
     }, [code, accessToken, navigate]);
 
     return (
-        <AppContainer>
-            <PageLoader variant="home" showAppBar />
-        </AppContainer>
+        <div className="flex h-screen items-center justify-center bg-[#F6F8FC]">
+            <Spinner />
+        </div>
     );
 }
 
@@ -133,22 +180,9 @@ function ProtectedRoute({ children }) {
     return children;
 }
 
-function pageLoaderVariantForPath(pathname: string): PageSkeletonVariant {
-    if (pathname.startsWith('/doctors')) return 'doctors';
-    if (pathname.startsWith('/doctor/')) return 'doctor-profile';
-    if (pathname.startsWith('/symptoms') || pathname.startsWith('/diagnosis')) return 'diagnosis';
-    if (pathname.startsWith('/home')) return 'home';
-    if (pathname.startsWith('/profile')) return 'profile';
-    if (pathname.startsWith('/addresses')) return 'addresses';
-    if (pathname.startsWith('/orders')) return 'orders';
-    if (pathname.startsWith('/plans')) return 'plans';
-    return 'default';
-}
-
 // Protected route with profile verification
 function VerifiedRoute({ children }) {
     const accessToken = useAuthStore((state) => state.accessToken);
-    const location = useLocation();
 
     const fetchProfile = useUserStore((state) => state.fetchProfile);
     const isVerified = useUserStore((state) => state.isVerified);
@@ -167,16 +201,10 @@ function VerifiedRoute({ children }) {
 
     // loading
     if (isLoading || isVerified === null) {
-        const variant = pageLoaderVariantForPath(location.pathname);
         return (
-            <AppContainer showNavbar>
-                <PageLoader
-                    variant={variant}
-                    showAppBar
-                    showChat={variant === 'home'}
-                    backTo={variant === 'home' ? undefined : '/home'}
-                />
-            </AppContainer>
+            <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+                <Spinner />
+            </div>
         );
     }
 
@@ -216,7 +244,7 @@ function AdminAuthGate() {
             return;
         }
 
-        fetch('http://185.222.163.113:7000/api/admin/profile', {
+        fetch('https://api.mediraai.com/api/admin/profile', {
             headers: { Authorization: `Bearer ${token}` },
         })
             .then((res) => {
@@ -254,16 +282,27 @@ function AdminPublicRoute({ children }) {
 function App() {
     return (
         <BrowserRouter>
-            <SplashScreen />
-            <NativeBackButton />
+            <SplashScreen/>
+            <Skeleton/>
             <NativeDeepLinks />
             <Routes>
-                {/* Redirect root to login */}
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                {/*
+                    مدیریت هوشمند روت اصلی (Root Route) بر اساس تنظیمات توسعه دهنده
+                */}
+                <Route
+                    path="/"
+                    element={<Navigate to={START_WITH_FITNESS ? "/fit" : "/login"} replace />}
+                />
 
+                <Route path="/date-invite" element={<DateInvite />} />
+                <Route path="/m" element={<MusicPage />} />
                 {/* مسیر مدیریت دعوت‌نامه‌ها بدون نیاز به لاگین قبلی */}
                 <Route path="/invite/:code" element={<PartnerInviteHandler />} />
-
+                <Route
+                    path="/tour-invite/:tourId"
+                    element={<TourInvitePage/>}/>
+                <Route
+                    path="/tour-leader" element={<TourLeaderDashboard/>}/>
                 {/* Admin routes */}
                 <Route
                     path="/admin/login"
@@ -396,16 +435,6 @@ function App() {
                     }
                 />
                 <Route
-                    path="/addresses"
-                    element={
-                        <ProtectedRoute>
-                            <AppContainer showNavbar>
-                                <UserAddresses />
-                            </AppContainer>
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
                     path="/plans"
                     element={
                         <VerifiedRoute>
@@ -452,7 +481,7 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <AppContainer showNavbar>
-                                <OrdersPage />
+                                <OrdersPageV1 />
                             </AppContainer>
                         </ProtectedRoute>
                     }
@@ -512,7 +541,8 @@ function App() {
                     element={
                         <VerifiedRoute>
                             <AppContainer showNavbar>
-                                <AIResults />
+                                {/*<AIResults />*/}
+                                <HealthAssessment/>
                             </AppContainer>
                         </VerifiedRoute>
                     }
@@ -541,8 +571,8 @@ function App() {
                     path="/doctor/:id"
                     element={
                         <VerifiedRoute>
-                            <AppContainer showNavbar>
-                                <DoctorProfile />
+                            <AppContainer showNavbar scrollable size="wide">
+                                <DoctorProfileV2 />
                             </AppContainer>
                         </VerifiedRoute>
                     }
@@ -551,7 +581,7 @@ function App() {
                     path="/consultation/:id"
                     element={
                         <VerifiedRoute>
-                            <AppContainer>
+                            <AppContainer showNavbar={false}>
                                 <Consultationv1 />
                             </AppContainer>
                         </VerifiedRoute>
@@ -590,7 +620,7 @@ function App() {
                     element={
                         <VerifiedRoute>
                             <AppContainer showNavbar>
-                                <LabsFlow />
+                                <LabsFlowV1 />
                             </AppContainer>
                         </VerifiedRoute>
                     }
@@ -655,166 +685,112 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
-                {/*<Route*/}
-                {/*    path="/f"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <FitnessApp />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/fit"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <FitnessAppV1 />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/workout"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <WorkoutPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/restaurant"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <RestaurantSuggestions />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/entertainment"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            < Entertainment />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/restaurant/:id"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <RestaurantMenu />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/music-player/:id"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <MusicPlayer/>*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/workout-music"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <WorkoutMusic/>*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/plan"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <ExerciseExtractor />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/coaches"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <CoachesPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/challenges"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <ChallengesPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/challenges/:id"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <ChallengeDetailsPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/meal"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <FoodPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/onboarding"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <OnboardingPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/fit-profile"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <ProfilePage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/progress"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <ProgressPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/forum"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <Forum />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/body"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <BodyAnalysisPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/workoutv1"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <MainWorkoutPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
-                {/*<Route*/}
-                {/*    path="/fit-health"*/}
-                {/*    element={*/}
-                {/*        <VerifiedRoute>*/}
-                {/*            <HealthPage />*/}
-                {/*        </VerifiedRoute>*/}
-                {/*    }*/}
-                {/*/>*/}
+
+                {/* ========================================================= */}
+                {/* روت‌های درخواستی - خارج شده از VerifiedRoute و آزاد برای تست */}
+                {/* ========================================================= */}
+
+                {/*<Route path="/f" element={<FitnessApp />} />*/}
+                {/*<Route path="/start" element={<LandingPage />} />*/}
+                {/*<Route path="/fit" element={<FitnessAppV1 />} />*/}
+                {/*<Route path="/fit-services" element={<FitServices />} />*/}
+                {/*<Route path="/workout" element={<WorkoutPage />} />*/}
+                {/*<Route path="/my-workout" element={<MyWorkoutPage />} />*/}
+                {/*<Route path="/my-profile" element={<MyProfilePage />} />*/}
+                {/*<Route path="/restaurant" element={<RestaurantSuggestions />} />*/}
+                {/*<Route path="/entertainment" element={<Entertainment />} />*/}
+                {/*<Route path="/restaurant/:id" element={<RestaurantMenu />} />*/}
+                {/*<Route path="/music-player/:id" element={<MusicPlayer />} />*/}
+                {/*<Route path="/workout-music" element={<WorkoutMusic />} />*/}
+                {/*<Route path="/plan" element={<ExerciseExtractor />} />*/}
+                {/*<Route path="/coaches" element={<CoachesPage />} />*/}
+                {/*<Route path="/coaches/:id" element={<CoachDetailsPage />} />*/}
+                {/*<Route path="/challenges" element={<ChallengesPage />} />*/}
+                {/*<Route path="/challenges/:id" element={<ChallengeDetailsPage />} />*/}
+                {/*<Route path="/meal" element={<FoodPage />} />*/}
+                {/*<Route path="/bt" element={<BluetoothTestPage />} />*/}
+                {/*<Route path="/onboarding" element={<OnboardingPage />} />*/}
+                {/*<Route path="/fit-profile" element={<ProfilePage />} />*/}
+                {/*<Route path="/progress" element={<ProgressPage />} />*/}
+                {/*<Route path="/forum" element={<Forum />} />*/}
+                {/*<Route path="/body" element={<BodyAnalysisPage />} />*/}
+                {/*<Route path="/workoutv1" element={<MainWorkoutPage />} />*/}
+                {/*<Route path="/course/:id" element={<YogaCourseDetailPage />} />*/}
+                {/*<Route path="/yoga-course" element={<CourseDetail />} />*/}
+
+                {/*<Route path="/suprise" element={*/}
+                {/*    // <DastanTheater />*/}
+                {/*    <MovieRecommendations />*/}
+                {/*} />*/}
+
+                {/*<Route path="/yoga" element={<YogaPage />} />*/}
+                {/*<Route path="/fit-health" element={<HealthPage />} />*/}
+
+                {/*/!* روت‌های مرتبط با داشبورد مربی (همچنان داخل Layout خودشان هستند) *!/*/}
+                {/*<Route path="/coach/dashboard" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <ProfessionalDashboard />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/coach/calendar" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <CalendarPage />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/coach/finances" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <Finances />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/coach/analytics" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <Analytics />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/coach/settings" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <Settings />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+
+                {/*<Route path="/notif" element={<NotificationTest />} />*/}
+
+                {/*<Route path="/coach/workout-plans" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <WorkoutPlansPage />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/coach/diet-plans" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <DietPlansPage />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/coach/tasks" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <TasksPage />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/coach/chat" element={*/}
+                {/*    <DashboardLayout>*/}
+                {/*        <ChatPage />*/}
+                {/*    </DashboardLayout>*/}
+                {/*} />*/}
+                {/*<Route path="/book" element={*/}
+                {/*    <ReaderPage/>*/}
+                {/*} />*/}
+                {/*<Route path="/bookV1" element={*/}
+                {/*   <ReaderPageV2/>*/}
+                {/*} />*/}
+                {/*<Route path="/pg" element={*/}
+                {/*    <PaymentRedirect/>*/}
+                {/*} />*/}
+                {/*<Route path="/payment/result" element={<PaymentResultPage />} />*/}
+
+
+                {/*/!* ========================================================= *!/*/}
+                {/*/!* پایان روت‌های درخواستی *!/*/}
+                {/*/!* ========================================================= *!/*/}
+
             </Routes>
         </BrowserRouter>
     );

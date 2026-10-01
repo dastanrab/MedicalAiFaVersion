@@ -28,7 +28,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
 
     const [doctorData, setDoctorData] = useState<DoctorAppointmentDetail | null>(null);
     const [detailData, setDetailData] = useState<PharmacyRequestDetail | null>(null);
-    const [nurseData, setNurseData] = useState<any | null>(null); // To accommodate the new fields
+    const [nurseData, setNurseData] = useState<any | null>(null);
     const [labData, setLabData] = useState<LabRequestDetail | null>(null);
 
     const [detailLoading, setDetailLoading] = useState(false);
@@ -125,7 +125,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
-    // ----- پرداخت آزمایشگاه -----
     const handleLabPay = async () => {
         if (!order || !order.order_id) {
             setDetailError('شماره سفارش برای پرداخت یافت نشد.');
@@ -156,7 +155,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
-    // ----- لغو درخواست آزمایشگاه -----
     const handleCancelLabRequest = async () => {
         if (!order) return;
         if (!window.confirm('آیا از لغو این درخواست آزمایشگاه اطمینان دارید؟')) return;
@@ -184,7 +182,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
-    // ----- پرداخت داروخانه -----
     const handlePharmacyPay = async () => {
         if (!order || !order.order_id) {
             setDetailError('شماره سفارش برای پرداخت یافت نشد.');
@@ -215,7 +212,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
-    // ----- لغو درخواست داروخانه -----
     const handleCancelPharmacyRequest = async () => {
         if (!order) return;
         if (!window.confirm('آیا از لغو این درخواست داروخانه اطمینان دارید؟')) return;
@@ -243,7 +239,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
-    // ----- پرداخت خدمات پرستاری/مرکز درمانی -----
     const handleNursePay = async () => {
         if (!order || !order.order_id) {
             setDetailError('شماره سفارش برای پرداخت یافت نشد.');
@@ -274,7 +269,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
         }
     };
 
-    // ----- لغو درخواست خدمات پرستاری/مرکز درمانی -----
     const handleCancelNurseRequest = async () => {
         if (!order) return;
         if (!window.confirm('آیا از لغو این درخواست خدمات پرستاری اطمینان دارید؟')) return;
@@ -323,16 +317,14 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
     const Icon = serviceIcons[order.serviceType];
     const statusClass = getStatusClass(order.status);
 
-    // شروط دکمه‌های پرداخت
     const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
     const showLabPayButton = order.serviceType === 'lab' && labData && labData.status === 1 && order.order_id !== null;
     const showPharmacyPayButton = order.serviceType === 'pharmacy' && detailData && detailData.status === 1 && order.order_id !== null;
-    const showNursePayButton = order.serviceType === 'nurse' && nurseData && nurseData.status === 0 && order.order_id !== null; // status 0 = در انتظار پرداخت
+    const showNursePayButton = order.serviceType === 'nurse' && nurseData && nurseData.status === 0 && order.order_id !== null;
 
-    // شروط دکمه‌های لغو
     const showLabCancelButton = order.serviceType === 'lab' && labData && (labData.status === 0 || labData.status === 1);
     const showPharmacyCancelButton = order.serviceType === 'pharmacy' && detailData && (detailData.status === 0 || detailData.status === 1);
-    const showNurseCancelButton = order.serviceType === 'nurse' && nurseData && (nurseData.status === 0 || nurseData.status === 1); // 0=در انتظار پرداخت، 1=در انتظار انتخاب پرستار
+    const showNurseCancelButton = order.serviceType === 'nurse' && nurseData && (nurseData.status === 0 || nurseData.status === 1);
 
     const isCompleted = order.status === 'completed';
     const patientInfo = getDoctorPatientInfo();
@@ -361,13 +353,29 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     </div>
                 </SheetHeader>
 
-                <div className="mt-5 space-y-3">
+                <div className="mt-1 space-y-1">
                     {detailLoading && <div className="flex items-center justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>}
                     {detailError && <div className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">{detailError}</div>}
 
-                    {order.summary && order.serviceType !== 'consultation' && <DetailRow label="خلاصه درخواست" value={order.summary} />}
-                    <DetailRow label="کد پیگیری" value={order.code} />
-                    <DetailRow label="تاریخ ثبت" value={order.createdAt} />
+                    {/* اطلاعات پایه سفارش در یک ردیف */}
+                    <div className="flex w-full items-stretch gap-2">
+                        {order.summary && order.serviceType !== 'consultation' && (
+                            <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white p-2 text-center">
+                                <span className="text-[10px] font-medium text-gray-500">خلاصه درخواست</span>
+                                <span className="text-xs font-semibold text-gray-800 line-clamp-1" title={order.summary}>
+                {order.summary}
+            </span>
+                            </div>
+                        )}
+                        <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white p-2 text-center">
+                            <span className="text-[10px] font-medium text-gray-500">کد پیگیری</span>
+                            <span className="text-xs font-semibold text-gray-800">{order.code}</span>
+                        </div>
+                        <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white p-2 text-center">
+                            <span className="text-[10px] font-medium text-gray-500">تاریخ ثبت</span>
+                            <span className="text-[11px] font-semibold text-gray-800" dir="ltr">{order.createdAt}</span>
+                        </div>
+                    </div>
 
                     {order.serviceType === 'consultation' && doctorData && !detailLoading && (
                         <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-3 shadow-sm">
@@ -398,12 +406,9 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                         </div>
                     )}
 
-                    {/* ---------- بخش جزئیات خدمات پرستاری جدید ---------- */}
                     {order.serviceType === 'nurse' && nurseData && !detailLoading && (
                         <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm space-y-4 shadow-sm">
                             <h4 className="font-semibold text-gray-800">جزئیات خدمات پرستاری</h4>
-
-                            {/* سرویس‌های درخواستی */}
                             <div className="space-y-2">
                                 {nurseData.services?.map((svc: any, idx: number) => (
                                     <div key={idx} className="flex justify-between bg-gray-50 px-3 py-2 rounded-lg">
@@ -412,16 +417,12 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                     </div>
                                 ))}
                             </div>
-
-                            {/* اطلاعات مرکز */}
                             {nurseData.center_name && (
                                 <div className="flex justify-between items-center text-xs border-t border-gray-100 pt-3 mt-3">
                                     <span className="text-gray-500">نام مرکز:</span>
                                     <span className="font-medium text-gray-900">{nurseData.center_name}</span>
                                 </div>
                             )}
-
-                            {/* اطلاعات پرستار */}
                             {nurseData.staff && (
                                 <div className="space-y-2 border-t border-gray-100 pt-3 mt-3">
                                     <h5 className="font-semibold text-gray-700 text-xs mb-1">اطلاعات پرستار</h5>
@@ -437,8 +438,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                     )}
                                 </div>
                             )}
-
-                            {/* اطلاعات تکمیلی (extra_info) */}
                             {nurseData.extra_info && (
                                 <div className="space-y-2 border-t border-gray-100 pt-3 mt-3">
                                     <h5 className="font-semibold text-gray-700 text-xs mb-1">اطلاعات تکمیلی</h5>
@@ -490,7 +489,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
 
                     {order.serviceType === 'lab' && labData && !detailLoading && (
                         <div className="space-y-4">
-                            {/* ---------- اطلاعات زمان‌بندی و شیفت ---------- */}
                             <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 text-sm space-y-3 shadow-sm">
                                 <div className="flex items-center gap-2 mb-1">
                                     <CalendarClock className="h-4 w-4 text-blue-600" />
@@ -515,7 +513,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                         )}
                                     </div>
                                 </div>
-
                                 {labData.daily_queue_number && (
                                     <div className="flex items-center justify-between border-t border-blue-100 pt-2.5 mt-1">
                                         <span className="text-xs font-medium text-gray-600">شماره نوبت صف:</span>
@@ -526,7 +523,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                 )}
                             </div>
 
-                            {/* ---------- لیست آزمایش‌ها ---------- */}
                             <div className="rounded-2xl border border-gray-100 bg-white p-3 text-sm space-y-2 shadow-sm">
                                 <h4 className="mb-2 font-semibold text-gray-800">آزمایش‌های درخواستی</h4>
                                 {labData.tests && labData.tests.length > 0 ? (
@@ -600,7 +596,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     )}
 
                     {/* ---------- بخش آزمایشگاه ---------- */}
-                    {showLabPayButton && (
+                    {showLabPayButton ? (
                         <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
                             <div>
                                 <label className="mb-1.5 block text-xs font-semibold text-gray-700">انتخاب درگاه پرداخت:</label>
@@ -609,20 +605,25 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                     <option value="zarinpal">زرین‌پال</option>
                                 </select>
                             </div>
-                            <button onClick={handleLabPay} disabled={paying || canceling} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
-                                {paying ? <><Loader2 className="h-5 w-5 animate-spin" /><span>در حال بررسی و اتصال…</span></> : <><CreditCard className="h-5 w-5" /><span>پرداخت فاکتور آزمایشگاه</span></>}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={handleLabPay} disabled={paying || canceling} className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-1.5 transition-colors">
+                                    {paying ? <><Loader2 className="h-4 w-4 animate-spin" /><span>پردازش…</span></> : <><CreditCard className="h-4 w-4" /><span>پرداخت</span></>}
+                                </button>
+                                {showLabCancelButton && (
+                                    <button onClick={handleCancelLabRequest} disabled={paying || canceling} className="flex-1 rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-1.5 transition-colors">
+                                        {canceling ? <><Loader2 className="h-4 w-4 animate-spin" /><span>لغو…</span></> : <><Trash2 className="h-4 w-4" /><span>لغو درخواست</span></>}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    )}
-
-                    {showLabCancelButton && (
-                        <button onClick={handleCancelLabRequest} disabled={paying || canceling} className="mt-2 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
+                    ) : showLabCancelButton && (
+                        <button onClick={handleCancelLabRequest} disabled={paying || canceling} className="mt-4 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
                             {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست آزمایشگاه</>}
                         </button>
                     )}
 
                     {/* ---------- بخش داروخانه ---------- */}
-                    {showPharmacyPayButton && (
+                    {showPharmacyPayButton ? (
                         <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
                             <div>
                                 <label className="mb-1.5 block text-xs font-semibold text-gray-700">انتخاب درگاه پرداخت:</label>
@@ -631,20 +632,25 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                     <option value="zarinpal">زرین‌پال</option>
                                 </select>
                             </div>
-                            <button onClick={handlePharmacyPay} disabled={paying || canceling} className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
-                                {paying ? <><Loader2 className="h-5 w-5 animate-spin" /><span>در حال پردازش…</span></> : <><CreditCard className="h-5 w-5" /><span>پرداخت فاکتور داروخانه</span></>}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={handlePharmacyPay} disabled={paying || canceling} className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-70 flex items-center justify-center gap-1.5 transition-colors">
+                                    {paying ? <><Loader2 className="h-4 w-4 animate-spin" /><span>پردازش…</span></> : <><CreditCard className="h-4 w-4" /><span>پرداخت</span></>}
+                                </button>
+                                {showPharmacyCancelButton && (
+                                    <button onClick={handleCancelPharmacyRequest} disabled={paying || canceling} className="flex-1 rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-1.5 transition-colors">
+                                        {canceling ? <><Loader2 className="h-4 w-4 animate-spin" /><span>لغو…</span></> : <><Trash2 className="h-4 w-4" /><span>لغو درخواست</span></>}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    )}
-
-                    {showPharmacyCancelButton && (
-                        <button onClick={handleCancelPharmacyRequest} disabled={paying || canceling} className="mt-2 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
+                    ) : showPharmacyCancelButton && (
+                        <button onClick={handleCancelPharmacyRequest} disabled={paying || canceling} className="mt-4 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
                             {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست داروخانه</>}
                         </button>
                     )}
 
                     {/* ---------- بخش خدمات پرستاری/مرکز درمانی ---------- */}
-                    {showNursePayButton && (
+                    {showNursePayButton ? (
                         <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
                             <div>
                                 <label className="mb-1.5 block text-xs font-semibold text-gray-700">انتخاب درگاه پرداخت:</label>
@@ -653,14 +659,19 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                     <option value="zarinpal">زرین‌پال</option>
                                 </select>
                             </div>
-                            <button onClick={handleNursePay} disabled={paying || canceling} className="w-full rounded-xl bg-rose-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
-                                {paying ? <><Loader2 className="h-5 w-5 animate-spin" /><span>در حال بررسی و اتصال…</span></> : <><CreditCard className="h-5 w-5" /><span>پرداخت هزینه خدمات پرستاری</span></>}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={handleNursePay} disabled={paying || canceling} className="flex-1 rounded-xl bg-rose-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-70 flex items-center justify-center gap-1.5 transition-colors">
+                                    {paying ? <><Loader2 className="h-4 w-4 animate-spin" /><span>پردازش…</span></> : <><CreditCard className="h-4 w-4" /><span>پرداخت</span></>}
+                                </button>
+                                {showNurseCancelButton && (
+                                    <button onClick={handleCancelNurseRequest} disabled={paying || canceling} className="flex-1 rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-1.5 transition-colors">
+                                        {canceling ? <><Loader2 className="h-4 w-4 animate-spin" /><span>لغو…</span></> : <><Trash2 className="h-4 w-4" /><span>لغو درخواست</span></>}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    )}
-
-                    {showNurseCancelButton && (
-                        <button onClick={handleCancelNurseRequest} disabled={paying || canceling} className="mt-2 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
+                    ) : showNurseCancelButton && (
+                        <button onClick={handleCancelNurseRequest} disabled={paying || canceling} className="mt-4 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
                             {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست خدمات پرستاری</>}
                         </button>
                     )}

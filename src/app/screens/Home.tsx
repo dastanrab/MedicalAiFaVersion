@@ -178,18 +178,21 @@ function QuickActionCard({ action, onClick }: { action: QuickAction; onClick: ()
   );
 }
 
-function DashboardCountdownTimer({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) {
+export function DashboardCountdownTimer({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) {
   const [timeLeft, setTimeLeft] = useState('...');
   const hasExpired = useRef(false);
 
   useEffect(() => {
-    let safeExpiresAt = expiresAt.replace(' ', 'T');
-    if (!safeExpiresAt.endsWith('Z') && !safeExpiresAt.includes('+')) safeExpiresAt += 'Z';
+    // فقط جایگزینی فاصله با T انجام می‌شود
+    const safeExpiresAt = expiresAt.replace(' ', 'T');
+
+    // زمان مستقیماً و بدون اضافه کردن Z یا تایم‌زون محاسبه می‌شود
     const targetTime = new Date(safeExpiresAt).getTime();
 
     const calculate = () => {
       const diff = targetTime - new Date().getTime();
       if (isNaN(diff)) return setTimeLeft('--:--');
+
       if (diff <= 0) {
         setTimeLeft('00:00');
         if (!hasExpired.current) {
@@ -198,6 +201,7 @@ function DashboardCountdownTimer({ expiresAt, onExpire }: { expiresAt: string, o
         }
         return;
       }
+
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diff % (1000 * 60)) / 1000);
       setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
@@ -210,7 +214,6 @@ function DashboardCountdownTimer({ expiresAt, onExpire }: { expiresAt: string, o
 
   return <span className="font-mono" dir="ltr">{timeLeft}</span>;
 }
-
 // ─── Main View ────────────────────────────────────────────────────
 export function Home() {
   const user = useUserStore((state) => state.user);

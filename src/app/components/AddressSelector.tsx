@@ -31,6 +31,7 @@ type ViewState = 'dropdown' | 'map' | 'form';
 
 export function AddressSelector({ selectedAddressId, onSelect }: AddressSelectorProps) {
     const { accessToken } = useAuthStore();
+    const [showNoAddressModal, setShowNoAddressModal] = useState(false);
     const [addresses, setAddresses] = useState<UserAddress[]>([]);
     const [addressesOpen, setAddressesOpen] = useState(false);
     const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -82,6 +83,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
             if (!res.ok || !json.success) {
                 setAddresses([]);
                 onSelect(null);
+                setShowNoAddressModal(true); // <--- نمایش مدال در صورت خطا/خالی بودن
                 return;
             }
             const list: UserAddress[] = Array.isArray(json?.data?.addresses)
@@ -91,10 +93,13 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
 
             if (list.length > 0 && !selectedAddressId) {
                 onSelect(list[0]?.id ?? null);
+            } else if (list.length === 0) {
+                setShowNoAddressModal(true); // <--- نمایش مدال در صورت خالی بودن لیست
             }
         } catch {
             setAddresses([]);
             onSelect(null);
+            setShowNoAddressModal(true); // <--- نمایش مدال در صورت خطا
         } finally {
             setLoadingAddresses(false);
         }
@@ -177,7 +182,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
                 setApiError(err || "خطا در ثبت آدرس");
                 return;
             }
-
+            setShowNoAddressModal(false)
             await fetchAddressesList();
             if (json?.data?.address?.id) {
                 onSelect(json.data.address.id);
@@ -247,7 +252,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
                                 <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-slate-200" />
 
                                 <div className="mb-4 space-y-2">
-                                    <label className="text-sm font-bold text-slate-700">عنوان آدرس</label>
+                                    <label className="text-sm font-bold text-slate-700">عنوان آدرس<span className="text-red-500">*</span></label>
                                     <Input
                                         value={newAddressTitle}
                                         onChange={(e) => setNewAddressTitle(e.target.value)}
@@ -257,7 +262,7 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
                                 </div>
 
                                 <div className="mb-6 space-y-2">
-                                    <label className="text-sm font-bold text-slate-700">نشانی کامل <span className="text-red-500">*</span></label>
+                                    <label className="text-sm font-bold text-slate-700">نشانی کامل </label>
                                     <textarea
                                         value={newAddressDetails}
                                         onChange={(e) => setNewAddressDetails(e.target.value)}
@@ -413,6 +418,43 @@ export function AddressSelector({ selectedAddressId, onSelect }: AddressSelector
                     </>
                 )}
             </div>
+            {showNoAddressModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm" dir="rtl">
+                    <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="mb-4 flex justify-center">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                                <MapPin className="h-8 w-8" />
+                            </div>
+                        </div>
+                        <h3 className="mb-2 text-center text-lg font-bold text-slate-800">
+                            آدرسی ثبت نشده است
+                        </h3>
+                        <p className="mb-6 text-center text-sm leading-relaxed text-slate-500">
+                            برای ادامه مراحل و ثبت درخواست، لطفاً ابتدا موقعیت مکانی و آدرس خود را ثبت کنید.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <Button
+                                onClick={() => {
+                                    setShowNoAddressModal(false);
+                                    setViewState('map'); // هدایت کاربر به نقشه
+                                }}
+                                className="h-12 w-full rounded-full bg-gradient-to-r from-sky-500 to-blue-600 font-bold text-white shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40"
+                            >
+                                ثبت آدرس جدید
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowNoAddressModal(false)}
+                                className="h-12 w-full rounded-full border-slate-200 font-bold text-slate-600 hover:bg-slate-50"
+                            >
+                                انصراف
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
+
     );
 }

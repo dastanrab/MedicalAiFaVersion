@@ -169,14 +169,13 @@ function StepBubble({ label, state, number }: { label: string; state: BubbleStat
 function CountdownTimer({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) {
     const [timeLeft, setTimeLeft] = useState('...');
     const hasExpired = useRef(false);
-
+    console.log(expiresAt)
     useEffect(() => {
-        let safeExpiresAt = expiresAt.replace(' ', 'T');
 
-        if (!safeExpiresAt.endsWith('Z') && !safeExpiresAt.includes('+')) {
-            safeExpiresAt += 'Z';
-        }
+        // فقط فاصله‌ها را با T جایگزین می‌کنیم تا مرورگرهایی مثل سافاری فرمت را بشناسند
+        const safeExpiresAt = expiresAt.replace(' ', 'T');
 
+        // بدون اضافه کردن هیچ پسوندی (مثل Z)، تاریخ را مستقیما به میلی‌ثانیه تبدیل می‌کنیم
         const targetTime = new Date(safeExpiresAt).getTime();
 
         const calculate = () => {
