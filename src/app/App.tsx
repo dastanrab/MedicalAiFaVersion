@@ -140,6 +140,7 @@ import {Skeleton} from "./components/ui/skeleton";
 const START_WITH_FITNESS = false;
 // ==========================================
 import { NativeDeepLinks } from "./native/NativeDeepLinks";
+import { ServiceFlowDraftsGuard } from "./navigation/ServiceFlowDraftsGuard";
 
 // کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
 function PartnerInviteHandler() {
@@ -285,6 +286,7 @@ function App() {
             <SplashScreen/>
             <Skeleton/>
             <NativeDeepLinks />
+            <ServiceFlowDraftsGuard />
             <Routes>
                 {/*
                     مدیریت هوشمند روت اصلی (Root Route) بر اساس تنظیمات توسعه دهنده
