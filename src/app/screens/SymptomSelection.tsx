@@ -486,7 +486,6 @@ export function SymptomSelection() {
                               className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
                           >
                             <ImagePlus className="h-4 w-4" />
-                            افزودن عکس
                           </button>
                         </div>
 

@@ -1,5 +1,8 @@
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowRight, Star, Loader2, User, Stethoscope, Send, Calendar, UserCircle, Crown, ImageOff, RefreshCw, X } from 'lucide-react';
+import {
+    ArrowRight, Star, Loader2, User, Stethoscope, Send, Calendar, UserCircle,
+    Crown, ImageOff, RefreshCw, X, Store, MapPin, Phone, PhoneCall, ExternalLink, Truck, Clock, AlertTriangle, Pill
+} from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
 import type { SymptomFormState } from './SymptomSelection';
@@ -45,13 +48,25 @@ interface Form {
 interface Message {
     role: 'user' | 'assistant';
     content: string;
-    image?: string; // فیلد برای نگهداری تصویر ارسالی
+    image?: string;
 }
 
 interface DrugDetails {
     description: string;
+    indications?: string[];
+    related_specialties?: string[];
+    timing_preference?: string;
     side_effects: string;
     usage_and_dosage: string;
+}
+
+interface Pharmacy {
+    id: number;
+    name: string;
+    phone: string;
+    address: string;
+    has_delivery: boolean;
+    url: string;
 }
 
 interface ChatResponse {
@@ -69,6 +84,7 @@ interface ChatResponse {
     is_drug_inquiry?: boolean;
     drug_names?: string[];
     drug_details?: DrugDetails;
+    pharmacies?: Pharmacy[];
 }
 
 type AgeGenderFormState = 'idle' | 'asking_who' | 'waiting' | 'submitted';
@@ -115,7 +131,6 @@ export function DiagnosisResultV1() {
     const [showPlanModal, setShowPlanModal] = useState(false);
     const [planModalMessage, setPlanModalMessage] = useState('');
 
-    // استیت برای پیش‌نمایش بزرگ عکس ارسالی
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -125,14 +140,12 @@ export function DiagnosisResultV1() {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, loading, ageGenderForm]);
 
-    // ارسال اولیه علائم و تصویر
     useEffect(() => {
         if ((requestPayload?.symptoms || requestPayload?.image) && isFirstRun.current) {
             isFirstRun.current = false;
 
-            const initialText = requestPayload.symptoms?.trim() || (requestPayload.image ? 'تحلیل تصویر ارسال‌شده' : '');
+            const initialText = requestPayload.symptoms?.trim() || (requestPayload.image ? null : null);
 
-            // اضافه کردن تصویر به آرایه پیام‌ها برای نمایش پیش‌نمایش
             setMessages([{
                 role: 'user',
                 content: initialText,
@@ -247,7 +260,6 @@ export function DiagnosisResultV1() {
         setError(null);
 
         try {
-            // تنها نقش و متن پیام برای بک‌اند ارسال می‌شود تا حجم تاریخچه سبک بماند
             const payloadMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
 
             const response = await fetch('https://api.mediraai.com/api/user/diagnosis/chat', {
@@ -481,7 +493,6 @@ export function DiagnosisResultV1() {
                                         ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
                                         : 'bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-tl-sm'
                                 }`}>
-                                    {/* نمایش تصویر ارسالی کاربر در صورت وجود */}
                                     {msg.image && (
                                         <div className="mb-2">
                                             <img
@@ -515,7 +526,6 @@ export function DiagnosisResultV1() {
                         );
                     })}
 
-                    {/* پیام هشدار برای تصویر نامربوط همراه با دکمه بازگشت */}
                     {status === 'irrelevant_image' && (
                         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-2 text-center">
                             <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3">
@@ -778,13 +788,16 @@ export function DiagnosisResultV1() {
                     </div>
                 )}
 
-                {/* بخش نمایش اطلاعات دارویی */}
+                {/* بخش نمایش اطلاعات دارویی با جزئیات جدید */}
                 {status === 'drug_info' && finalResult && finalResult.drug_details && (
-                    <div className={`transition-all duration-700 shrink-0 ${!showContent ? 'blur-md opacity-0 pointer-events-none translate-y-4' : 'blur-0 opacity-100 translate-y-0'}`}>
+                    <div className={`transition-all duration-700 shrink-0 pb-10 ${!showContent ? 'blur-md opacity-0 pointer-events-none translate-y-4' : 'blur-0 opacity-100 translate-y-0'}`}>
                         <div className="mb-5 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                             {finalResult.drug_names && finalResult.drug_names.length > 0 && (
                                 <div className="mb-5">
-                                    <h3 className="text-sm font-semibold text-gray-600 mb-3">داروهای مورد نظر شما:</h3>
+                                    <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-1.5">
+                                        <Pill className="w-4 h-4 text-blue-500" />
+                                        داروهای تشخیص داده شده:
+                                    </h3>
                                     <div className="flex flex-wrap gap-2">
                                         {finalResult.drug_names.map((name, i) => (
                                             <span key={i} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-sm font-medium border border-blue-100">
@@ -800,11 +813,61 @@ export function DiagnosisResultV1() {
                                     <strong className="block text-gray-800 mb-1 text-base">توضیحات:</strong>
                                     <p className="text-gray-600">{finalResult.drug_details.description}</p>
                                 </div>
+
+                                {/* بخش موارد مصرف */}
+                                {finalResult.drug_details.indications && finalResult.drug_details.indications.length > 0 && (
+                                    <>
+                                        <div className="h-px bg-gray-200 my-2"></div>
+                                        <div>
+                                            <strong className="block text-gray-800 mb-2 text-sm">موارد مصرف شایع:</strong>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {finalResult.drug_details.indications.map((ind, i) => (
+                                                    <span key={i} className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs border border-emerald-100">
+                                                        {ind}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* تخصص‌های مرتبط */}
+                                {finalResult.drug_details.related_specialties && finalResult.drug_details.related_specialties.length > 0 && (
+                                    <>
+                                        <div className="h-px bg-gray-200 my-2"></div>
+                                        <div>
+                                            <strong className="block text-gray-800 mb-2 text-sm">تخصص‌های مرتبط جهت ویزیت:</strong>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {finalResult.drug_details.related_specialties.map((spec, i) => (
+                                                    <span key={i} className="bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-xs border border-purple-100">
+                                                        {spec}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* زمان پیشنهادی مصرف */}
+                                {finalResult.drug_details.timing_preference && (
+                                    <>
+                                        <div className="h-px bg-gray-200 my-2"></div>
+                                        <div>
+                                            <strong className="flex items-center gap-1.5 text-blue-700 mb-1 text-sm">
+                                                <Clock className="w-4 h-4" />
+                                                زمان پیشنهادی مصرف:
+                                            </strong>
+                                            <p className="text-gray-600">{finalResult.drug_details.timing_preference}</p>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div className="h-px bg-gray-200 my-2"></div>
                                 <div>
                                     <strong className="block text-red-700 mb-1 text-base">عوارض جانبی احتمالی:</strong>
                                     <p className="text-gray-600">{finalResult.drug_details.side_effects}</p>
                                 </div>
+
                                 <div className="h-px bg-gray-200 my-2"></div>
                                 <div>
                                     <strong className="block text-green-700 mb-1 text-base">نحوه مصرف و دوز (عمومی):</strong>
@@ -812,16 +875,84 @@ export function DiagnosisResultV1() {
                                 </div>
                             </div>
 
-                            <div className="mt-4 text-xs text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-100 flex items-start gap-2">
-                                <span className="font-bold shrink-0">⚠️ توجه:</span>
-                                <span>این اطلاعات تنها جنبه راهنمایی دارند و به هیچ وجه جایگزین توصیه پزشک یا دکتر داروساز نیستند. در صورت داشتن بیماری زمینه‌ای، پیش از مصرف حتماً با پزشک مشورت کنید.</span>
+                            <div className="mt-4 text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-100 flex items-start gap-2">
+                                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                                <span className="leading-relaxed">این اطلاعات تنها جنبه راهنمایی دارند و به هیچ وجه جایگزین توصیه پزشک یا دکتر داروساز نیستند. در صورت داشتن بیماری زمینه‌ای، پیش از مصرف حتماً مشورت کنید.</span>
                             </div>
                         </div>
+                        {finalResult.pharmacies && finalResult.pharmacies.length > 0 && (
+                            <div className="mt-6 mb-4">
+                                <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                    <Store className="w-5 h-5 text-blue-600" />
+                                    داروخانه‌های پیشنهادی جهت تهیه
+                                </h3>
+
+                                {/* برای ریسپانسیو بهتر در موبایل و دسکتاپ: در صفحات کوچک تک‌ستون و در دسکتاپ ۳ ستون */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {finalResult.pharmacies.map((pharmacy) => (
+                                        <div
+                                            key={pharmacy.id}
+                                            className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col shadow-sm hover:shadow-md transition-shadow min-w-0"
+                                        >
+                                            {/* ۱. بخش عنوان: ارتفاع ثابت برای ۲ خط متن تا در همه کارت‌ها مساوی بماند */}
+                                            <div className="h-10 min-w-0 flex items-start">
+                                                <h4
+                                                    className="font-semibold text-gray-800 text-sm leading-snug line-clamp-2 break-words"
+                                                    title={pharmacy.name}
+                                                >
+                                                    {pharmacy.name}
+                                                </h4>
+                                            </div>
+
+                                            {/* ۲. بخش بج ارسال: ارتفاع و جایگاه فیکس، چه بج باشد چه نباشد فضا حفظ می‌شود */}
+                                            <div className="h-6 mt-1 flex items-center shrink-0">
+                                                {pharmacy.has_delivery ? (
+                                                    <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1 font-medium">
+                                <Truck className="w-3 h-3" />
+                                ارسال به محل
+                            </span>
+                                                ) : (
+                                                    /* نگهدارنده نامرئی برای ثبات پیکسلی ساختار */
+                                                    <span className="invisible text-[10px] py-0.5 select-none" aria-hidden="true">
+                                &nbsp;
+                            </span>
+                                                )}
+                                            </div>
+
+                                            {/* ۳. بخش آدرس: ارتفاع فیکس برای دقیقاً ۲ خط آدرس تا نقطه شروع دکمه‌ها همیشه تراز باشد */}
+                                            <div className="mt-2.5 h-10 text-xs text-gray-600 flex items-start gap-1.5 min-w-0 overflow-hidden">
+                                                <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400 mt-0.5" />
+                                                <span
+                                                    className="leading-relaxed line-clamp-2 break-words text-gray-500"
+                                                    title={pharmacy.address}
+                                                >
+                            {pharmacy.address || 'آدرس ثبت نشده است'}
+                        </span>
+                                            </div>
+
+                                            {/* ۴. دکمه سفارش: چسبیده به انتهای کارت با تراز دقیق */}
+                                            <div className="mt-4 pt-2 border-t border-gray-100">
+                                                <Button
+                                                    onClick={() => window.open(pharmacy.url, '_blank')}
+                                                    className="w-full h-8 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-none font-medium"
+                                                >
+                                                    سفارش
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+
+
+
                     </div>
                 )}
             </div>
 
-            {/* مودال بزرگ‌نمایی تصویر (Image Lightbox) */}
+            {/* مودال بزرگ‌نمایی تصویر */}
             {previewImage && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
