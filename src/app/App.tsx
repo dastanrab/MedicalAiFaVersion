@@ -80,14 +80,11 @@ import { useAdminAuthStore } from './admin/store/adminAuthStore';
 import MedicalChat from "./screens/MedicalChat";
 import MedicalChatV1 from "./screens/MedicalChatV1";
 import {DiagnosisResultV1} from "./screens/DiagnosisResultV1";
-import MainWorkoutPage from "./screens/MainWorkoutPage";
 import {useUserStore} from "./store/useUserStore";
 // import HealthPage from "./screens/HealthPage";
 // import CoachesPage from "./screens/CoachesPage";
 import {PharmacyFlow} from "./screens/PharmacyFlow";
 import PartnerJoin from "./screens/PartnerJoin";
-import DateInvite from "./screens/DateInvite";
-import MusicPage from "./screens/MusicPage";
 // import YogaPage from "./screens/YogaPage";
 // import YogaCourseDetailPage from "./screens/YogaCourseDetailPage";
 // import DashboardHome from "./screens/coach/DashboardHome";
@@ -100,8 +97,6 @@ import MusicPage from "./screens/MusicPage";
 // import ChatPage from "./screens/coach/ChatPage";
 // import DastanTheater from "./screens/DastanTheater";
 // import MovieRecommendations from "./screens/MovieRecommendations";
-import TourInvitePage from "./screens/TourInvitePage";
-import TourLeaderDashboard from "./screens/TourLeaderDashboard";
 import {HealthAssessment} from "./screens/HealthAssessment";
 // import CoachDetailsPage from "./screens/CoachDetailsPage";
 // import CalendarPage from "./screens/coach/CalendarPage";
@@ -140,6 +135,7 @@ import {Skeleton} from "./components/ui/skeleton";
 const START_WITH_FITNESS = false;
 // ==========================================
 import { NativeDeepLinks } from "./native/NativeDeepLinks";
+import { ServiceFlowDraftsGuard } from "./navigation/ServiceFlowDraftsGuard";
 
 // کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
 function PartnerInviteHandler() {
@@ -285,6 +281,7 @@ function App() {
             <SplashScreen/>
             <Skeleton/>
             <NativeDeepLinks />
+            <ServiceFlowDraftsGuard />
             <Routes>
                 {/*
                     مدیریت هوشمند روت اصلی (Root Route) بر اساس تنظیمات توسعه دهنده
@@ -294,15 +291,8 @@ function App() {
                     element={<Navigate to={START_WITH_FITNESS ? "/fit" : "/login"} replace />}
                 />
 
-                <Route path="/date-invite" element={<DateInvite />} />
-                <Route path="/m" element={<MusicPage />} />
                 {/* مسیر مدیریت دعوت‌نامه‌ها بدون نیاز به لاگین قبلی */}
                 <Route path="/invite/:code" element={<PartnerInviteHandler />} />
-                <Route
-                    path="/tour-invite/:tourId"
-                    element={<TourInvitePage/>}/>
-                <Route
-                    path="/tour-leader" element={<TourLeaderDashboard/>}/>
                 {/* Admin routes */}
                 <Route
                     path="/admin/login"

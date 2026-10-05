@@ -52,7 +52,7 @@ const SUPPORTED_SERVICES_MAP: Record<string, { icon: LucideIcon; gradient: strin
   laboratory: { icon: TestTube, gradient: 'from-sky-500 to-blue-600', path: '/services/labs' },
   pharmacy: { icon: Pill, gradient: 'from-emerald-500 to-teal-600', path: '/services/pharmacy' },
   clinic: { icon: Stethoscope, gradient: 'from-violet-500 to-indigo-600', path: '/services/nurse-home' },
-  imaging_center: { icon: Building, gradient: 'from-rose-500 to-pink-600', path: '/services/labs' },
+  imaging_center: { icon: Building, gradient: 'from-rose-500 to-pink-600', path: '/services/radiology' },
 };
 
 export function MedicalServices() {
