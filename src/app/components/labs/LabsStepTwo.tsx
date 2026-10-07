@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
-import { Check, CheckCircle2, Clock3, Info, Sun, Sunset, Moon, Loader2 } from "lucide-react";
+import {
+    Check,
+    CheckCircle2,
+    Clock3,
+    Info,
+    Sun,
+    Sunset,
+    Moon,
+    Loader2,
+    AlertTriangle,
+    ArrowLeft,
+    ReceiptText
+} from "lucide-react";
+import { useNavigate } from "react-router-dom"; // در صورت عدم استفاده از react-router، قابل حذف است
 import { Button } from "../ui/button";
 import { LabCenter } from "./labs.types";
-import { formatPrice } from '../../utils/formatNumber';
+import { formatPrice } from "../../utils/formatNumber";
 
 interface ShiftData {
     isActive: boolean;
@@ -20,10 +33,9 @@ interface Props {
     selectedTests: number[];
     shiftType: number;
     setShiftType: (val: number) => void;
-    accessToken: string; // توکن لاگین کاربر (باید از والد پاس داده شود)
+    accessToken: string;
 }
 
-// ساختار پایه برای استایل‌ها و آیکون‌های شیفت
 const SHIFT_BASE_INFO = [
     { id: 1, label: "صبح", icon: Sun },
     { id: 2, label: "ظهر/عصر", icon: Sunset },
@@ -31,21 +43,33 @@ const SHIFT_BASE_INFO = [
 ];
 
 export function LabsStepTwo({
-                                labs, loadingLabs, selectedLab, setSelectedLab,
-                                openLabDetails, selectedTests, shiftType, setShiftType, accessToken
+                                labs,
+                                loadingLabs,
+                                selectedLab,
+                                setSelectedLab,
+                                openLabDetails,
+                                selectedTests,
+                                shiftType,
+                                setShiftType,
+                                accessToken
                             }: Props) {
+    const navigate = useNavigate();
 
     const selectedLabInfo = labs.find((l) => l.id === selectedLab) ?? null;
 
-    // استیت‌های مربوط به دریافت شیفت‌ها از سرور
+    // استیت‌های شیفت
     const [labShifts, setLabShifts] = useState<{ [key: number]: ShiftData } | null>(null);
     const [loadingShifts, setLoadingShifts] = useState(false);
+
+    // استیت کنترل پاپ‌آپ درخواست تعیین‌تکلیف نشده
+    const [hasPendingRequestModal, setHasPendingRequestModal] = useState(false);
+    const [pendingModalMessage, setPendingModalMessage] = useState("");
 
     // دریافت شیفت‌ها به محض انتخاب یک آزمایشگاه
     useEffect(() => {
         if (!selectedLab) {
             setLabShifts(null);
-            setShiftType(0); // ریست کردن شیفت انتخابی قبلی
+            setShiftType(0);
             return;
         }
 
@@ -63,7 +87,6 @@ export function LabsStepTwo({
                 if (json.success && json.data) {
                     setLabShifts(json.data);
 
-                    // به صورت خودکار اولین شیفت فعال را انتخاب می‌کنیم
                     const activeShifts = Object.entries(json.data)
                         .filter(([_, data]) => (data as ShiftData).isActive)
                         .map(([id]) => Number(id));
@@ -82,6 +105,29 @@ export function LabsStepTwo({
         fetchShifts();
     }, [selectedLab, accessToken, setShiftType]);
 
+    /**
+     * تابع نمونه برای مدیریت پاسخ ثبت درخواست (در صورت فراخوانی در این کامپوننت یا ارسال به والد)
+     * اگر ثبت نهایی سفارش در این کامپوننت انجام می‌شود، از این الگو استفاده کنید:
+     */
+    const handleApiResponseError = (resStatus: number, json: any) => {
+        if (resStatus === 400 && json?.message?.includes("در انتظار پرداخت")) {
+            setPendingModalMessage(
+                json.message || "شما یک درخواست در انتظار پرداخت دارید. لطفاً ابتدا آن را تعیین تکلیف یا پرداخت نمایید."
+            );
+            setHasPendingRequestModal(true);
+            return true;
+        }
+        return false;
+    };
+
+    const handleGoToOrders = () => {
+        setHasPendingRequestModal(false);
+        if (navigate) {
+            navigate("/orders");
+        } else {
+            window.location.href = "/orders";
+        }
+    };
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-1 flex-col duration-500">
@@ -129,7 +175,7 @@ export function LabsStepTwo({
 
             {selectedLabInfo && (
                 <div className="space-y-4 rounded-3xl border border-blue-50 bg-white p-5 shadow-sm animate-in fade-in zoom-in-95">
-                    {/* بخش انتخاب شیفت (پویا از سرور) */}
+                    {/* بخش انتخاب شیفت */}
                     <div>
                         <h3 className="mb-3 text-sm font-bold text-slate-800">زمان مراجعه نمونه‌گیر</h3>
 
@@ -140,10 +186,7 @@ export function LabsStepTwo({
                         ) : labShifts ? (
                             <div className="grid grid-cols-3 gap-2">
                                 {SHIFT_BASE_INFO.map((baseShift) => {
-                                    // گرفتن تنظیمات این شیفت از دیتای سرور
                                     const serverShiftData = labShifts[baseShift.id];
-
-                                    // اگر شیفت از سمت آزمایشگاه غیرفعال بود، اصلا رندر نمی‌شود
                                     if (!serverShiftData || !serverShiftData.isActive) return null;
 
                                     const isSelected = shiftType === baseShift.id;
@@ -200,6 +243,46 @@ export function LabsStepTwo({
                             <span className="text-amber-600">لطفاً ابتدا یک شیفت را برای مراجعه انتخاب کنید.</span>
                         )}
                     </p>
+                </div>
+            )}
+
+            {/* پاپ‌آپ سفارش تعیین‌تکلیف‌نشده */}
+            {hasPendingRequestModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                            <AlertTriangle className="h-7 w-7" />
+                        </div>
+
+                        <h3 className="text-base font-extrabold text-slate-800">
+                            درخواست آزمایش تعیین‌تکلیف نشده
+                        </h3>
+
+                        <p className="mt-2 text-xs leading-6 text-slate-600">
+                            {pendingModalMessage || "شما در حال حاضر یک درخواست ثبت‌شده در انتظار پرداخت دارید. لطفاً ابتدا به بخش سفارشات مراجعه کرده و وضعیت آن را مشخص فرمایید."}
+                        </p>
+
+                        <div className="mt-6 flex flex-col gap-2">
+                            <Button
+                                type="button"
+                                onClick={handleGoToOrders}
+                                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-bold text-white shadow-md shadow-blue-200 hover:bg-blue-700"
+                            >
+                                <ReceiptText className="h-4 w-4" />
+                                رفتن به صفحه سفارشات
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setHasPendingRequestModal(false)}
+                                className="h-10 w-full rounded-2xl text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                            >
+                                بستن
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
