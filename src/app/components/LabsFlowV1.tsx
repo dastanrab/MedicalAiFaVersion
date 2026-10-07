@@ -3,7 +3,8 @@ import { useNavigate } from "react-router";
 import { useAuthStore } from "../store/authStore";
 import { AppBar } from "../components/AppBar";
 import { AddressSelector } from "../components/AddressSelector";
-import { X } from "lucide-react";
+import { X, AlertTriangle, ReceiptText, ArrowLeft } from "lucide-react"; // اضافه شدن آیکون‌های پاپ‌آپ
+
 
 // Components
 import { LabsSuccess } from "../components/labs/LabsSuccess";
@@ -15,7 +16,8 @@ import { LabDetailsModal } from "../components/labs/LabDetailsModal";
 
 // Types and Utils
 import { TestPack, LabCenter, LabDetails, RequestType, LABS_DRAFT_KEY, loadLabsDraft, clearLabsDraft, getLabDetails, getServicePrice } from "../components/labs/labs.types";
-import {LabsStepVisitType} from "./labs/LabsStepVisitType";
+import { LabsStepVisitType } from "./labs/LabsStepVisitType";
+import {Button} from "./ui/button";
 
 const API_BASE_URL = "https://api.mediraai.com";
 
@@ -27,6 +29,7 @@ export function LabsFlowV1() {
     const [step, setStep] = useState(initialDraft?.step ?? 1);
     const [submitted, setSubmitted] = useState(false);
     const [visitType, setVisitType] = useState<number>(initialDraft?.visitType ?? 0); // 0 = در منزل, 1 = حضوری
+
     // Step 1 State
     const [digitalCode, setDigitalCode] = useState(initialDraft?.digitalCode ?? "");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
@@ -38,7 +41,7 @@ export function LabsFlowV1() {
     const [labs, setLabs] = useState<LabCenter[]>([]);
     const [selectedLab, setSelectedLab] = useState<number | null>(initialDraft?.selectedLab ?? null);
     const [labDetails, setLabDetails] = useState<LabDetails | null>(null);
-    const [shiftType, setShiftType] = useState<number>(initialDraft?.shiftType ?? 1); // اضافه شدن استیت شیفت زمانی (پیش‌فرض 1 = صبح)
+    const [shiftType, setShiftType] = useState<number>(initialDraft?.shiftType ?? 1);
 
     // Modal State
     const [reviewRating, setReviewRating] = useState(0);
@@ -52,6 +55,10 @@ export function LabsFlowV1() {
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState("درخواست شما با موفقیت ثبت شد.");
+
+    // --- استیت‌های جدید برای پاپ‌آپ خطای تعیین تکلیف ---
+    const [hasPendingRequestModal, setHasPendingRequestModal] = useState(false);
+    const [pendingModalMessage, setPendingModalMessage] = useState("");
 
     const getSelectedMode = (): RequestType | null => {
         const activeModes = [selectedTests.length > 0, digitalCode.trim().length > 0, !!prescriptionFile].filter(Boolean).length;
@@ -119,9 +126,8 @@ export function LabsFlowV1() {
 
     useEffect(() => {
         if (submitted) return;
-        // ذخیره shiftType در پیش‌نویس
         sessionStorage.setItem(LABS_DRAFT_KEY, JSON.stringify({ step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType, visitType }));
-    }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType]);
+    }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType, visitType]);
 
     const submitLabRequest = async () => {
         const requestType = getSelectedMode();
@@ -135,7 +141,7 @@ export function LabsFlowV1() {
 
             if (requestType === 1) {
                 if (!selectedLab) { setApiError("آزمایشگاه انتخاب نشده است."); return false; }
-                if (!shiftType) { setApiError("لطفاً شیفت زمانی مراجعه را انتخاب کنید."); return false; } // اعتبارسنجی شیفت
+                if (!shiftType) { setApiError("لطفاً شیفت زمانی مراجعه را انتخاب کنید."); return false; }
 
                 res = await fetch(`${API_BASE_URL}/api/user/labs/requests`, {
                     method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -145,7 +151,7 @@ export function LabsFlowV1() {
                         lab_id: selectedLab,
                         test_pack_ids: selectedTests,
                         user_address_id: selectedAddressId,
-                        shift_type: shiftType // ارسال شیفت به بک‌اند
+                        shift_type: shiftType
                     }),
                 });
                 setSuccessMessage("درخواست شما ثبت شد.");
@@ -161,12 +167,21 @@ export function LabsFlowV1() {
                 formData.append("visit_type", String(visitType));
                 formData.append("user_address_id", String(selectedAddressId));
                 if (prescriptionFile) formData.append("files[]", prescriptionFile);
-                res = await fetch(`${API_BASE_URL}/api/user/labs/requests`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
+                res = await fetch(`${API_BASE_URL}/api/user/labs/requests`, { method: "POST", headers: { Authorization: `GAPGPTMASKTOKEN26xfvxx24s7X4X` }, body: formData });
                 setSuccessMessage("فایل نسخه ثبت شد.");
             }
 
             const json = await res.json();
+
             if (!res.ok || !json.success) {
+                // بررسی خطای 400 برای درخواست تعیین تکلیف نشده
+                if (res.status === 400 && json.message?.includes("در انتظار پرداخت")) {
+                    setPendingModalMessage(json.message);
+                    setHasPendingRequestModal(true);
+                    return false;
+                }
+
+                // سایر خطاها
                 setApiError(json?.errors ? Object.values(json.errors).flat().join(" - ") : json?.message || "خطا در ثبت درخواست");
                 return false;
             }
@@ -189,21 +204,17 @@ export function LabsFlowV1() {
         const requestType = getSelectedMode();
         if (!requestType) { setApiError("حداقل یک آزمایش یا فایل انتخاب کنید."); return; }
 
-        // اگر در مرحله 1 هستیم، برو به مرحله 2 (انتخاب حضوری/در منزل)
         if (step === 1) {
             setStep(2);
             return;
         }
 
-        // اگر در مرحله 2 هستیم
         if (step === 2) {
             if (requestType === 1) {
-                // دریافت آزمایشگاه‌ها بر اساس تست‌ها و نوع مراجعه (visitType)
                 const ok = await fetchLabs(selectedTests, { preserveSelection: false });
                 if (ok) setStep(3);
                 return;
             }
-            // اگر عکس نسخه یا کد بود، مستقیم ثبت کن (نیازی به انتخاب آزمایشگاه نیست)
             await submitLabRequest();
         }
     };
@@ -247,7 +258,7 @@ export function LabsFlowV1() {
                             selectedLab={selectedLab} setSelectedLab={setSelectedLab}
                             openLabDetails={(lab) => { setReviewRating(0); setReviewText(""); setReviewSubmitted(false); setLabDetails(getLabDetails(lab)); }}
                             selectedTests={selectedTests}
-                            shiftType={shiftType} // پاس دادن شیفت به مرحله دوم
+                            shiftType={shiftType}
                             setShiftType={setShiftType}
                             accessToken={accessToken}
                         />
@@ -269,6 +280,49 @@ export function LabsFlowV1() {
                 reviewText={reviewText} setReviewText={setReviewText}
                 reviewSubmitted={reviewSubmitted} submitReview={() => setReviewSubmitted(true)}
             />
+
+            {/* پاپ‌آپ سفارش تعیین‌تکلیف‌نشده (منتقل شده به کامپوننت اصلی) */}
+            {hasPendingRequestModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                            <AlertTriangle className="h-7 w-7" />
+                        </div>
+
+                        <h3 className="text-base font-extrabold text-slate-800">
+                            درخواست آزمایش تعیین‌تکلیف نشده
+                        </h3>
+
+                        <p className="mt-2 text-xs leading-6 text-slate-600">
+                            {pendingModalMessage || "شما در حال حاضر یک درخواست ثبت‌شده در انتظار پرداخت دارید. لطفاً ابتدا به بخش سفارشات مراجعه کرده و وضعیت آن را مشخص فرمایید."}
+                        </p>
+
+                        <div className="mt-6 flex flex-col gap-2">
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    setHasPendingRequestModal(false);
+                                    navigate("/orders"); // استفاده از navigate روتر
+                                }}
+                                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-xs font-bold text-white shadow-md shadow-blue-200 hover:bg-blue-700"
+                            >
+                                <ReceiptText className="h-4 w-4" />
+                                رفتن به صفحه سفارشات
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setHasPendingRequestModal(false)}
+                                className="h-10 w-full rounded-2xl text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                            >
+                                بستن
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
