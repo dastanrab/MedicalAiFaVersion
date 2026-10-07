@@ -161,7 +161,8 @@ export function LabRequestDetailPage() {
                     tests: item.tests || [],
                     is_assigned: Boolean(item.is_assigned),
                     shiftType: item.shift_type ? Number(item.shift_type) : 1,
-                    appointmentDate: item.appointment_date
+                    appointmentDate: item.appointment_date,
+                    type: item.visit_type == 0 ? 'in-person' : 'home'
                 };
 
                 setRequest(parsedRequest);

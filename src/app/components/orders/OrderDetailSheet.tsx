@@ -66,7 +66,6 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                 if (!res.ok) throw new Error('خطا در دریافت اطلاعات فاکتور یا نوبت');
                 const json = await res.json();
                 if (!json.success) throw new Error(json.message || 'پاسخ نامعتبر');
-
                 if (order.serviceType === 'pharmacy') setDetailData(json.data);
                 if (order.serviceType === 'nurse') setNurseData(json.data);
                 if (order.serviceType === 'lab') setLabData(json.data);
@@ -344,19 +343,28 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
     };
 
     if (!order) return null;
-
+    console.log('order',order)
     const Icon = serviceIcons[order.serviceType];
-    const displayStatus = liveExpired ? 'تاریخ گذشته' : order.status_label;
-    const statusClass = getStatusClass(liveExpired ? 'cancelled' : order.status);
+    // اگر سفارش رسما لغو شده باشد (توسط بک اند یا دکمه دستی)
+    console.log('lab data',labData)
+    const isActuallyCancelled =
+        (order.serviceType === 'lab' && Number(labData?.status) === 6) ||
+        (order.serviceType === 'pharmacy' && Number(detailData?.status) === 7) ||
+        (order.serviceType === 'nurse' && Number(nurseData?.status) === 5);
+    console.log(isActuallyCancelled)
+    // تعیین وضعیت برای نمایش در بالای صفحه
+    const displayStatus = isActuallyCancelled ? 'لغو شده' : (liveExpired ? 'تاریخ گذشته' : order.status_label);
+    const statusClass = getStatusClass(isActuallyCancelled ? 'cancelled' : (liveExpired ? 'cancelled' : order.status));
 
-    const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null;
+    const showDoctorPayButton = order.serviceType === 'consultation' && String(order.rawStatus).toLowerCase() === 'available' && order.order_id !== null && !liveExpired;
     const showLabPayButton = !liveExpired && order.serviceType === 'lab' && labData && labData.status === 1 && order.order_id !== null;
     const showPharmacyPayButton = !liveExpired && order.serviceType === 'pharmacy' && detailData && detailData.status === 1 && order.order_id !== null;
     const showNursePayButton = !liveExpired && order.serviceType === 'nurse' && nurseData && nurseData.status === 0 && order.order_id !== null;
 
-    const showLabCancelButton = !liveExpired && order.serviceType === 'lab' && labData && (labData.status === 0 || labData.status === 1);
-    const showPharmacyCancelButton = !liveExpired && order.serviceType === 'pharmacy' && detailData && (detailData.status === 0 || detailData.status === 1);
-    const showNurseCancelButton = !liveExpired && order.serviceType === 'nurse' && nurseData && (nurseData.status === 0 || nurseData.status === 1);
+    // توجه: !liveExpired را از اینجا برداشتیم تا اگر تاریخ گذشته بود ولی هنوز در سیستم کنسل نشده بود، true بمانند
+    const showLabCancelButton = order.serviceType === 'lab' && labData && (labData.status === 0 || labData.status === 1);
+    const showPharmacyCancelButton = order.serviceType === 'pharmacy' && detailData && (detailData.status === 0 || detailData.status === 1);
+    const showNurseCancelButton = order.serviceType === 'nurse' && nurseData && (nurseData.status === 0 || nurseData.status === 1);
 
     const isCompleted = order.status === 'completed';
     const patientInfo = getDoctorPatientInfo();
@@ -389,13 +397,36 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                     {detailLoading && <div className="flex items-center justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>}
                     {detailError && <div className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">{detailError}</div>}
 
-                    {/* Timeout Warning Message */}
-                    {liveExpired && (
-                        <div className="rounded-2xl bg-red-50 p-3 mt-4 border border-red-100 flex items-start gap-2">
-                            <Timer className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                            <p className="text-xs text-red-700 leading-relaxed font-medium">
-                                زمان ۳۰ دقیقه‌ای شما برای تکمیل، پرداخت یا تایید این درخواست به پایان رسیده است. این درخواست اکنون تاریخ‌گذشته محسوب می‌شود.
-                            </p>
+                    {/* Timeout Warning Message & Manual Cancel */}
+                    {liveExpired && !isActuallyCancelled && (
+                        <div className="rounded-2xl bg-red-50 p-3 mt-4 border border-red-100 flex flex-col gap-3">
+                            <div className="flex items-start gap-2">
+                                <Timer className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-xs text-red-700 leading-relaxed font-medium flex-1">
+                                    زمان ۳۰ دقیقه‌ای شما برای این درخواست به پایان رسیده و اکنون تاریخ‌گذشته محسوب می‌شود. در صورتی که سیستم هنوز آن را لغو نکرده، می‌توانید به صورت دستی درخواست را لغو کنید تا وضعیت آن مشخص شود.
+                                </p>
+                            </div>
+
+                            {/* نمایش دکمه لغو برای سرویس‌هایی که قابلیت لغو دارند و الان دکمه کنسل براشون مجازه */}
+                            {((order.serviceType === 'lab' && showLabCancelButton) ||
+                                (order.serviceType === 'pharmacy' && showPharmacyCancelButton) ||
+                                (order.serviceType === 'nurse' && showNurseCancelButton)) && (
+                                <button
+                                    onClick={() => {
+                                        if (order.serviceType === 'lab') handleCancelLabRequest();
+                                        else if (order.serviceType === 'pharmacy') handleCancelPharmacyRequest();
+                                        else if (order.serviceType === 'nurse') handleCancelNurseRequest();
+                                    }}
+                                    disabled={canceling}
+                                    className="self-end flex items-center gap-1.5 bg-white border border-red-200 text-red-600 px-3 py-2 rounded-lg text-xs font-semibold shadow-sm hover:bg-red-100 transition-colors disabled:opacity-70"
+                                >
+                                    {canceling ? (
+                                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> در حال لغو...</>
+                                    ) : (
+                                        <><Trash2 className="h-3.5 w-3.5" /> لغو دستی درخواست</>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     )}
 
@@ -555,6 +586,12 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                         )}
                                     </div>
                                 </div>
+                                <div className="flex items-center justify-between border-t border-blue-100 pt-2.5 mt-1">
+                                    <span className="text-xs font-medium text-gray-600">نحوه انجام آزمایش:</span>
+                                    <span className="font-bold text-sm text-gray-800">
+                                        {labData.visit_type === 1 ? 'نمونه‌گیری در منزل' : 'مراجعه حضوری به آزمایشگاه'}
+                                    </span>
+                                </div>
                                 {labData.daily_queue_number && (
                                     <div className="flex items-center justify-between border-t border-blue-100 pt-2.5 mt-1">
                                         <span className="text-xs font-medium text-gray-600">شماره نوبت صف:</span>
@@ -658,7 +695,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                 )}
                             </div>
                         </div>
-                    ) : showLabCancelButton && (
+                    ) : showLabCancelButton  && !liveExpired && (
                         <button onClick={handleCancelLabRequest} disabled={paying || canceling} className="mt-4 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
                             {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست آزمایشگاه</>}
                         </button>
@@ -685,7 +722,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                 )}
                             </div>
                         </div>
-                    ) : showPharmacyCancelButton && (
+                    ) : showPharmacyCancelButton && !liveExpired && (
                         <button onClick={handleCancelPharmacyRequest} disabled={paying || canceling} className="mt-4 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
                             {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست داروخانه</>}
                         </button>
@@ -712,7 +749,7 @@ export function OrderDetailSheet({ order, open, onOpenChange, onOrderUpdate, ref
                                 )}
                             </div>
                         </div>
-                    ) : showNurseCancelButton && (
+                    ) : showNurseCancelButton && !liveExpired &&(
                         <button onClick={handleCancelNurseRequest} disabled={paying || canceling} className="mt-4 w-full rounded-xl bg-white border border-red-200 text-red-600 py-3 text-sm font-semibold shadow-sm hover:bg-red-50 disabled:opacity-70 flex items-center justify-center gap-2 transition-colors">
                             {canceling ? <><Loader2 className="h-5 w-5 animate-spin" />در حال لغو…</> : <><Trash2 className="h-5 w-5" />لغو درخواست خدمات پرستاری</>}
                         </button>

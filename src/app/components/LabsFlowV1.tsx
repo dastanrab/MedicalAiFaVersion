@@ -15,6 +15,7 @@ import { LabDetailsModal } from "../components/labs/LabDetailsModal";
 
 // Types and Utils
 import { TestPack, LabCenter, LabDetails, RequestType, LABS_DRAFT_KEY, loadLabsDraft, clearLabsDraft, getLabDetails, getServicePrice } from "../components/labs/labs.types";
+import {LabsStepVisitType} from "./labs/LabsStepVisitType";
 
 const API_BASE_URL = "https://api.mediraai.com";
 
@@ -25,7 +26,7 @@ export function LabsFlowV1() {
     const [initialDraft] = useState(loadLabsDraft);
     const [step, setStep] = useState(initialDraft?.step ?? 1);
     const [submitted, setSubmitted] = useState(false);
-
+    const [visitType, setVisitType] = useState<number>(initialDraft?.visitType ?? 0); // 0 = در منزل, 1 = حضوری
     // Step 1 State
     const [digitalCode, setDigitalCode] = useState(initialDraft?.digitalCode ?? "");
     const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
@@ -90,7 +91,7 @@ export function LabsFlowV1() {
 
             const res = await fetch(`${API_BASE_URL}/api/user/labs/search-centers`, {
                 method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ test_pack_ids: testPackIds }),
+                body: JSON.stringify({ test_pack_ids: testPackIds,visit_type: visitType }),
             });
             const json = await res.json();
             if (json.success) {
@@ -119,7 +120,7 @@ export function LabsFlowV1() {
     useEffect(() => {
         if (submitted) return;
         // ذخیره shiftType در پیش‌نویس
-        sessionStorage.setItem(LABS_DRAFT_KEY, JSON.stringify({ step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType }));
+        sessionStorage.setItem(LABS_DRAFT_KEY, JSON.stringify({ step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType, visitType }));
     }, [submitted, step, digitalCode, openSection, selectedTests, selectedLab, selectedAddressId, shiftType]);
 
     const submitLabRequest = async () => {
@@ -140,7 +141,7 @@ export function LabsFlowV1() {
                     method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         request_type_id: 1,
-                        visit_type: 0,
+                        visit_type: visitType,
                         lab_id: selectedLab,
                         test_pack_ids: selectedTests,
                         user_address_id: selectedAddressId,
@@ -151,13 +152,13 @@ export function LabsFlowV1() {
             } else if (requestType === 2) {
                 res = await fetch(`${API_BASE_URL}/api/user/labs/requests`, {
                     method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ request_type_id: 2, visit_type: 0, digital_code: digitalCode.trim(), user_address_id: selectedAddressId }),
+                    body: JSON.stringify({ request_type_id: 2, visit_type: visitType, digital_code: digitalCode.trim(), user_address_id: selectedAddressId }),
                 });
                 setSuccessMessage("نسخه دیجیتال ثبت شد.");
             } else {
                 const formData = new FormData();
                 formData.append("request_type_id", "3");
-                formData.append("visit_type", "0");
+                formData.append("visit_type", String(visitType));
                 formData.append("user_address_id", String(selectedAddressId));
                 if (prescriptionFile) formData.append("files[]", prescriptionFile);
                 res = await fetch(`${API_BASE_URL}/api/user/labs/requests`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
@@ -188,12 +189,23 @@ export function LabsFlowV1() {
         const requestType = getSelectedMode();
         if (!requestType) { setApiError("حداقل یک آزمایش یا فایل انتخاب کنید."); return; }
 
-        if (requestType === 1) {
-            const ok = await fetchLabs();
-            if (ok) setStep(2);
+        // اگر در مرحله 1 هستیم، برو به مرحله 2 (انتخاب حضوری/در منزل)
+        if (step === 1) {
+            setStep(2);
             return;
         }
-        await submitLabRequest();
+
+        // اگر در مرحله 2 هستیم
+        if (step === 2) {
+            if (requestType === 1) {
+                // دریافت آزمایشگاه‌ها بر اساس تست‌ها و نوع مراجعه (visitType)
+                const ok = await fetchLabs(selectedTests, { preserveSelection: false });
+                if (ok) setStep(3);
+                return;
+            }
+            // اگر عکس نسخه یا کد بود، مستقیم ثبت کن (نیازی به انتخاب آزمایشگاه نیست)
+            await submitLabRequest();
+        }
     };
 
     if (submitted) return <LabsSuccess successMessage={successMessage} onBack={() => navigate("/services")} />;
@@ -226,8 +238,10 @@ export function LabsFlowV1() {
                             loadingTests={loadingTests}
                         />
                     )}
-
                     {step === 2 && (
+                        <LabsStepVisitType visitType={visitType} setVisitType={setVisitType} />
+                    )}
+                    {step === 3 && (
                         <LabsStepTwo
                             labs={labs} loadingLabs={loadingLabs}
                             selectedLab={selectedLab} setSelectedLab={setSelectedLab}

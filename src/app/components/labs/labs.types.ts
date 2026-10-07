@@ -1,4 +1,4 @@
-import { FileText, Building2 } from "lucide-react";
+import {FileText, Building2, MapPin} from "lucide-react";
 import { formatToman, formatPrice, toNumber } from '../../utils/formatNumber';
 
 export type TestPack = {
@@ -45,13 +45,15 @@ export type LabsDraft = {
     selectedTests: number[];
     selectedLab: number | null;
     selectedAddressId: number | null;
+    visitType: number;
 };
 
 export const LABS_DRAFT_KEY = "medira:labs-flow-draft";
 
 export const stepsData = [
     { id: 1, title: "نسخه و آزمایش‌ها", icon: FileText },
-    { id: 2, title: "انتخاب آزمایشگاه", icon: Building2 },
+    { id: 2, title: "نحوه مراجعه", icon: MapPin },
+    { id: 3, title: "انتخاب آزمایشگاه", icon: Building2 },
 ];
 
 export const formatPriceRange = (minPrice: number | null, maxPrice: number | null) => {

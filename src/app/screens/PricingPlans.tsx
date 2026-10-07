@@ -17,6 +17,7 @@ interface ApiPlan {
     slug: string;
     price: number;
     duration_days: number;
+    features?: string[];
 }
 
 interface PlanHistoryItem {
@@ -308,7 +309,7 @@ function PlanCard({ plan, isActive, onSelect }: { plan: ApiPlan; isActive: boole
                     </span>
                 </div>
 
-                {/* قیمت با سایزبندی دقیق جهت شکست نخوردن متن */}
+                {/* قیمت با سایزبندی دقیق جهت عدم شکست متن */}
                 <div className="my-2 text-center border-y border-gray-100/80 py-2">
                     {isFree ? (
                         <span className="text-xs sm:text-base font-black text-gray-800">رایگان</span>
@@ -322,12 +323,21 @@ function PlanCard({ plan, isActive, onSelect }: { plan: ApiPlan; isActive: boole
                     )}
                 </div>
 
-                {/* ویژگی‌های پلن */}
-                <div className="space-y-1.5 my-2">
-                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600">
-                        <Check className="h-3 w-3 text-emerald-500 shrink-0" />
-                        <span className="truncate">دسترسی کامل</span>
-                    </div>
+                {/* لیست پویا از ویژگی‌های پلن */}
+                <div className="space-y-1.5 my-3 min-h-[60px]">
+                    {plan.features && plan.features.length > 0 ? (
+                        plan.features.map((feature, idx) => (
+                            <div key={idx} className="flex items-start gap-1.5 text-[10px] sm:text-xs text-gray-600">
+                                <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                <span className="line-clamp-2 leading-relaxed">{feature}</span>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-400">
+                            <Check className="h-3.5 w-3.5 text-gray-300 shrink-0" />
+                            <span>امکانات پایه</span>
+                        </div>
+                    )}
                 </div>
             </div>
 

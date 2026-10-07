@@ -149,7 +149,7 @@ export function LabRequestsPage() {
                             })) || [],
                         scheduledDate: item.request_date,
                         totalPrice: parseFloat(item.total_price || '0'),
-                        type: item.visit_type === 0 ? 'home' : 'in_person',
+                        type: item.visit_type === 0 ? 'in_person':'home' ,
                         statusCode: item.request_status, // ذخیره کد وضعیت سرور
                         status: mapApiStatusToLocal(item.request_status),
                         prescriptionType:
