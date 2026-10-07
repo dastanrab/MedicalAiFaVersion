@@ -18,6 +18,8 @@ import {
   Plus,
   Trash2,
   Star,
+  Pencil,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { AppBar } from '../components/AppBar';
@@ -52,7 +54,7 @@ const inputClass =
     'h-11 rounded-xl border-0 bg-gray-50/80 text-right text-sm text-gray-800 shadow-none ring-1 ring-gray-100 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-300';
 
 const selectClass =
-    'w-full h-11 rounded-xl px-3 bg-gray-50/80 border-0 text-gray-700 text-sm text-right ring-1 ring-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all cursor-pointer';
+    'w-full h-11 rounded-xl px-3 bg-gray-50/80 border-0 text-gray-700 text-sm text-right ring-1 ring-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all cursor-pointer disabled:cursor-default disabled:opacity-50';
 
 const API_BASE_URL = 'https://api.mediraai.com';
 
@@ -156,6 +158,9 @@ export function UserProfile() {
   const [saving, setSaving] = useState(false);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
+
+  const [editing, setEditing] = useState(false);
+  const editSnapshotRef = useRef<ProfileFormData | null>(null);
 
   const [userId, setUserId] = useState<number | null>(null);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
@@ -304,6 +309,9 @@ export function UserProfile() {
           insuranceNumber: user.insurance_number ?? extras?.insuranceNumber ?? '',
         });
 
+        // پروفایل ناقص مستقیم در حالت ویرایش باز می‌شود
+        setEditing(!user.name);
+
         await fetchAddresses(extras?.addresses ?? []);
       }
     } catch (error) {
@@ -366,6 +374,18 @@ export function UserProfile() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const startEditing = () => {
+    editSnapshotRef.current = formData;
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    if (editSnapshotRef.current) setFormData(editSnapshotRef.current);
+    editSnapshotRef.current = null;
+    setErrorMessage('');
+    setEditing(false);
   };
 
   const updateField = (field: string, value: string) => {
@@ -513,7 +533,36 @@ export function UserProfile() {
               dir="rtl"
               className="gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 text-right shadow-[0_2px_16px_rgba(0,0,0,0.06)] sm:p-5"
           >
-            <div className="space-y-4">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-sm font-bold text-gray-800">اطلاعات شخصی</span>
+              {editing ? (
+                  editSnapshotRef.current && (
+                      <button
+                          type="button"
+                          onClick={cancelEditing}
+                          disabled={saving}
+                          className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        انصراف
+                      </button>
+                  )
+              ) : (
+                  <button
+                      type="button"
+                      onClick={startEditing}
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    ویرایش
+                  </button>
+              )}
+            </div>
+
+            <fieldset
+                disabled={!editing}
+                className={`min-w-0 space-y-4 transition-opacity ${editing ? '' : 'select-none'}`}
+            >
               <NameRow formData={formData} updateField={updateField} />
               <Field label="جنسیت">
                 <GenderSelector value={formData.gender} onChange={(g) => updateField('gender', g)} />
@@ -525,11 +574,13 @@ export function UserProfile() {
                   availableCities={availableCities}
               />
               <IdentityInsuranceSection formData={formData} updateField={updateField} />
-            </div>
+            </fieldset>
 
-            <div className="mt-3 flex justify-center">
-              <SaveProfileButton saving={saving} onClick={handleSubmit} />
-            </div>
+            {editing && (
+                <div className="mt-3 flex justify-center">
+                  <SaveProfileButton saving={saving} onClick={handleSubmit} />
+                </div>
+            )}
           </Card>
 
           <AddressesSection
@@ -670,7 +721,7 @@ function GenderSelector({ value, onChange }: { value: string; onChange: (gender:
           const active = value === opt.id;
           const Icon = opt.Icon;
           return (
-              <button key={opt.id} type="button" onClick={() => onChange(opt.id)} className={`group relative flex w-full min-w-0 flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 px-2 py-3 transition-all duration-200 active:scale-[0.98] ${active ? `border-transparent bg-gradient-to-br ${opt.gradient} shadow-lg shadow-black/10` : 'border-gray-100 bg-gray-50/80 hover:border-gray-200 hover:bg-white'}`}>
+              <button key={opt.id} type="button" onClick={() => onChange(opt.id)} className={`group relative flex w-full min-w-0 flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 px-2 py-3 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 ${active ? `border-transparent bg-gradient-to-br ${opt.gradient} shadow-lg shadow-black/10` : 'border-gray-100 bg-gray-50/80 hover:border-gray-200 hover:bg-white'}`}>
                 <span className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${active ? 'bg-white/25 text-white' : `${opt.iconBg}${opt.iconColor}`}`}><Icon className="h-5 w-5" strokeWidth={2} /></span>
                 <span className={`text-sm font-bold ${active ? 'text-white' : 'text-gray-700 group-hover:text-gray-900'}`}>{opt.label}</span>
                 {active && <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/25"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>}
