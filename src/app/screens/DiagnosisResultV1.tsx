@@ -472,7 +472,7 @@ export function DiagnosisResultV1() {
     }
 
     return (
-        <div className="flex flex-col h-dvh bg-gradient-to-b from-blue-50 to-white mb-20" dir="rtl">
+        <div className="flex flex-col h-full bg-gradient-to-b from-blue-50 to-white pb-20" dir="rtl">
             <AppBar backTo="/symptoms" backState={symptomFormState} />
 
             <div className="flex-1 overflow-y-auto w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-4 flex flex-col">
@@ -687,26 +687,6 @@ export function DiagnosisResultV1() {
                     )}
                     <div ref={bottomRef} />
                 </div>
-
-                {status === 'chatting' && !loading && ageGenderForm === 'idle' && (
-                    <div className="bg-white rounded-2xl border border-gray-200 p-2 flex gap-2 shadow-sm shrink-0 animate-in fade-in slide-in-from-bottom-2">
-                        <input
-                            className="flex-1 outline-none text-sm px-3 bg-transparent"
-                            placeholder="پاسخ خود را اینجا بنویسید..."
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
-                            autoFocus
-                        />
-                        <button
-                            onClick={() => sendMessage(input)}
-                            disabled={!input.trim()}
-                            className="p-3 bg-blue-600 text-white rounded-xl disabled:opacity-50"
-                        >
-                            <Send className="w-4 h-4" />
-                        </button>
-                    </div>
-                )}
 
                 {status === 'complete' && finalResult && (
                     <div className={`transition-all duration-700 shrink-0 ${!showContent ? 'blur-md opacity-0 pointer-events-none translate-y-4' : 'blur-0 opacity-100 translate-y-0'}`}>
@@ -951,6 +931,28 @@ export function DiagnosisResultV1() {
                     </div>
                 )}
             </div>
+
+            {status === 'chatting' && !loading && ageGenderForm === 'idle' && (
+                <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pb-3 shrink-0">
+                    <div className="bg-white rounded-2xl border border-gray-200 p-2 flex gap-2 shadow-sm shrink-0 animate-in fade-in slide-in-from-bottom-2">
+                        <input
+                            className="flex-1 outline-none text-sm px-3 bg-transparent"
+                            placeholder="پاسخ خود را اینجا بنویسید..."
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
+                            autoFocus
+                        />
+                        <button
+                            onClick={() => sendMessage(input)}
+                            disabled={!input.trim()}
+                            className="p-3 bg-blue-600 text-white rounded-xl disabled:opacity-50"
+                        >
+                            <Send className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* مودال بزرگ‌نمایی تصویر */}
             {previewImage && (
