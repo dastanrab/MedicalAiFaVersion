@@ -3,10 +3,9 @@ import { PageHeader } from '../../components';
 import {
     mockPharmacyProfile,
     mockNurseProfile,
-    nurseServiceLabels,
 } from '../../data/mockData';
 import type { ProviderRole } from '../../config/providerNav';
-import {useProviderSession} from "../../store/providerAuthStore";
+import { useProviderSession } from "../../store/providerAuthStore";
 import { formatPriceInput, parsePriceInput } from '../../../utils/formatNumber';
 
 interface ProviderSettingsPageProps {
@@ -16,7 +15,7 @@ interface ProviderSettingsPageProps {
 export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
     const labSession = useProviderSession('lab');
 
-    // استیت‌های آزمایشگاه بر اساس فیلدهای بک‌اند تنظیم شده‌اند
+    // استیت‌های آزمایشگاه
     const [lab, setLab] = useState({
         name: '',
         license_number: '',
@@ -25,14 +24,27 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
         address: '',
         status: 0,
         min_order_amount: 0,
+        home_acceptance: 0, // فیلد جدید
+        in_person_acceptance: 0, // فیلد جدید
     });
+
+    // استیت‌های مربوط به تصویر
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
 
     // سایر استیت‌ها
     const [pharmacy, setPharmacy] = useState(mockPharmacyProfile);
     const [nurse, setNurse] = useState(mockNurseProfile);
 
-    // واکشی اطلاعات آزمایشگاه در صورت نقش lab
+    // مدیریت پیش‌نمایش تصویر انتخابی
+    useEffect(() => {
+        if (!imageFile) return;
+        const objectUrl = URL.createObjectURL(imageFile);
+        setImagePreview(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [imageFile]);
+
     useEffect(() => {
         if (role === 'lab') {
             fetchLabProfile();
@@ -41,10 +53,10 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
 
     const fetchLabProfile = async () => {
         try {
-            const token = localStorage.getItem('labSession');
+            const token = labSession?.token; // استفاده از توکن استور
             const res = await fetch('https://api.mediraai.com/api/owner/lab/profile', {
                 headers: {
-                    'Authorization': `Bearer ${labSession?.token}`,
+                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 }
             });
@@ -56,9 +68,14 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
                     technical_manager: json.data.technical_manager || '',
                     work_hours: json.data.work_hours || '',
                     address: json.data.address || '',
-                    status: json.data.status || 0,
-                    min_order_amount: json.data.min_order_amount || 0,
+                    status: Number(json.data.status ?? 0),
+                    min_order_amount: Number(json.data.min_order_amount ?? 0),
+                    home_acceptance: Number(json.data.home_acceptance ?? 0),
+                    in_person_acceptance: Number(json.data.in_person_acceptance ?? 0),
                 });
+                if (json.data.image_url) {
+                    setImagePreview(json.data.image_url);
+                }
             }
         } catch (error) {
             console.error('Error fetching lab profile:', error);
@@ -68,18 +85,43 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
     const handleSaveLab = async () => {
         setIsLoading(true);
         try {
+            const token = labSession?.token;
+
+            // استفاده از FormData برای ارسال فایل و فیلدها
+            const formData = new FormData();
+
+            // چون متد در بک‌اند PUT است اما فایل می‌فرستیم، از متد تقلبی لاراول استفاده می‌کنیم
+            formData.append('_method', 'PUT');
+
+            formData.append('name', lab.name);
+            formData.append('license_number', lab.license_number);
+            formData.append('technical_manager', lab.technical_manager);
+            formData.append('work_hours', lab.work_hours);
+            formData.append('address', lab.address);
+            formData.append('status', String(lab.status));
+            formData.append('min_order_amount', String(lab.min_order_amount));
+            formData.append('home_acceptance', String(lab.home_acceptance));
+            formData.append('in_person_acceptance', String(lab.in_person_acceptance));
+
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
             const res = await fetch('https://api.mediraai.com/api/owner/lab/profile', {
-                method: 'PUT',
+                method: 'POST', // برای FormData همیشه POST استفاده کنید
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${labSession?.token}`,
-                    'Accept': 'application/json'
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    // Content-Type نباید ست شود، مرورگر خودش آن را با Boundary تنظیم می‌کند
                 },
-                body: JSON.stringify(lab)
+                body: formData
             });
+
             const json = await res.json();
             if (json.status) {
                 alert('تنظیمات با موفقیت ذخیره شد');
+                setImageFile(null); // ریست کردن فایل انتخابی
+                fetchLabProfile(); // بروزرسانی اطلاعات
             } else {
                 alert('خطا در ذخیره تنظیمات: ' + (json.message || ''));
             }
@@ -114,12 +156,48 @@ export function ProviderSettingsPage({ role }: ProviderSettingsPageProps) {
                     <Field label="مسئول فنی" value={lab.technical_manager} onChange={(v) => setLab({ ...lab, technical_manager: v })} />
                     <Field label="ساعات کاری" value={lab.work_hours} onChange={(v) => setLab({ ...lab, work_hours: v })} />
                     <Field label="آدرس" value={lab.address} onChange={(v) => setLab({ ...lab, address: v })} full />
-                    <Toggle label="فعال" checked={lab.status === 1} onChange={(v) => setLab({ ...lab, status: v ? 1 : 0 })} />
-                    <Field label="حداقل مبلغ سفارش (تومان)" value={formatPriceInput(lab.min_order_amount)} onChange={(v) => setLab({ ...lab, min_order_amount: Number(parsePriceInput(v)) || 0 })} />
+
+                    <Field
+                        label="حداقل مبلغ سفارش (تومان)"
+                        value={formatPriceInput(lab.min_order_amount)}
+                        onChange={(v) => setLab({ ...lab, min_order_amount: Number(parsePriceInput(v)) || 0 })}
+                    />
+
+                    {/* بخش آپلود تصویر */}
+                    <div className="md:col-span-2 space-y-2">
+                        <span className="text-xs text-slate-500">تصویر آزمایشگاه</span>
+                        <div className="flex items-center gap-4">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                                className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                            />
+                            {imagePreview && (
+                                <img src={imagePreview} alt="Preview" className="h-16 w-16 rounded-lg object-cover border border-slate-200" />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="md:col-span-2 flex flex-wrap gap-8 mt-2">
+                        <Toggle
+                            label="فعالیت آزمایشگاه"
+                            checked={lab.status === 1}
+                            onChange={(v) => setLab({ ...lab, status: v ? 1 : 0 })}
+                        />
+                        <Toggle
+                            label="پذیرش در منزل"
+                            checked={lab.home_acceptance === 1}
+                            onChange={(v) => setLab({ ...lab, home_acceptance: v ? 1 : 0 })}
+                        />
+                        <Toggle
+                            label="پذیرش حضوری"
+                            checked={lab.in_person_acceptance === 1}
+                            onChange={(v) => setLab({ ...lab, in_person_acceptance: v ? 1 : 0 })}
+                        />
+                    </div>
                 </div>
             )}
-
-            {/* بخش Pharmacy و Nurse تغییر نکرده‌اند و برای حفظ اختصار پنهان شده‌اند */}
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
                 <p className="mb-4 text-sm font-semibold text-slate-700">تنظیمات اعلان</p>
@@ -165,7 +243,12 @@ function Toggle({
 }) {
     return (
         <label className="flex cursor-pointer items-center gap-3">
-            <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 rounded" />
+            <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
             <span className="text-sm text-slate-700">{label}</span>
         </label>
     );

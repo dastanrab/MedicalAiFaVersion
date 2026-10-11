@@ -9,7 +9,9 @@ import {
   Star,
   TestTube,
   Stethoscope,
-  Building
+  Building,
+  Home,
+  UserCheck
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppBar } from "../components/AppBar";
@@ -24,14 +26,18 @@ type ListedProvider = ProviderDetails & {
   city: string;
   meta: string;
   image: string | null;
+  image_url?: string | null;
+  home_acceptance?: boolean;
+  in_person_acceptance?: boolean;
 };
 
+// دریافت دقیق‌ترین URL عکس با اولویت image_url از سرور
 function getProviderImageUrl(provider: Record<string, unknown> | null | undefined): string | null {
   if (!provider) return null;
 
   const candidates = [
-    provider.image,
     provider.image_url,
+    provider.image,
     provider.logo,
     provider.logo_url,
     provider.avatar,
@@ -47,7 +53,13 @@ function getProviderImageUrl(provider: Record<string, unknown> | null | undefine
   return null;
 }
 
-// فقط ۴ سرویسی که در فرانت پیاده‌سازی شده‌اند
+// پارس مطمئن مختصات جغرافیایی
+function parseCoordinate(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
 const SUPPORTED_SERVICES_MAP: Record<string, { icon: LucideIcon; gradient: string; path: string }> = {
   laboratory: { icon: TestTube, gradient: 'from-sky-500 to-blue-600', path: '/services/labs' },
   pharmacy: { icon: Pill, gradient: 'from-emerald-500 to-teal-600', path: '/services/pharmacy' },
@@ -68,7 +80,6 @@ export function MedicalServices() {
   const [pharmaciesList, setPharmaciesList] = useState<ListedProvider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // دریافت لیست سرویس‌های فعال و مراکز
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -91,23 +102,30 @@ export function MedicalServices() {
         const providersJson = await providersRes.json();
 
         if (providersJson.status === 'success') {
-          const mapToProvider = (p: any, type: 'lab' | 'pharmacy'): ListedProvider => ({
-            id: p.provider_id,
-            name: p.name || 'بدون نام',
-            city: p.city || 'نامشخص',
-            meta: type === 'lab' ? 'آزمایشگاه' : 'داروخانه',
-            address: p.address || 'آدرس ثبت نشده',
-            rating: Number(p.rating) || 5.0,
-            reviews: 0,
-            hours: 'نامشخص',
-            phone: 'ثبت نشده',
-            lat: 35.6892,
-            lng: 51.3890,
-            description: '',
-            services: [],
-            recentReviews: [],
-            image: getProviderImageUrl(p),
-          });
+          const mapToProvider = (p: any, type: 'lab' | 'pharmacy'): ListedProvider => {
+            const resolvedImg = getProviderImageUrl(p);
+            return {
+              id: p.provider_id,
+              name: p.name || 'بدون نام',
+              city: p.city || 'نامشخص',
+              meta: type === 'lab' ? 'آزمایشگاه' : 'داروخانه',
+              address: p.address || 'آدرس ثبت نشده',
+              rating: Number(p.rating) || 5.0,
+              reviews: 0,
+              hours: 'نامشخص',
+              phone: 'ثبت نشده',
+              // استفاده از lat و lng دیتابیس بدون هاردکد
+              lat: parseCoordinate(p.lat),
+              lng: parseCoordinate(p.lng),
+              description: '',
+              services: [],
+              recentReviews: [],
+              image: resolvedImg,
+              image_url: resolvedImg,
+              home_acceptance: Boolean(p.home_acceptance),
+              in_person_acceptance: Boolean(p.in_person_acceptance),
+            };
+          };
 
           setLabsList((providersJson.data.labs || []).map((l: any) => mapToProvider(l, 'lab')));
           setPharmaciesList((providersJson.data.pharmacies || []).map((ph: any) => mapToProvider(ph, 'pharmacy')));
@@ -143,6 +161,7 @@ export function MedicalServices() {
 
       if (json.status === 'success') {
         const { provider, reviews, services } = json.data;
+        const resolvedImg = getProviderImageUrl(provider);
 
         const mappedDetails: ProviderDetails = {
           id: provider.provider_id,
@@ -154,10 +173,15 @@ export function MedicalServices() {
           reviews: reviews?.length || 0,
           hours: provider.hours || 'ساعت کاری نامشخص',
           phone: provider.phone || 'ثبت نشده',
-          lat: Number.isFinite(Number(provider.lat)) ? Number(provider.lat) : 35.6892,
-          lng: Number.isFinite(Number(provider.lng)) ? Number(provider.lng) : 51.3890,
+          // استفاده از مختصات ارسال شده از سرور
+          lat: parseCoordinate(provider.lat),
+          lng: parseCoordinate(provider.lng),
           description: provider.description || 'توضیحات تکمیلی برای این مرکز هنوز ثبت نشده است.',
           services: services || [],
+          image: resolvedImg,
+          image_url: resolvedImg, // تنظیم برای هدر دیالوگ
+          home_acceptance: Boolean(provider.home_acceptance),
+          in_person_acceptance: Boolean(provider.in_person_acceptance),
           recentReviews: (reviews || []).map((r: any) => ({
             author: r.author || 'کاربر سایت',
             date: r.date ? new Date(r.date).toLocaleDateString('fa-IR') : 'نامشخص',
@@ -249,7 +273,9 @@ export function MedicalServices() {
                           city={lab.city}
                           rating={lab.rating}
                           meta={lab.meta}
-                          image={lab.image}
+                          image={lab.image_url || lab.image}
+                          homeAcceptance={lab.home_acceptance}
+                          inPersonAcceptance={lab.in_person_acceptance}
                           fallbackGradient="from-sky-500 via-blue-600 to-indigo-700"
                           icon={TestTube}
                           onClick={() => fetchAndOpenDetails(lab.id, 'lab')}
@@ -274,7 +300,7 @@ export function MedicalServices() {
                           city={pharmacy.city}
                           rating={pharmacy.rating}
                           meta={pharmacy.meta}
-                          image={pharmacy.image}
+                          image={pharmacy.image_url || pharmacy.image}
                           fallbackGradient="from-emerald-500 via-teal-600 to-cyan-700"
                           icon={Pill}
                           onClick={() => fetchAndOpenDetails(pharmacy.id, 'pharmacy')}
@@ -345,6 +371,8 @@ function ProviderCard({
                         rating,
                         meta,
                         image,
+                        homeAcceptance,
+                        inPersonAcceptance,
                         fallbackGradient,
                         icon: Icon,
                         onClick
@@ -354,6 +382,8 @@ function ProviderCard({
   rating: number;
   meta: string;
   image?: string | null;
+  homeAcceptance?: boolean;
+  inPersonAcceptance?: boolean;
   fallbackGradient: string;
   icon: LucideIcon;
   onClick: () => void;
@@ -368,9 +398,9 @@ function ProviderCard({
   return (
       <button
           onClick={onClick}
-          className="relative h-[180px] w-[260px] flex-none snap-center overflow-hidden rounded-2xl text-right shadow-md shadow-slate-900/10 transition-all active:scale-[0.98]"
+          className="relative h-[190px] w-[260px] flex-none snap-center overflow-hidden rounded-2xl text-right shadow-md shadow-slate-900/10 transition-all active:scale-[0.98]"
       >
-        {/* پس‌زمینه: عکس مرکز یا گرادیان جایگزین */}
+        {/* پس‌زمینه تصویر یا گرادیان */}
         {hasImage ? (
             <img
                 src={image!}
@@ -384,8 +414,8 @@ function ProviderCard({
             </div>
         )}
 
-        {/* لایه‌ی تیره برای خوانایی متن */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+        {/* سایه تیره برای خوانایی متون */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
 
         {/* نشان‌های بالا */}
         <div className="absolute inset-x-3 top-3 flex items-center justify-between">
@@ -399,12 +429,33 @@ function ProviderCard({
           </span>
         </div>
 
-        {/* نام و شهر */}
-        <div className="absolute inset-x-0 bottom-0 p-3.5">
-          <h3 className="line-clamp-2 text-base font-bold leading-6 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">{name}</h3>
-          <div className="mt-1 flex items-center gap-1 text-xs text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{city}</span>
+        {/* اطلاعات پایین: بج‌های پذیرش، نام و شهر */}
+        <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-1.5">
+          {(homeAcceptance || inPersonAcceptance) && (
+              <div className="flex flex-wrap gap-1">
+                {homeAcceptance && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/80 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
+                      <Home className="h-2.5 w-2.5" />
+                      منزل
+                    </span>
+                )}
+                {inPersonAcceptance && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-sky-500/80 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
+                      <UserCheck className="h-2.5 w-2.5" />
+                      حضوری
+                    </span>
+                )}
+              </div>
+          )}
+
+          <div>
+            <h3 className="line-clamp-1 text-base font-bold leading-6 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
+              {name}
+            </h3>
+            <div className="mt-0.5 flex items-center gap-1 text-xs text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{city}</span>
+            </div>
           </div>
         </div>
       </button>
