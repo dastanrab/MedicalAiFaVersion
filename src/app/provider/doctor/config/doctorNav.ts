@@ -10,6 +10,7 @@ import {
     Settings,
     Crown,
     Sparkles,
+    UserCog,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -31,4 +32,5 @@ export const doctorNavItems: DoctorNavItem[] = [
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات', segment: 'settings', icon: Settings },
+    { label: 'منشی', segment: 'staff-member', icon: UserCog },
 ];

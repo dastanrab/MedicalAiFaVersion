@@ -4,7 +4,6 @@ import { Bell, LogOut } from 'lucide-react';
 import {
     providerNavByRole,
     providerBasePath,
-    providerPath,
     getNurseNavItems,
     type ProviderRole,
     type ProviderNavItem,
@@ -15,34 +14,52 @@ import { useProviderAuthStore, useNurseAccountType } from '../store/providerAuth
 import { useDoctorAuthStore } from '../doctor/store/doctorAuthStore';
 import { DEFAULT_PROVIDER_SUBSCRIPTION, useProviderPlanStore } from '../store/providerPlanStore';
 import { getProviderPlans } from '../data/providerPlans';
+import { getStaffNavItems, staffBasePath, staffRoleConfig } from '../staff/config/staffPermissions';
+import { useStaffStore } from '../staff/store/staffStore';
 
-function useNavItems(role: ProviderRole): ProviderNavItem[] {
+/** owner: صاحب حساب — staff: کارمند (منشی / پذیرش) با دسترسی محدود */
+export type ProviderPanelMode = 'owner' | 'staff';
+
+function useNavItems(role: ProviderRole, mode: ProviderPanelMode): ProviderNavItem[] {
     const nurseAccountType = useNurseAccountType();
+    if (mode === 'staff') return getStaffNavItems(role);
     if (role === 'nurse') return getNurseNavItems(nurseAccountType);
     return providerNavByRole[role];
 }
 
-interface ProviderSidebarProps {
-    role: ProviderRole;
+function panelBasePath(role: ProviderRole, mode: ProviderPanelMode) {
+    return mode === 'staff' ? staffBasePath(role) : providerBasePath(role);
 }
 
-export function ProviderSidebar({ role }: ProviderSidebarProps) {
+interface ProviderSidebarProps {
+    role: ProviderRole;
+    mode?: ProviderPanelMode;
+}
+
+export function ProviderSidebar({ role, mode = 'owner' }: ProviderSidebarProps) {
     const navigate = useNavigate();
     const location = useLocation();
-    const navItems = useNavItems(role);
+    const navItems = useNavItems(role, mode);
     const theme = providerThemes[role];
-    const base = providerBasePath(role);
+    const base = panelBasePath(role, mode);
 
     const session = useProviderAuthStore((s) => s.sessions[role]);
-    console.log('session',session)
+    const staffSession = useStaffStore((s) => s.sessions[role]);
     const doctor = useDoctorAuthStore((s) => s.doctor);
     const subscription =
         useProviderPlanStore((s) => s.subscriptions[role]) ?? DEFAULT_PROVIDER_SUBSCRIPTION;
-    const currentPlanName = getProviderPlans(role).find((p) => p.id === subscription.planId)?.name;
+    const currentPlanName =
+        mode === 'staff' ? undefined : getProviderPlans(role).find((p) => p.id === subscription.planId)?.name;
     const profileName =
-        role === 'doctor'
-            ? (doctor?.name ?? providerDefaultNames[role])
-            : (session?.user.name ?? providerDefaultNames[role]);
+        mode === 'staff'
+            ? (staffSession?.name ?? staffRoleConfig[role].title)
+            : role === 'doctor'
+              ? (doctor?.name ?? providerDefaultNames[role])
+              : (session?.user.name ?? providerDefaultNames[role]);
+    const subtitle =
+        mode === 'staff'
+            ? `${staffRoleConfig[role].title} · ${staffSession?.ownerName ?? providerRoleLabels[role]}`
+            : providerRoleLabels[role];
 
     return (
         <aside className="flex h-full w-72 flex-shrink-0 flex-col bg-slate-900 text-slate-300">
@@ -55,7 +72,7 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
                 <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-white">{profileName}</p>
                     <p className="truncate text-xs text-slate-500">
-                        {providerRoleLabels[role]}
+                        {subtitle}
                         {currentPlanName && (
                             <span className="mr-1.5 text-slate-400">· پلن {currentPlanName}</span>
                         )}
@@ -66,7 +83,7 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
             <nav className="flex-1 overflow-y-auto px-4 py-2">
                 <ul className="space-y-1">
                     {navItems.map((item) => {
-                        const path = providerPath(role, item.segment);
+                        const path = `${base}/${item.segment}`;
                         const active =
                             location.pathname === path ||
                             (item.segment === 'requests' &&
@@ -104,12 +121,17 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
             </nav>
 
             <div className="border-t border-white/5 px-6 py-4">
-                {role === 'doctor' && doctor?.email && (
+                {mode === 'staff' && staffSession?.phone && (
+                    <p className="text-xs text-slate-500" dir="ltr">
+                        {staffSession.phone}
+                    </p>
+                )}
+                {mode === 'owner' && role === 'doctor' && doctor?.email && (
                     <p className="text-xs text-slate-500" dir="ltr">
                         {doctor.email}
                     </p>
                 )}
-                {role !== 'doctor' && session?.user.phone && (
+                {mode === 'owner' && role !== 'doctor' && session?.user.phone && (
                     <p className="text-xs text-slate-500" dir="ltr">
                         {session.user.phone}
                     </p>
@@ -121,17 +143,22 @@ export function ProviderSidebar({ role }: ProviderSidebarProps) {
 
 interface ProviderNavbarProps {
     role: ProviderRole;
+    mode?: ProviderPanelMode;
 }
 
-export function ProviderNavbar({ role }: ProviderNavbarProps) {
+export function ProviderNavbar({ role, mode = 'owner' }: ProviderNavbarProps) {
     const location = useLocation();
-    const navItems = useNavItems(role);
+    const navItems = useNavItems(role, mode);
+    const base = panelBasePath(role, mode);
     const logoutProvider = useProviderAuthStore((s) => s.logout);
     const logoutDoctor = useDoctorAuthStore((s) => s.logout);
+    const logoutStaff = useStaffStore((s) => s.logout);
     const unread = mockNotifications.filter((n) => !n.read).length;
 
     const logout = () => {
-        if (role === 'doctor') {
+        if (mode === 'staff') {
+            logoutStaff(role);
+        } else if (role === 'doctor') {
             logoutDoctor().then();
         } else {
             logoutProvider(role);
@@ -139,7 +166,7 @@ export function ProviderNavbar({ role }: ProviderNavbarProps) {
     };
 
     const current = navItems.find((item) => {
-        const path = providerPath(role, item.segment);
+        const path = `${base}/${item.segment}`;
         return (
             location.pathname === path ||
             (item.segment === 'requests' && location.pathname.includes('/requests')) ||
@@ -195,15 +222,16 @@ export function ProviderNavbar({ role }: ProviderNavbarProps) {
 
 interface ProviderLayoutShellProps {
     role: ProviderRole;
+    mode?: ProviderPanelMode;
     children: ReactNode;
 }
 
-export function ProviderLayoutShell({ role, children }: ProviderLayoutShellProps) {
+export function ProviderLayoutShell({ role, mode = 'owner', children }: ProviderLayoutShellProps) {
     return (
         <div className="flex h-screen w-full overflow-hidden bg-slate-100 font-[YekanBakhFaNum]" dir="rtl">
-            <ProviderSidebar role={role} />
+            <ProviderSidebar role={role} mode={mode} />
             <div className="flex min-w-0 flex-1 flex-col">
-                <ProviderNavbar role={role} />
+                <ProviderNavbar role={role} mode={mode} />
                 <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
             </div>
         </div>

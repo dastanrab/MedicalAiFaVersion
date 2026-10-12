@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { useNavigate, Navigate } from 'react-router';
+import { useNavigate, Navigate, Link } from 'react-router';
 import { Loader2, Phone, Lock, Stethoscope } from 'lucide-react';
 import { providerLoginThemes } from '../../config/providerTheme';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
 import { showProviderError } from '../../utils/toast';
+import { staffBasePath } from '../../staff/config/staffPermissions';
 
 export function DoctorLoginPage() {
     const navigate = useNavigate();
@@ -119,6 +120,12 @@ export function DoctorLoginPage() {
                     </form>
 
                     <p className="mt-8 text-center text-xs text-slate-400">{theme.footerNote}</p>
+                    <p className="mt-2 text-center text-xs text-slate-400">
+                        منشی مطب هستید؟{' '}
+                        <Link to={`${staffBasePath('doctor')}/login`} className={`font-medium ${theme.iconColor} hover:underline`}>
+                            ورود منشی
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>

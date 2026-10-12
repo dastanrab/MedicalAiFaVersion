@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { useNavigate, Navigate } from 'react-router';
+import { useNavigate, Navigate, Link } from 'react-router';
 import { Loader2, Smartphone, ArrowRight, UserRound, Building2 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../components/ui/input-otp';
 import { useSettingsStore } from '../../admin/store/settingsStore';
@@ -15,6 +15,7 @@ import { labAuthService } from '../services/labAuthService';
 import { medicalCenterAuthService } from '../services/medicalCenterAuthService';
 import { pharmacyAuthService } from '../services/pharmacyAuthService';
 import { showProviderError } from '../utils/toast';
+import { staffBasePath, staffRoleConfig } from '../staff/config/staffPermissions';
 
 /** کد OTP نمایشی — تا اتصال API واقعی؛ با طول تنظیم‌شده در پنل ادمین هماهنگ است */
 function mockOtpForLength(length: number): string {
@@ -352,6 +353,12 @@ export function ProviderLogin({ role }: ProviderLoginProps) {
                     )}
 
                     <p className="mt-8 text-center text-xs text-slate-400">{theme.footerNote}</p>
+                    <p className="mt-2 text-center text-xs text-slate-400">
+                        {staffRoleConfig[role].title} هستید؟{' '}
+                        <Link to={`${staffBasePath(role)}/login`} className={`font-medium ${theme.iconColor} hover:underline`}>
+                            ورود کارمند
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>

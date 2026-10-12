@@ -60,6 +60,8 @@ import {SubscriptionGuard} from "../doctor/components/SubscriptionGuard";
 import {DoctorSubscriptionFeePage} from "../doctor/screens/DoctorSubscriptionFeePage";
 import MedicalCenterRulesPage from "../screens/nurse/NurseCoveragePage";
 import LabShiftsPage from "../screens/lab/LabShiftsPage";
+import { StaffRoutes } from "../staff/routes/StaffRoutes";
+import { StaffManagementPage } from "../staff/screens/StaffManagementPage";
 
 function ProtectedRolePanel({ role }: { role: ProviderRole }) {
     if (role === 'doctor') {
@@ -153,6 +155,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="finance" element={<SharedFinance role="lab" />} />
                 <Route path="reviews" element={<ProviderReviewsPage role="lab"/>} />
                 <Route path="settings" element={<SharedSettings role="lab" />} />
+                <Route path="staff-member" element={<StaffManagementPage role="lab" />} />
                 <Route path="support" element={<ProviderSupportPage role="lab" />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
@@ -173,6 +176,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="finance" element={<SharedFinance role="pharmacy" />} />
                 <Route path="reviews" element={<ProviderReviewsPage role="pharmacy"  />} />
                 <Route path="settings" element={<SharedSettings role="pharmacy" />} />
+                <Route path="staff-member" element={<StaffManagementPage role="pharmacy" />} />
                 <Route path="support" element={<ProviderSupportPage role="pharmacy" />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
@@ -197,6 +201,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
                 <Route path="finance" element={<DoctorFinancePage />} />
                 <Route path="reviews" element={<DoctorReviewsPage />} />
                 <Route path="settings" element={<DoctorSettingsPage />} />
+                <Route path="staff-member" element={<StaffManagementPage role="doctor" />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
         );
@@ -217,6 +222,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Route path="finance" element={<SharedFinance role="nurse" />} />
             <Route path="reviews" element={<ProviderReviewsPage role="nurse" />} />
             <Route path="settings" element={<SharedSettings role="nurse" />} />
+            <Route path="staff-member" element={<StaffManagementPage role="nurse" />} />
             <Route path="support" element={<ProviderSupportPage role="nurse" />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Routes>
@@ -245,6 +251,7 @@ export function ProviderRoutes() {
                         </ProviderPublicRoute>
                     }
                 />
+                <Route path="lab/staff/*" element={<StaffRoutes role="lab" />} />
                 <Route path="lab/*" element={<ProtectedRolePanel role="lab" />} />
 
                 <Route
@@ -255,6 +262,7 @@ export function ProviderRoutes() {
                         </ProviderPublicRoute>
                     }
                 />
+                <Route path="pharmacy/staff/*" element={<StaffRoutes role="pharmacy" />} />
                 <Route path="pharmacy/*" element={<ProtectedRolePanel role="pharmacy" />} />
 
                 <Route
@@ -265,6 +273,7 @@ export function ProviderRoutes() {
                         </ProviderPublicRoute>
                     }
                 />
+                <Route path="nurse/staff/*" element={<StaffRoutes role="nurse" />} />
                 <Route path="nurse/*" element={<ProtectedRolePanel role="nurse" />} />
 
                 <Route
@@ -275,6 +284,7 @@ export function ProviderRoutes() {
                         </DoctorPublicRoute>
                     }
                 />
+                <Route path="doctor/staff/*" element={<StaffRoutes role="doctor" />} />
                 <Route path="doctor/*" element={<ProtectedRolePanel role="doctor" />} />
 
                 <Route index element={<Navigate to={providerPath('lab', 'login')} replace />} />

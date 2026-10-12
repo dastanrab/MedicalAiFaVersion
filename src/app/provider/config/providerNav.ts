@@ -19,6 +19,7 @@ import {
     Stethoscope,
     Crown,
     Sparkles,
+    UserCog,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -49,6 +50,7 @@ export const labNavItems: ProviderNavItem[] = [
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات آزمایشگاه', segment: 'settings', icon: Settings },
+    { label: 'کارمند (پذیرش)', segment: 'staff-member', icon: UserCog },
     //{ label: 'پشتیبانی', segment: 'support', icon: Headphones },
 ];
 
@@ -63,6 +65,7 @@ export const pharmacyNavItems: ProviderNavItem[] = [
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات داروخانه', segment: 'settings', icon: Settings },
+    { label: 'کارمند داروخانه', segment: 'staff-member', icon: UserCog },
     { label: 'پشتیبانی', segment: 'support', icon: Headphones },
 ];
 
@@ -78,6 +81,7 @@ export const nurseNavItems: ProviderNavItem[] = [
     { label: 'گزارش مالی', segment: 'finance', icon: Wallet },
     { label: 'نظرات و امتیاز', segment: 'reviews', icon: Star },
     { label: 'تنظیمات پروفایل', segment: 'settings', icon: Settings },
+    { label: 'کارمند (اپراتور)', segment: 'staff-member', icon: UserCog },
     { label: 'پشتیبانی', segment: 'support', icon: Headphones },
 ];
 
