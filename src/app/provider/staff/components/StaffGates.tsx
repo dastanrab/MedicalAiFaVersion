@@ -9,16 +9,27 @@ import {
 } from '../config/staffPermissions';
 import { useStaffStore } from '../store/staffStore';
 
-/** نشست کارمند معتبر است اگر کارمند هنوز وجود داشته باشد، فعال باشد و شماره‌اش تغییر نکرده باشد */
+/**
+ * نشست کارمند معتبر است اگر:
+ * ۱) نشست دارای توکن باشد (لاگین API واقعی یا ماک)
+ * ۲) برای حالت ماک، کارمند در لیست اعضا فعال باشد
+ * ۳) برای حالت API (مثل منشی پزشک)، وجود توکن و شماره تماس برای احراز هویت کلاینت کافی است
+ */
 function useValidStaffSession(role: ProviderRole) {
     const session = useStaffStore((s) => s.sessions[role]);
     const member = useStaffStore((s) => s.members[role]);
+
+    // اگر توکن دارد و عضو لوکال ثبت نشده (ورود واقعی از سرور) یا نقش doctor است
+    const isApiSession = Boolean(session?.token && (!member || role === 'doctor'));
+
     const valid = Boolean(
         session?.token &&
-            member &&
+        (isApiSession
+            ? Boolean(session.phone)
+            : member &&
             member.active &&
             member.id === session.staffId &&
-            member.phone === session.phone
+            member.phone === session.phone)
     );
     return { session, valid };
 }
@@ -28,14 +39,16 @@ export function StaffAuthGate({ role, children }: { role: ProviderRole; children
     const logout = useStaffStore((s) => s.logout);
 
     useEffect(() => {
-        // صاحب حساب کارمند را حذف یا غیرفعال کرده — نشست باطل شود
-        if (session && !valid) logout(role, false);
+        // فقط در حالتی که نشست ماک دستی نامعتبر شده باشد خارج شود (نه نشست‌های توکن‌دار)
+        if (session && !valid) {
+            logout(role, false);
+        }
     }, [session, valid, role, logout]);
 
     if (!valid) {
         return <Navigate to={`${staffBasePath(role)}/login`} replace />;
     }
-    return children;
+    return <>{children}</>;
 }
 
 export function StaffPublicRoute({ role, children }: { role: ProviderRole; children: ReactNode }) {
@@ -43,7 +56,7 @@ export function StaffPublicRoute({ role, children }: { role: ProviderRole; child
     if (valid) {
         return <Navigate to={staffPath(role, 'dashboard')} replace />;
     }
-    return children;
+    return <>{children}</>;
 }
 
 export function StaffPermissionGate({
@@ -55,13 +68,21 @@ export function StaffPermissionGate({
     permission: StaffPermission;
     children: ReactNode;
 }) {
+    // برای نقش پزشک که مستقیم با API لاگین کرده، تمام صفحات مجاز منشی باز هستند
+    if (role === 'doctor') {
+        return <>{children}</>;
+    }
+
     if (!staffHasPermission(role, permission)) {
         return <Navigate to={staffPath(role, 'dashboard')} replace />;
     }
-    return children;
+    return <>{children}</>;
 }
 
 /** برای پنهان کردن دکمه‌ها و اکشن‌هایی که کارمند مجوزشان را ندارد */
 export function useStaffCan(role: ProviderRole) {
-    return (permission: StaffPermission) => staffHasPermission(role, permission);
+    return (permission: StaffPermission) => {
+        if (role === 'doctor') return true;
+        return staffHasPermission(role, permission);
+    };
 }

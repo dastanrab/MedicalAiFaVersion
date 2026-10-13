@@ -8,10 +8,11 @@ import { providerBasePath } from '../../config/providerNav';
 import { providerLoginThemes, providerRoleLabels } from '../../config/providerTheme';
 import { showProviderError } from '../../utils/toast';
 import { isValidIranPhone, normalizePhone } from '../../utils/validation';
-import { staffPath, staffRoleConfig } from '../config/staffPermissions';
+import { staffApiEndpoints, staffPath, staffRoleConfig } from '../config/staffPermissions';
 import { useStaffStore } from '../store/staffStore';
 
-/** کد OTP نمایشی — تا اتصال API واقعی؛ مشابه ورود صاحب حساب */
+const API_BASE = 'https://api.mediraai.com/api';
+
 function mockOtpForLength(length: number): string {
     return Array.from({ length }, (_, i) => String((i % 9) + 1)).join('');
 }
@@ -26,6 +27,7 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
     const resendCooldownSec = useSettingsStore((s) => s.auth.resendCooldownSeconds);
     const findMemberByPhone = useStaffStore((s) => s.findMemberByPhone);
     const login = useStaffStore((s) => s.login);
+    const loginWithToken = useStaffStore((s) => s.loginWithToken);
 
     const [step, setStep] = useState<'phone' | 'otp'>('phone');
     const [phone, setPhone] = useState('');
@@ -34,11 +36,15 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
     const [loading, setLoading] = useState(false);
     const [cooldown, setCooldown] = useState(0);
 
+    const apiEndpoints = staffApiEndpoints[role];
+
     useEffect(() => {
         if (cooldown <= 0) return;
         const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
         return () => clearTimeout(t);
     }, [cooldown]);
+
+    // ─── Send OTP ─────────────────────────────────────────────────────────────
 
     const sendOtp = async (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -47,64 +53,147 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
             showProviderError('شماره موبایل معتبر وارد کنید');
             return;
         }
-        const member = findMemberByPhone(normalized);
-        if (!member || member.role !== role) {
-            showProviderError(`این شماره به‌عنوان ${staffTitle} در پنل ${providerRoleLabels[role]} ثبت نشده است`);
-            return;
-        }
-        if (!member.active) {
-            showProviderError('حساب کارمندی شما توسط صاحب حساب غیرفعال شده است');
-            return;
-        }
 
         setLoading(true);
-        await new Promise((r) => setTimeout(r, 600));
-        setPendingOtp(mockOtpForLength(otpLength));
-        setPhone(normalized);
-        setStep('otp');
-        setOtp('');
-        setCooldown(resendCooldownSec);
-        setLoading(false);
+
+        if (apiEndpoints) {
+            try {
+                const res = await fetch(`${API_BASE}${apiEndpoints.login}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ phone: normalized }),
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    showProviderError(result.message);
+                    return;
+                }
+                setPendingOtp(result.otp ? String(result.otp) : '');
+                setPhone(normalized);
+                setStep('otp');
+                setOtp('');
+                setCooldown(result.next_allowed_in_seconds ?? resendCooldownSec);
+            } catch {
+                showProviderError('خطا در ارتباط با سرور، دوباره تلاش کنید');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // mock
+            const member = findMemberByPhone(normalized);
+            if (!member || member.role !== role) {
+                showProviderError(
+                    `این شماره به‌عنوان ${staffTitle} در پنل ${providerRoleLabels[role]} ثبت نشده است`,
+                );
+                setLoading(false);
+                return;
+            }
+            if (!member.active) {
+                showProviderError('حساب کارمندی شما توسط صاحب حساب غیرفعال شده است');
+                setLoading(false);
+                return;
+            }
+            await new Promise((r) => setTimeout(r, 600));
+            setPendingOtp(mockOtpForLength(otpLength));
+            setPhone(normalized);
+            setStep('otp');
+            setOtp('');
+            setCooldown(resendCooldownSec);
+            setLoading(false);
+        }
     };
+
+    // ─── Verify OTP ───────────────────────────────────────────────────────────
 
     const verifyOtp = async (e?: React.FormEvent) => {
         e?.preventDefault();
         if (otp.length !== otpLength) return;
-
         setLoading(true);
-        await new Promise((r) => setTimeout(r, 500));
-        setLoading(false);
 
-        if (otp !== pendingOtp) {
-            showProviderError('کد تأیید نادرست است');
-            return;
+        if (apiEndpoints) {
+            try {
+                const res = await fetch(`${API_BASE}${apiEndpoints.verify}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ phone, code: otp }),
+                });
+                const result = await res.json();
+                if (!result.success || !result.data?.access_token) {
+                    showProviderError(result.message || 'خطا در احراز هویت');
+                    setOtp('');
+                    return;
+                }
+
+                // ارسال آبجکت کامل user برگشتی از لاراول به استور
+                loginWithToken(role, phone, result.data.access_token, result.data.user);
+
+                navigate(staffPath(role, 'dashboard'), { replace: true });
+            } catch {
+                showProviderError('خطا در ارتباط با سرور، دوباره تلاش کنید');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // حالت Mock برای مواردی که API ست نشده است
+            await new Promise((r) => setTimeout(r, 500));
+            setLoading(false);
+            if (otp !== pendingOtp) {
+                showProviderError('کد تأیید نادرست است');
+                return;
+            }
+            const member = findMemberByPhone(phone);
+            if (!member || member.role !== role || !member.active) {
+                showProviderError('دسترسی شما به این پنل وجود ندارد');
+                setStep('phone');
+                return;
+            }
+            login(role, member);
+            navigate(staffPath(role, 'dashboard'), { replace: true });
         }
-        const member = findMemberByPhone(phone);
-        if (!member || member.role !== role || !member.active) {
-            showProviderError('دسترسی شما به این پنل وجود ندارد');
-            setStep('phone');
-            return;
-        }
-        login(role, member);
-        navigate(staffPath(role, 'dashboard'), { replace: true });
     };
+
+    // ─── Resend OTP ───────────────────────────────────────────────────────────
 
     const resendOtp = async () => {
         if (cooldown > 0) return;
         setLoading(true);
-        await new Promise((r) => setTimeout(r, 400));
-        setPendingOtp(mockOtpForLength(otpLength));
-        setOtp('');
-        setCooldown(resendCooldownSec);
-        setLoading(false);
+
+        if (apiEndpoints) {
+            try {
+                const res = await fetch(`${API_BASE}${apiEndpoints.login}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ phone }),
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    showProviderError(result.message);
+                    return;
+                }
+                setPendingOtp(result.otp ? String(result.otp) : '');
+                setOtp('');
+                setCooldown(result.next_allowed_in_seconds ?? resendCooldownSec);
+            } catch {
+                showProviderError('خطا در ارسال مجدد کد');
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            await new Promise((r) => setTimeout(r, 400));
+            setPendingOtp(mockOtpForLength(otpLength));
+            setOtp('');
+            setCooldown(resendCooldownSec);
+            setLoading(false);
+        }
     };
+
+    // ─── Render ───────────────────────────────────────────────────────────────
 
     return (
         <div className="flex min-h-screen w-full bg-white font-[YekanBakhFaNum]" dir="rtl">
             <div className="relative hidden w-1/2 overflow-hidden lg:block">
                 <img src={theme.loginImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 <div className={`absolute inset-0 ${theme.imageOverlay}`} />
-
                 <div className="relative z-10 flex h-full flex-col justify-between p-14 text-white">
                     <div className="flex items-center gap-3">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm ring-1 ring-white/20">
@@ -112,14 +201,12 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
                         </div>
                         <span className="text-xl font-semibold">مدیرا AI — {providerRoleLabels[role]}</span>
                     </div>
-
                     <div className="space-y-5">
                         <h1 className="text-4xl font-bold leading-snug">ورود {staffTitle}</h1>
                         <p className="block max-w-xl text-base leading-relaxed text-white/85">
                             دسترسی به کارهای روزانه مرکز با سطح دسترسی تعیین‌شده توسط سیستم.
                         </p>
                     </div>
-
                     <p className="text-xs text-white/50">© {new Date().getFullYear()} مدیرا AI</p>
                 </div>
             </div>
@@ -128,7 +215,9 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
                 <div className="w-full max-w-md">
                     <div className="mb-10 text-center lg:text-right">
                         <div className="mb-4 flex justify-center lg:justify-start">
-                            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${theme.iconBg} ring-1 ${theme.iconRing}`}>
+                            <div
+                                className={`flex h-14 w-14 items-center justify-center rounded-2xl ${theme.iconBg} ring-1 ${theme.iconRing}`}
+                            >
                                 <UserCog className={`h-7 w-7 ${theme.iconColor}`} />
                             </div>
                         </div>
@@ -140,12 +229,23 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
                                 ? 'شماره موبایلی را که صاحب حساب برای شما ثبت کرده وارد کنید'
                                 : `کد ${otpLength.toLocaleString('fa-IR')} رقمی ارسال‌شده به ${phone} را وارد کنید`}
                         </p>
+                        {step === 'otp' && pendingOtp && (
+                            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-700 ring-1 ring-amber-200">
+                                کد تست: <span className="font-mono font-bold tracking-widest">{pendingOtp}</span>
+                            </p>
+                        )}
                     </div>
 
                     {step === 'otp' ? (
                         <form onSubmit={verifyOtp} className="space-y-5">
                             <div className="flex justify-center" dir="ltr">
-                                <InputOTP maxLength={otpLength} value={otp} onChange={setOtp} disabled={loading}>
+                                <InputOTP
+                                    maxLength={otpLength}
+                                    value={otp}
+                                    onChange={setOtp}
+                                    disabled={loading}
+                                    autoFocus
+                                >
                                     <InputOTPGroup>
                                         {Array.from({ length: otpLength }, (_, i) => (
                                             <InputOTPSlot
@@ -169,10 +269,7 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
                             <div className="flex items-center justify-between text-xs">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setStep('phone');
-                                        setOtp('');
-                                    }}
+                                    onClick={() => { setStep('phone'); setOtp(''); }}
                                     className="flex items-center gap-1 text-slate-500 hover:text-slate-800"
                                 >
                                     <ArrowRight className="h-3.5 w-3.5" />
@@ -203,6 +300,7 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
                                         placeholder="09123456789"
                                         dir="ltr"
                                         disabled={loading}
+                                        autoFocus
                                         className={`h-12 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-4 text-slate-900 placeholder:text-slate-400 outline-none transition focus:ring-2 ${theme.focusBorder} ${theme.focusRing}`}
                                     />
                                 </div>
@@ -220,7 +318,10 @@ export function StaffLoginPage({ role }: { role: ProviderRole }) {
 
                     <p className="mt-8 text-center text-xs text-slate-400">
                         صاحب حساب هستید؟{' '}
-                        <Link to={`${providerBasePath(role)}/login`} className={`font-medium ${theme.iconColor} hover:underline`}>
+                        <Link
+                            to={`${providerBasePath(role)}/login`}
+                            className={`font-medium ${theme.iconColor} hover:underline`}
+                        >
                             ورود صاحب حساب
                         </Link>
                     </p>

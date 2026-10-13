@@ -3,17 +3,12 @@ import { persist } from 'zustand/middleware';
 import type { ProviderRole } from '../../config/providerNav';
 import { staffBasePath } from '../config/staffPermissions';
 
-/**
- * کارمند صاحب حساب — فعلاً mock و ذخیره در localStorage تا اتصال API.
- * هر صاحب حساب فقط یک کارمند دارد و هر شماره فقط می‌تواند کارمند یک مرکز باشد.
- */
 export interface StaffMember {
     id: string;
     role: ProviderRole;
     name: string;
     phone: string;
     active: boolean;
-    /** نام مطب / مرکز صاحب حساب برای نمایش در پنل کارمند */
     ownerName: string;
     ownerPhone: string;
     createdAt: string;
@@ -39,6 +34,15 @@ export interface StaffActivity {
 
 export type StaffInput = Pick<StaffMember, 'name' | 'phone'>;
 
+export interface StaffUserData {
+    id?: string | number;
+    name?: string;
+    owner_name?: string;
+    ownerName?: string;
+    job_title?: string;
+    type?: string;
+}
+
 const MAX_LOGS = 200;
 
 function makeId(prefix: string) {
@@ -50,7 +54,6 @@ interface StaffState {
     sessions: Partial<Record<ProviderRole, StaffSession>>;
     logs: StaffActivity[];
 
-    /** خطا را به صورت پیام برمی‌گرداند؛ در صورت موفقیت null */
     saveMember: (
         role: ProviderRole,
         input: StaffInput,
@@ -61,6 +64,13 @@ interface StaffState {
 
     findMemberByPhone: (phone: string) => StaffMember | null;
     login: (role: ProviderRole, member: StaffMember) => void;
+    /** ورود از طریق API واقعی — توکن و اطلاعات کاربر از سرور دریافت شده */
+    loginWithToken: (
+        role: ProviderRole,
+        phone: string,
+        token: string,
+        user?: StaffUserData
+    ) => void;
     logout: (role: ProviderRole, redirect?: boolean) => void;
 
     logActivity: (role: ProviderRole, action: string, target?: string) => void;
@@ -89,19 +99,18 @@ export const useStaffStore = create<StaffState>()(
                 const member: StaffMember = current
                     ? { ...current, name: input.name, phone, ownerName: owner.name, ownerPhone: owner.phone }
                     : {
-                          id: makeId('staff'),
-                          role,
-                          name: input.name,
-                          phone,
-                          active: true,
-                          ownerName: owner.name,
-                          ownerPhone: owner.phone,
-                          createdAt: new Date().toISOString(),
-                      };
+                        id: makeId('staff'),
+                        role,
+                        name: input.name,
+                        phone,
+                        active: true,
+                        ownerName: owner.name,
+                        ownerPhone: owner.phone,
+                        createdAt: new Date().toISOString(),
+                    };
 
                 set((state) => {
                     const sessions = { ...state.sessions };
-                    // تغییر شماره کارمند، نشست فعلی او را باطل می‌کند
                     if (current && current.phone !== phone) delete sessions[role];
                     return { members: { ...state.members, [role]: member }, sessions };
                 });
@@ -143,6 +152,50 @@ export const useStaffStore = create<StaffState>()(
                     },
                 })),
 
+            loginWithToken: (role, phone, token, user) =>
+                set((state) => {
+                    const defaultTitles: Record<ProviderRole, string> = {
+                        doctor: 'منشی مطب',
+                        lab: 'پذیرش آزمایشگاه',
+                        pharmacy: 'کارمند داروخانه',
+                        nurse: 'اپراتور مرکز پرستاری',
+                    };
+
+                    const staffId = user?.id ? String(user.id) : makeId(`staff-${role}`);
+                    const staffName = user?.name || defaultTitles[role] || 'کارمند مرکز';
+                    const ownerName = user?.owner_name || user?.ownerName || '';
+
+                    // همگام‌سازی شیء عضو برای برآورده کردن پیش‌شرط گیت‌های محافظت مسیر
+                    const currentMember = state.members[role];
+                    const syncedMember: StaffMember = currentMember || {
+                        id: staffId,
+                        role,
+                        name: staffName,
+                        phone,
+                        active: true,
+                        ownerName,
+                        ownerPhone: '',
+                        createdAt: new Date().toISOString(),
+                    };
+
+                    return {
+                        members: {
+                            ...state.members,
+                            [role]: syncedMember,
+                        },
+                        sessions: {
+                            ...state.sessions,
+                            [role]: {
+                                token,
+                                staffId,
+                                name: staffName,
+                                phone,
+                                ownerName,
+                            },
+                        },
+                    };
+                }),
+
             logout: (role, redirect = true) => {
                 set((state) => {
                     const sessions = { ...state.sessions };
@@ -182,7 +235,6 @@ export function useStaffSession(role: ProviderRole) {
     return useStaffStore((s) => s.sessions[role] ?? null);
 }
 
-/** ثبت فعالیت کارمند جاری در لاگ — صاحب حساب آن را در صفحه کارمند می‌بیند */
 export function useStaffActivityLogger(role: ProviderRole) {
     const logActivity = useStaffStore((s) => s.logActivity);
     return (action: string, target?: string) => logActivity(role, action, target);

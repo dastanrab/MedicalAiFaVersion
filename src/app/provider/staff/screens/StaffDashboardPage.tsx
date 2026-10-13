@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import {
     AlertTriangle,
@@ -7,6 +8,7 @@ import {
     ClipboardList,
     FileUp,
     FlaskConical,
+    Loader2,
     Package,
     Pill,
     UserCheck,
@@ -29,6 +31,7 @@ import { todayKey } from '../data/mockStaffData';
 import { useStaffDataStore } from '../store/staffDataStore';
 import { useStaffSession, useStaffStore } from '../store/staffStore';
 
+const API_BASE = 'https://api.mediraai.com/api';
 const n = (v: number) => formatFaNumber(v);
 
 interface QueueItem {
@@ -39,36 +42,125 @@ interface QueueItem {
     status: { label: string; className: string };
 }
 
+interface DoctorDashboardApiResponse {
+    staff: {
+        id: number;
+        name: string;
+        phone: string;
+        doctor_name: string;
+    };
+    today_date: string;
+    kpis: {
+        today_total: number;
+        checked_in: number;
+        remaining: number;
+        done: number;
+    };
+    queue: Array<{
+        id: number;
+        time: string;
+        patient_name: string;
+        patient_phone: string;
+        type: string;
+        status: keyof typeof staffAppointmentStatusLabels;
+    }>;
+}
+
 export function StaffDashboardPage({ role }: { role: ProviderRole }) {
     const session = useStaffSession(role);
+    const logout = useStaffStore((s) => s.logout);
     const today = todayKey();
     const data = useStaffDataStore();
+
+    const [loading, setLoading] = useState(role === 'doctor');
+    const [apiData, setApiData] = useState<DoctorDashboardApiResponse | null>(null);
+
+    useEffect(() => {
+        if (role !== 'doctor') return;
+
+        let isMounted = true;
+        const fetchDashboardData = async () => {
+            if (!session?.token) {
+                logout(role);
+                return;
+            }
+
+            try {
+                setLoading(true);
+                const res = await fetch(`${API_BASE}/staff/doctor/dashboard`, {
+                    headers: {
+                        Accept: 'application/json',
+                        Authorization: `Bearer ${session.token}`,
+                    },
+                });
+
+                if (res.status === 401) {
+                    logout(role);
+                    return;
+                }
+
+                const result = await res.json();
+                if (result.success && isMounted) {
+                    setApiData(result.data);
+                }
+            } catch (error) {
+                console.error('Error fetching doctor staff dashboard:', error);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [role, session?.token, logout]);
+
+    if (loading && role === 'doctor') {
+        return (
+            <div className="flex h-80 w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            </div>
+        );
+    }
 
     let kpis: React.ComponentProps<typeof KpiCard>[] = [];
     let queue: QueueItem[] = [];
     let queueTitle = '';
     let queueLink = '';
+    let headerTitle = `سلام ${session?.name ?? ''}`;
+    let headerDescription = `${staffRoleConfig[role].title} — ${session?.ownerName ?? ''} · امروز ${today}`;
 
+    // ──────────────────────────── DOCTOR (API - appointment_slots) ────────────────────────────
     if (role === 'doctor') {
-        const todays = data.appointments.filter((a) => a.date === today);
+        const d = apiData;
+        headerTitle = `سلام ${d?.staff.name || session?.name || 'منشی مطب'}`;
+        headerDescription = `${staffRoleConfig[role].title} — دکتر ${d?.staff.doctor_name || session?.ownerName || ''} · امروز ${d?.today_date || today}`;
+
         kpis = [
-            { label: 'نوبت‌های امروز', value: n(todays.length), icon: CalendarCheck, tone: 'blue' },
-            { label: 'حاضر در مطب', value: n(todays.filter((a) => a.status === 'checked_in').length), icon: UserCheck, tone: 'amber' },
-            { label: 'باقی‌مانده', value: n(todays.filter((a) => a.status === 'booked').length), icon: CalendarClock, tone: 'indigo' },
-            { label: 'لغو شده', value: n(todays.filter((a) => a.status === 'canceled').length), icon: XCircle, tone: 'rose' },
+            { label: 'نوبت‌های امروز', value: n(d?.kpis.today_total ?? 0), icon: CalendarCheck, tone: 'blue' },
+            { label: 'حاضر در مطب', value: n(d?.kpis.checked_in ?? 0), icon: UserCheck, tone: 'amber' },
+            { label: 'در انتظار نوبت', value: n(d?.kpis.remaining ?? 0), icon: CalendarClock, tone: 'indigo' },
+            { label: 'ویزیت شده', value: n(d?.kpis.done ?? 0), icon: CheckCircle2, tone: 'emerald' },
         ];
+
         queueTitle = 'صف نوبت‌های امروز';
         queueLink = staffPath(role, 'appointments');
-        queue = todays
-            .sort((a, b) => a.time.localeCompare(b.time))
-            .map((a) => ({
-                id: a.id,
-                time: a.time,
-                title: a.patientName,
-                sub: a.type === 'online' ? 'ویزیت آنلاین' : 'ویزیت حضوری',
-                status: { label: staffAppointmentStatusLabels[a.status], className: staffAppointmentStatusStyles[a.status] },
-            }));
-    } else if (role === 'lab') {
+
+        queue = (d?.queue ?? []).map((a) => ({
+            id: a.id,
+            time: a.time,
+            title: a.patient_name,
+            sub: a.patient_phone ? `تماس: ${a.patient_phone}` : 'ویزیت حضوری',
+            status: {
+                label: staffAppointmentStatusLabels[a.status] ?? a.status,
+                className: staffAppointmentStatusStyles[a.status] ?? 'bg-slate-100 text-slate-700',
+            },
+        }));
+    }
+    // ──────────────────────────── LAB (Mock) ────────────────────────────
+    else if (role === 'lab') {
         const r = data.labRequests;
         const todays = r.filter((x) => x.date === today && x.status !== 'canceled');
         kpis = [
@@ -88,7 +180,9 @@ export function StaffDashboardPage({ role }: { role: ProviderRole }) {
                 sub: `${x.code} · ${x.type === 'home' ? 'در منزل' : 'حضوری'}`,
                 status: { label: staffLabStatusLabels[x.status], className: staffLabStatusStyles[x.status] },
             }));
-    } else if (role === 'pharmacy') {
+    }
+    // ──────────────────────────── PHARMACY (Mock) ────────────────────────────
+    else if (role === 'pharmacy') {
         const r = data.pharmacyRequests;
         const active = r.filter((x) => ['new', 'reviewing', 'preparing', 'ready'].includes(x.status));
         kpis = [
@@ -106,7 +200,9 @@ export function StaffDashboardPage({ role }: { role: ProviderRole }) {
             sub: x.code,
             status: { label: pharmacyStatusLabels[x.status], className: pharmacyStatusStyles[x.status] },
         }));
-    } else {
+    }
+    // ──────────────────────────── NURSE (Mock) ────────────────────────────
+    else {
         const r = data.nurseRequests;
         const todays = r.filter((x) => x.date === today && x.status !== 'canceled');
         kpis = [
@@ -130,10 +226,7 @@ export function StaffDashboardPage({ role }: { role: ProviderRole }) {
 
     return (
         <div className="space-y-6">
-            <PageHeader
-                title={`سلام ${session?.name ?? ''}`}
-                description={`${staffRoleConfig[role].title} — ${session?.ownerName ?? ''} · امروز ${today}`}
-            />
+            <PageHeader title={headerTitle} description={headerDescription} />
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {kpis.map((k) => (
@@ -151,14 +244,14 @@ export function StaffDashboardPage({ role }: { role: ProviderRole }) {
                     </header>
                     {queue.length === 0 ? (
                         <div className="p-5">
-                            <EmptyState message="موردی برای امروز وجود ندارد." />
+                            <EmptyState message="نوبتی برای امروز ثبت نشده است." />
                         </div>
                     ) : (
                         <ul className="divide-y divide-slate-100">
                             {queue.map((q) => (
                                 <li key={q.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                                     <div className="flex items-center gap-3">
-                                        <span className="w-12 rounded-lg bg-slate-100 py-1 text-center text-xs font-medium text-slate-600" dir="ltr">
+                                        <span className="w-14 rounded-lg bg-slate-100 py-1 text-center text-xs font-medium text-slate-600" dir="ltr">
                                             {q.time || '—'}
                                         </span>
                                         <div>
@@ -182,7 +275,7 @@ export function StaffDashboardPage({ role }: { role: ProviderRole }) {
 function MyRecentActivity({ role }: { role: ProviderRole }) {
     const logs = useStaffStore((s) => s.logs);
     const staffId = useStaffSession(role)?.staffId;
-    const recent = logs.filter((l) => l.role === role && l.staffId === staffId).slice(0, 6);
+    const recent = logs.filter((l) => l.role === role && (!staffId || l.staffId === staffId)).slice(0, 6);
 
     return (
         <section className="rounded-2xl border border-slate-200 bg-white">

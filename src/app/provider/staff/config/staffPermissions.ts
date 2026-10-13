@@ -162,7 +162,33 @@ export const staffRoleConfig: Record<ProviderRole, StaffRoleConfig> = {
         ],
     },
 };
+export interface StaffApiEndpoints {
+    login: string;   // POST — ارسال OTP
+    verify: string;  // POST — تأیید OTP و دریافت توکن
+}
 
+/**
+ * اگر برای یک نقش تعریف شده باشد، StaffLoginPage درخواست‌ها را به API واقعی ارسال می‌کند.
+ * اگر تعریف نشده باشد (undefined)، از سیستم Mock داخلی استفاده می‌شود.
+ */
+export const staffApiEndpoints: Partial<Record<ProviderRole, StaffApiEndpoints>> = {
+    doctor: {
+        login:  '/staff/doctor/login',
+        verify: '/staff/doctor/verify',
+    },
+    lab: {
+        login:  '/staff/lab/auth/login',
+        verify: '/staff/lab/auth/verify',
+    },
+    pharmacy: {
+        login:  '/staff/pharmacy/auth/login',
+        verify: '/staff/pharmacy/auth/verify',
+    },
+    nurse: {
+        login:  '/staff/medical_center/auth/login',
+        verify: '/staff/medical_center/auth/verify',
+    },
+};
 export interface StaffNavItem {
     label: string;
     segment: string;
