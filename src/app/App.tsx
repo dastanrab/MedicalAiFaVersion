@@ -136,6 +136,7 @@ const START_WITH_FITNESS = false;
 // ==========================================
 import { NativeDeepLinks } from "./native/NativeDeepLinks";
 import { ServiceFlowDraftsGuard } from "./navigation/ServiceFlowDraftsGuard";
+import {PharmacyDrugDetails} from "./screens/PharmacyDrugDetails";
 
 // کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
 function PartnerInviteHandler() {
@@ -675,6 +676,11 @@ function App() {
                         </VerifiedRoute>
                     }
                 />
+                <Route path="/pharmacy/:pharmacyId/drug/:drugName" element={ <VerifiedRoute>
+                    <AppContainer >
+                        <PharmacyDrugDetails />
+                    </AppContainer>
+                </VerifiedRoute>} />
 
                 {/* ========================================================= */}
                 {/* روت‌های درخواستی - خارج شده از VerifiedRoute و آزاد برای تست */}
