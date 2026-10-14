@@ -4,16 +4,16 @@ import type {
     StaffNurseStatus,
 } from '../data/mockStaffData';
 
-export const staffAppointmentStatusLabels: Record<StaffAppointmentStatus, string> = {
+export const staffAppointmentStatusLabels: { booked: string; available: string; done: string; canceled: string } = {
     booked: 'رزرو شده',
-    checked_in: 'حاضر در مطب',
+    available: 'آزاد',
     done: 'ویزیت شده',
     canceled: 'لغو شده',
 };
 
-export const staffAppointmentStatusStyles: Record<StaffAppointmentStatus, string> = {
+export const staffAppointmentStatusStyles: { booked: string; available: string; done: string; canceled: string } = {
     booked: 'bg-blue-50 text-blue-700 ring-blue-600/20',
-    checked_in: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    available: 'bg-amber-50 text-amber-700 ring-amber-600/20',
     done: 'bg-slate-100 text-slate-600 ring-slate-500/20',
     canceled: 'bg-red-50 text-red-700 ring-red-600/20',
 };

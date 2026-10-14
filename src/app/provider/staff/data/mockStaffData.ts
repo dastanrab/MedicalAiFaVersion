@@ -19,7 +19,7 @@ export function todayKey(): string {
 
 // ─── پزشک ─────────────────────────────────────────────────────────────
 
-export type StaffAppointmentStatus = 'booked' | 'checked_in' | 'done' | 'canceled';
+export type StaffAppointmentStatus = 'booked' | 'checked_in' | 'done' | 'canceled' | 'available' ;
 
 export interface StaffAppointment {
     id: number;
