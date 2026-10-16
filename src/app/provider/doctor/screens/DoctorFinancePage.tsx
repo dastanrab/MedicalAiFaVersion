@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Wallet, TrendingUp, Plus, X } from 'lucide-react';
+import {Wallet, TrendingUp, Plus, X, Loader2} from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
     ChartContainer,

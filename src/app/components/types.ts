@@ -1,4 +1,5 @@
 export interface DoctorData {
+    system_price:number;
     id: number;
     name: string;
     email: string;

@@ -37,7 +37,7 @@ export function PaymentSummaryView({
     // تعیین مبلغ قابل پرداخت (برای چت کل مبلغ، برای نوبت 15000 تومان)
     // فرض بر این است که قیمت چت در visit_price است (یا chat_price اگر به API اضافه کرده‌اید)
     const chatPrice = (doctorData as any).chat_price ?? doctorData.visit_price ?? 50000;
-    const finalAmount = isChat ? chatPrice : 15000;
+    const finalAmount = isChat ? chatPrice : doctorData.system_price ?? 20000;
     const formattedAmount = formatToman(finalAmount);
 
     // تنظیم آیتم‌های خلاصه وضعیت بر اساس نوع سفارش

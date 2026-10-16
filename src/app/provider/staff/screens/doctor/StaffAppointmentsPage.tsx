@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Loader2, Plus, UserCheck, XCircle } from 'lucide-react';
+import { CalendarClock, Loader2, Plus, UserCheck, Wallet, X, XCircle } from 'lucide-react';
 import {
     EmptyState,
     FilterSelect,
@@ -8,6 +8,7 @@ import {
     ProviderModal,
     SearchInput,
     StatusBadge,
+    formatPrice,
     inputClass,
 } from '../../../components';
 import { showProviderError, showProviderSuccess } from '../../../utils/toast';
@@ -21,6 +22,7 @@ import {
 } from '../../config/staffStatusOptions';
 import { jalaliFromToday, todayKey, type StaffAppointment } from '../../data/mockStaffData';
 import { useStaffActivityLogger, useStaffSession, useStaffStore } from '../../store/staffStore';
+import {formatPriceInput, parsePriceInput} from "../../../../utils/formatNumber";
 
 const API_BASE = 'https://api.mediraai.com/api';
 
@@ -36,6 +38,7 @@ const statusFilterOptions = [
 ];
 
 const dayOptions = Array.from({ length: 14 }, (_, i) => jalaliFromToday(i));
+const PRESET_AMOUNTS = [50000, 100000, 200000, 500000];
 
 interface AvailableSlot {
     slot_id: number;
@@ -63,7 +66,9 @@ export function StaffAppointmentsPage() {
     const [search, setSearch] = useState('');
     const [modal, setModal] = useState<ModalState>(null);
 
-    const today = todayKey();
+    // وضعیت‌های شارژ کیف پول پزشک توسط منشی
+    const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
+    const [chargeErrorMessage, setChargeErrorMessage] = useState<string | null>(null);
 
     const fetchAppointments = useCallback(async () => {
         if (!session?.token) {
@@ -117,7 +122,66 @@ export function StaffAppointmentsPage() {
         });
     }, [appointments, search]);
 
-    // ثبت حضور
+    // ثبت نوبت توسط منشی به همراه هندل خطای 402 موجودی ناکافی
+    const handleBookAppointment = async (
+        payload: { slot_id: number; patientName: string; patientPhone: string; date: string; time: string },
+        onErrorCallback?: (msg: string, isBalanceError: boolean) => void
+    ) => {
+        if (!session?.token) return;
+
+        try {
+            setActionLoading(true);
+            const res = await fetch(`${API_BASE}/staff/doctor/appointments/book`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${session.token}`,
+                },
+                body: JSON.stringify({
+                    slot_id: payload.slot_id,
+                    patientName: payload.patientName,
+                    patientPhone: payload.patientPhone,
+                }),
+            });
+
+            if (res.status === 401) {
+                logout('doctor');
+                return;
+            }
+
+            const result = await res.json();
+
+            // بررسی خطای کمبود موجودی
+            if (res.status === 402 || result.code === 'INSUFFICIENT_WALLET_BALANCE') {
+                const message = result.message || 'موجودی کیف پول پزشک برای کسر هزینه رزرو نوبت کافی نیست.';
+                if (onErrorCallback) {
+                    onErrorCallback(message, true);
+                } else {
+                    setChargeErrorMessage(message);
+                    setIsChargeModalOpen(true);
+                }
+                return;
+            }
+
+            if (result.success) {
+                log('ثبت نوبت حضوری', `${payload.patientName} — ${payload.date} ${payload.time}`);
+                showProviderSuccess('نوبت با موفقیت ثبت شد');
+                setModal(null);
+                fetchAppointments();
+            } else {
+                const msg = result.message || 'خطا در ثبت نوبت';
+                if (onErrorCallback) onErrorCallback(msg, false);
+                showProviderError(msg);
+            }
+        } catch (error) {
+            console.error('Error booking appointment:', error);
+            showProviderError('خطایی در برقراری ارتباط با سرور رخ داد.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const handleCheckIn = async (a: StaffAppointment) => {
         if (!session?.token) return;
 
@@ -146,54 +210,10 @@ export function StaffAppointmentsPage() {
                 showProviderError(result.message || 'خطا در ثبت حضور');
             }
         } catch (error) {
-            console.error('Error checking in:', error);
-            showProviderError('خطایی در ارتباط با سرور رخ داد.');
-        }
-    };
-
-    // ثبت نوبت با slot_id
-    const handleBookAppointment = async (payload: { slot_id: number; patientName: string; patientPhone: string; date: string; time: string }) => {
-        if (!session?.token) return;
-
-        try {
-            setActionLoading(true);
-            const res = await fetch(`${API_BASE}/staff/doctor/appointments/book`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    Authorization: `Bearer ${session.token}`,
-                },
-                body: JSON.stringify({
-                    slot_id: payload.slot_id,
-                    patientName: payload.patientName,
-                    patientPhone: payload.patientPhone,
-                }),
-            });
-
-            if (res.status === 401) {
-                logout('doctor');
-                return;
-            }
-
-            const result = await res.json();
-            if (result.success) {
-                log('ثبت نوبت حضوری', `${payload.patientName} — ${payload.date} ${payload.time}`);
-                showProviderSuccess('نوبت با موفقیت ثبت شد');
-                setModal(null);
-                fetchAppointments();
-            } else {
-                showProviderError(result.message || 'خطا در ثبت نوبت');
-            }
-        } catch (error) {
-            console.error('Error booking appointment:', error);
             showProviderError('خطایی رخ داد.');
-        } finally {
-            setActionLoading(false);
         }
     };
 
-    // جابه‌جایی نوبت به اسلات جدید
     const handleReschedule = async (appointmentId: number, newSlotId: number, date: string, time: string) => {
         if (!session?.token) return;
 
@@ -224,14 +244,12 @@ export function StaffAppointmentsPage() {
                 showProviderError(result.message || 'خطا در تغییر زمان نوبت');
             }
         } catch (error) {
-            console.error('Error rescheduling:', error);
             showProviderError('خطایی رخ داد.');
         } finally {
             setActionLoading(false);
         }
     };
 
-    // لغو نوبت
     const handleCancel = async (a: StaffAppointment) => {
         if (!session?.token) return;
 
@@ -262,7 +280,6 @@ export function StaffAppointmentsPage() {
                 showProviderError(result.message || 'خطا در لغو نوبت');
             }
         } catch (error) {
-            console.error('Error canceling appointment:', error);
             showProviderError('خطایی رخ داد.');
         } finally {
             setActionLoading(false);
@@ -275,16 +292,29 @@ export function StaffAppointmentsPage() {
                 title="نوبت‌ها"
                 description="ثبت، جابه‌جایی و لغو نوبت‌ها و ثبت حضور بیماران"
                 actions={
-                    can('appointments.create') && (
+                    <div className="flex items-center gap-2">
                         <button
                             type="button"
-                            onClick={() => setModal({ kind: 'create' })}
-                            className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+                            onClick={() => {
+                                setChargeErrorMessage(null);
+                                setIsChargeModalOpen(true);
+                            }}
+                            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition shadow-sm"
                         >
-                            <Plus className="h-4 w-4" />
-                            ثبت نوبت حضوری
+                            <Wallet className="h-4 w-4 text-blue-600" />
+                            شارژ کیف پول پزشک
                         </button>
-                    )
+                        {can('appointments.create') && (
+                            <button
+                                type="button"
+                                onClick={() => setModal({ kind: 'create' })}
+                                className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500 shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" />
+                                ثبت نوبت حضوری
+                            </button>
+                        )}
+                    </div>
                 }
             />
 
@@ -376,14 +406,17 @@ export function StaffAppointmentsPage() {
                 </div>
             )}
 
-            {/* مودال ثبت نوبت با انتخاب ساعت آزاد */}
+            {/* مودال ثبت نوبت */}
             {modal?.kind === 'create' && (
                 <AppointmentFormModal
                     token={session?.token}
                     title="ثبت نوبت حضوری"
                     submitting={actionLoading}
                     onClose={() => setModal(null)}
-                    onSubmit={(v) => handleBookAppointment(v)}
+                    onOpenCharge={() => {
+                        setIsChargeModalOpen(true);
+                    }}
+                    onSubmit={(v, onError) => handleBookAppointment(v, onError)}
                 />
             )}
 
@@ -408,6 +441,18 @@ export function StaffAppointmentsPage() {
                     confirmLabel={actionLoading ? 'در حال لغو...' : 'لغو نوبت'}
                     onClose={() => setModal(null)}
                     onConfirm={() => handleCancel(modal.appointment)}
+                />
+            )}
+
+            {/* مودال شارژ کیف پول پزشک توسط منشی */}
+            {isChargeModalOpen && (
+                <StaffChargeWalletModal
+                    token={session?.token}
+                    initialError={chargeErrorMessage}
+                    onClose={() => {
+                        setIsChargeModalOpen(false);
+                        setChargeErrorMessage(null);
+                    }}
                 />
             )}
         </div>
@@ -449,7 +494,11 @@ interface AppointmentFormModalProps {
     initial?: StaffAppointment;
     submitting: boolean;
     onClose: () => void;
-    onSubmit: (values: { slot_id: number; patientName: string; patientPhone: string; date: string; time: string }) => void;
+    onOpenCharge?: () => void;
+    onSubmit: (
+        values: { slot_id: number; patientName: string; patientPhone: string; date: string; time: string },
+        onError?: (msg: string, isBalanceError: boolean) => void
+    ) => void;
 }
 
 function AppointmentFormModal({
@@ -458,6 +507,7 @@ function AppointmentFormModal({
                                   initial,
                                   submitting,
                                   onClose,
+                                  onOpenCharge,
                                   onSubmit,
                               }: AppointmentFormModalProps) {
     const isReschedule = Boolean(initial);
@@ -469,8 +519,8 @@ function AppointmentFormModal({
     const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [balanceError, setBalanceError] = useState<string | null>(null);
 
-    // واکشی اسلات‌های آزاد به ازای تاریخ انتخابی
     useEffect(() => {
         if (!token || !date) return;
 
@@ -518,13 +568,22 @@ function AppointmentFormModal({
         const chosenSlot = availableSlots.find((s) => s.slot_id === selectedSlotId);
         if (!chosenSlot) return;
 
-        onSubmit({
-            slot_id: chosenSlot.slot_id,
-            patientName: patientName.trim(),
-            patientPhone: normalizePhone(patientPhone),
-            date,
-            time: chosenSlot.time,
-        });
+        setBalanceError(null);
+
+        onSubmit(
+            {
+                slot_id: chosenSlot.slot_id,
+                patientName: patientName.trim(),
+                patientPhone: normalizePhone(patientPhone),
+                date,
+                time: chosenSlot.time,
+            },
+            (errorMessage, isBalance) => {
+                if (isBalance) {
+                    setBalanceError(errorMessage);
+                }
+            }
+        );
     };
 
     return (
@@ -555,6 +614,29 @@ function AppointmentFormModal({
             }
         >
             <div className="space-y-4">
+                {/* نمایش خطای موجودی به همراه دکمه شارژ مستقیم */}
+                {balanceError && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 shrink-0 text-amber-600" />
+                            <span>{balanceError}</span>
+                        </div>
+                        {onOpenCharge && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onClose();
+                                    onOpenCharge();
+                                }}
+                                className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-amber-600 px-3 py-1.5 font-medium text-white hover:bg-amber-700 transition"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                شارژ کیف پول پزشک
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {isReschedule ? (
                     <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                         {initial!.patientName} — نوبت فعلی: {initial!.date} ساعت {initial!.time}
@@ -598,7 +680,6 @@ function AppointmentFormModal({
                     </ProviderFormField>
                 </div>
 
-                {/* فهرست ساعت‌های فراهم */}
                 <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-700">
                         ساعت‌های آزاد و فراهم برای رزرو:
@@ -638,5 +719,154 @@ function AppointmentFormModal({
                 </div>
             </div>
         </ProviderModal>
+    );
+}
+
+/**
+ * مودال افزایش موجودی کیف پول پزشک توسط منشی
+ */
+function StaffChargeWalletModal({
+                                    token,
+                                    initialError,
+                                    onClose,
+                                }: {
+    token?: string;
+    initialError?: string | null;
+    onClose: () => void;
+}) {
+    const [chargeAmount, setChargeAmount] = useState<string>('50000');
+    const [isCharging, setIsCharging] = useState(false);
+    const [chargeError, setChargeError] = useState<string | null>(initialError ?? null);
+
+    const handleChargeSubmit = async () => {
+        const amountNum = Number(chargeAmount);
+
+        if (!chargeAmount || isNaN(amountNum) || amountNum < 10000) {
+            setChargeError('لطفاً مبلغی بزرگتر یا مساوی ۱۰,۰۰۰ تومان وارد کنید.');
+            return;
+        }
+
+        setIsCharging(true);
+        setChargeError(null);
+
+        try {
+            const response = await fetch(`${API_BASE}/staff/doctor/wallet/charge`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ amount: amountNum, gateway: 'saman' }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success && result.data?.payment_url) {
+                window.location.href = result.data.payment_url;
+            } else {
+                setChargeError(result.message || 'خطا در ایجاد لینک پرداخت.');
+                setIsCharging(false);
+            }
+        } catch (error) {
+            console.error('Error initiating wallet charge:', error);
+            setChargeError('خطا در برقراری ارتباط با سرور.');
+            setIsCharging(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl relative animate-in zoom-in-95">
+                <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-blue-600" />
+                        <h3 className="text-base font-bold text-slate-800">شارژ کیف پول پزشک</h3>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        disabled={isCharging}
+                        className="text-slate-400 hover:text-slate-600 disabled:opacity-50"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <p className="text-xs text-slate-500 mb-4">
+                    مبلغ شارژ مستقیماً به موجودی کیف پول پزشک شما افزوده شده و جهت کسر تعرفه نوبت‌ها مصرف می‌شود.
+                </p>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="mb-2 block text-xs font-semibold text-slate-500">
+                            مبالغ پیشنهادی:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {PRESET_AMOUNTS.map((amount) => (
+                                <button
+                                    key={amount}
+                                    type="button"
+                                    onClick={() => {
+                                        setChargeAmount(amount.toString());
+                                        setChargeError(null);
+                                    }}
+                                    disabled={isCharging}
+                                    className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all ${
+                                        Number(chargeAmount) === amount
+                                            ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500'
+                                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {formatPrice(amount)} تومان
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-xs font-semibold text-slate-700">
+                            مبلغ دلخواه (تومان)
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                value={formatPriceInput(chargeAmount)}
+                                onChange={(e) => {
+                                    setChargeAmount(parsePriceInput(e.target.value));
+                                    setChargeError(null);
+                                }}
+                                disabled={isCharging}
+                                placeholder="مثلا 50000"
+                                className="w-full rounded-xl border border-slate-300 pl-12 pr-4 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                dir="ltr"
+                            />
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-sans">تومان</span>
+                        </div>
+                    </div>
+
+                    {chargeError && (
+                        <div className="rounded-lg bg-red-50 p-2.5 text-xs text-red-600 text-center border border-red-100">
+                            {chargeError}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleChargeSubmit}
+                        disabled={isCharging || !chargeAmount}
+                        className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                        {isCharging ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                در حال انتقال به درگاه...
+                            </>
+                        ) : (
+                            'پرداخت و افزایش موجودی'
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
