@@ -48,7 +48,7 @@ export function DoctorSubscriptionFeePage() {
 
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center">
                     <span className="text-slate-600 text-sm font-medium">مبلغ قابل پرداخت:</span>
-                    <span className="text-lg font-bold text-blue-700">{formatPrice(390000)} تومان</span>
+                    <span className="text-lg font-bold text-blue-700">{formatPrice(899000)} تومان</span>
                 </div>
 
                 {error && (

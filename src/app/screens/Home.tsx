@@ -223,7 +223,9 @@ export function Home() {
   const faq = useSettingsStore((s) => s.content.faq);
 
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
-  const [userData, setUserData] = useState<{ name?: string; gender?: number } | null>(null);
+  const [userData, setUserData] = useState<{ name?: string; gender?: number;examinations_count?: number | string;
+    prescriptions_count?: number | string;
+    rating?: number | string; } | null>(null);
   const [partnerData, setPartnerData] = useState<PartnerDashboardData | null>(null);
   const [activeAppointment, setActiveAppointment] = useState<ActiveAppointment | null>(null);
   const [healthScore, setHealthScore] = useState<number>(0);
@@ -443,9 +445,21 @@ export function Home() {
 
             <div className="relative z-10 -mt-8 grid grid-cols-3 gap-2 px-1">
               {[
-                { label: 'معاینه', value: '۱۲', icon: Stethoscope },
-                { label: 'نسخه', value: '۸', icon: FileText },
-                { label: 'امتیاز', value: '۴.۸', icon: Star },
+                {
+                  label: 'معاینه',
+                  value: toFaDigits(userData?.examinations_count ?? 0),
+                  icon: Stethoscope,
+                },
+                {
+                  label: 'نسخه',
+                  value: toFaDigits(userData?.prescriptions_count ?? 0),
+                  icon: FileText,
+                },
+                {
+                  label: 'امتیاز',
+                  value: toFaDigits(userData?.rating ?? '۰'),
+                  icon: Star,
+                },
               ].map((stat) => {
                 const Icon = stat.icon;
                 return (
