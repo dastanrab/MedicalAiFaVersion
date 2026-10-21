@@ -78,7 +78,7 @@ export function AddEditServiceModal({ open, onClose, onSubmit, initial }: AddEdi
         setLoading(true);
         try {
             await onSubmit({
-                serviceKey,
+                medical_service_id:serviceKey,
                 name: selectedService?.name || serviceKey,
                 price: Number(price.replace(/,/g, '')),
                 description: description.trim() || undefined,

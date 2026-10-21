@@ -51,11 +51,11 @@ export function NurseServicesPage() {
 
     const handleSubmit = async (input: NurseServiceInput) => {
         if (!session) return;
-
+        console.log(session)
         if (editing) {
-            await updateNurseService(session, editing.id, input);
+            await updateNurseService( editing.id, input,session);
         } else {
-            await createNurseService(session, input);
+            await createNurseService( input,session);
         }
         await load();
         setModalOpen(false);
@@ -106,7 +106,7 @@ export function NurseServicesPage() {
                         {items.map((s) => (
                             <tr key={s.id} className="border-t border-slate-100">
                                 <td className="px-4 py-3">
-                                    <p className="font-medium">{s.name}</p>
+                                    <p className="font-medium">{s.service_name}</p>
                                     {s.description && (
                                         <p className="text-xs text-slate-400">{s.description}</p>
                                     )}

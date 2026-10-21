@@ -111,9 +111,11 @@ export interface NursePersonnel {
 
 export interface NurseService {
     id: number;
-    serviceKey: string;
+    medical_service_id: string;
     name: string;
     price: number;
+    serviceKey?:number;
+    service_name?:string;
     description?: string;
     active: boolean;
 }

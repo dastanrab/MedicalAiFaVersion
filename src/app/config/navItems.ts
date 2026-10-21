@@ -33,7 +33,7 @@ export const sidebarNavItems: NavItem[] = [
   { icon: User, label: 'پروفایل', path: '/profile' },
   { icon: ClipboardList, label: 'سفارش‌ها', path: '/orders' },
   { icon: Crown, label: 'پلن‌ها', path: '/plans' },
-  { icon: MapPinned, label: 'آدرس‌ها', path: '/addresses' },
+ // { icon: MapPinned, label: 'آدرس‌ها', path: '/addresses' },
  // { icon: Calendar, label: 'تقویم قاعدگی', path: '/period-tracker' },
  // { icon: UtensilsCrossed, label: 'برنامه غذایی', path: '/meal-plan' },
   { icon: Brain, label: 'بینش سلامت', path: '/health-insights' },

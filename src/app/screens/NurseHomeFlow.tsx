@@ -248,7 +248,8 @@ export function NurseHomeFlow() {
                     ? Math.round(total / selectedServiceItems.length)
                     : total,
         }));
-        setClinicDetails(getClinicDetails(clinicItem, items));
+        console.log(clinicItem,'clinic')
+        setClinicDetails(clinicItem);
     };
 
     // بررسی تکمیل بودن مرحله ۲ بر اساس نوشتن شرح حال (آدرس دیگر در مرحله ۱ بررسی می‌شود)

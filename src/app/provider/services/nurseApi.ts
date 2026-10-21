@@ -73,6 +73,8 @@ export interface ApiNursePersonnel {
 export interface ApiNurseService {
     id: number;
     title: string;
+    medical_service_id:number;
+    service_name?:string;
     description?: string;
     price: number;
     duration_minutes: number;
@@ -168,7 +170,7 @@ const apiRequest = async <T = any>(
             if (errorData.errors && errorData.errors.national_code) {
                 throw new Error(errorData.errors.national_code[0]);
             }
-            throw new Error('داده‌های ورودی نامعتبر است');
+            throw new Error(errorData.message || 'داده‌های ورودی نامعتبر است');
         }
         if (response.status === 403) {
             throw new Error('شما دسترسی لازم را ندارید.');
@@ -222,6 +224,8 @@ function transformApiService(apiData: ApiNurseService): NurseService {
     return {
         id: apiData.id,
         key: `service_${apiData.id}`,
+        serviceKey:apiData.medical_service_id,
+        service_name:apiData.service_name,
         title: apiData.title,
         description: apiData.description,
         price: apiData.price,
