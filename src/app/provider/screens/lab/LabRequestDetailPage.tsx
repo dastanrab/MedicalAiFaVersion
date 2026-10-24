@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowRight, User, FileText, Activity, Upload, Image as ImageIcon, Trash2, CheckSquare, PlusCircle, Info, FileCheck, CalendarClock } from 'lucide-react';
+import {
+    ArrowRight, User, FileText, Activity, Upload, Image as ImageIcon,
+    Trash2, CheckSquare, PlusCircle, Info, FileCheck, CalendarClock, UserCheck
+} from 'lucide-react';
 import { formatPrice } from '../../components';
 import { PanelPageSkeleton, CardGridSkeleton } from '../../../components/PageSkeleton';
 import { Skeleton } from '../../../components/ui/skeleton';
@@ -18,21 +21,16 @@ const statusColors: Record<number, string> = {
     6: 'bg-red-100 text-red-700'
 };
 
-const shiftLabels: Record<number, string> = {
-    1: 'شیفت صبح',
-    2: 'شیفت ظهر / عصر',
-    3: 'شیفت شب'
-};
-
 interface LabRequest {
     id: number;
     code: string;
     is_assigned: boolean;
     status: number;
+    staff_id?: number | null;
     type: 'home' | 'in-person';
-    scheduledDate: string; // تاریخ میلادی/شمسی ایجاد درخواست
-    appointmentDate?: string; // تاریخ رزرو شیفت
-    shiftType?: number;       // شناسه شیفت
+    scheduledDate: string;
+    appointmentDate?: string;
+    shiftType?: number;
     patientName: string;
     patientPhone: string;
     address?: string;
@@ -49,6 +47,12 @@ interface AvailableTest {
     price: number;
 }
 
+interface StaffMember {
+    staff_id: number;
+    name: string;
+    phone: string;
+}
+
 export function LabRequestDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -58,10 +62,16 @@ export function LabRequestDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // استیت‌های زمان‌بندی
+    // زمان‌بندی
     const [appointmentDate, setAppointmentDate] = useState<string>('');
     const [shiftType, setShiftType] = useState<number>(1);
     const [updatingSchedule, setUpdatingSchedule] = useState(false);
+
+    // مدیریت کارمندان و انتساب
+    const [staffList, setStaffList] = useState<StaffMember[]>([]);
+    const [selectedStaffId, setSelectedStaffId] = useState<number | string>('');
+    const [loadingStaff, setLoadingStaff] = useState(false);
+    const [assigningStaff, setAssigningStaff] = useState(false);
 
     // بقیه استیت‌ها
     const [uploadingTestId, setUploadingTestId] = useState<number | null>(null);
@@ -134,6 +144,58 @@ export function LabRequestDetailPage() {
         }
     };
 
+    const fetchStaffList = async () => {
+        try {
+            setLoadingStaff(true);
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/staff-list`, {
+                headers: {
+                    'Authorization': `Bearer ${labSession?.token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const result = await response.json();
+            if (response.ok && (result.data || Array.isArray(result))) {
+                setStaffList(result.data || result);
+            }
+        } catch (err) {
+            console.error('خطا در دریافت لیست کارمندان', err);
+        } finally {
+            setLoadingStaff(false);
+        }
+    };
+
+    const handleAssignStaff = async () => {
+        if (!selectedStaffId) {
+            alert('لطفاً یک کارمند را انتخاب کنید.');
+            return;
+        }
+
+        setAssigningStaff(true);
+        try {
+            const response = await fetch(`https://api.mediraai.com/api/owner/lab/lab-requests/${id}/assign`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${labSession?.token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ staff_id: Number(selectedStaffId) })
+            });
+
+            const result = await response.json();
+            if (response.ok && (result.status || result.success)) {
+                alert(result.message || 'درخواست با موفقیت به کارمند ارجاع داده شد.');
+                setRequest(prev => prev ? { ...prev, staff_id: Number(selectedStaffId) } : null);
+            } else {
+                alert(result.message || 'خطا در ارجاع درخواست به کارمند');
+            }
+        } catch (err) {
+            alert('خطا در ارتباط با سرور');
+        } finally {
+            setAssigningStaff(false);
+        }
+    };
+
     const fetchRequestDetails = async () => {
         try {
             setLoading(true);
@@ -158,6 +220,7 @@ export function LabRequestDetailPage() {
                     ...item,
                     scheduledDate: jalaliDate,
                     status: Number(item.status),
+                    staff_id: item.staff_id ? Number(item.staff_id) : null,
                     tests: item.tests || [],
                     is_assigned: Boolean(item.is_assigned),
                     shiftType: item.shift_type ? Number(item.shift_type) : 1,
@@ -167,7 +230,10 @@ export function LabRequestDetailPage() {
 
                 setRequest(parsedRequest);
 
-                // ست کردن مقادیر اولیه برای فرم تاریخ و شیفت
+                if (item.staff_id) {
+                    setSelectedStaffId(Number(item.staff_id));
+                }
+
                 setAppointmentDate(item.appointment_date || new Date().toISOString().split('T')[0]);
                 setShiftType(item.shift_type ? Number(item.shift_type) : 1);
 
@@ -204,6 +270,7 @@ export function LabRequestDetailPage() {
     useEffect(() => {
         if (id && labSession?.token) {
             fetchRequestDetails();
+            fetchStaffList();
         }
     }, [id, labSession?.token]);
 
@@ -393,6 +460,8 @@ export function LabRequestDetailPage() {
         .filter(t => selectedTestIds.includes(t.lab_test_id))
         .reduce((sum, t) => sum + Number(t.price), 0);
 
+    const currentAssignedStaff = staffList.find(s => s.staff_id === request.staff_id);
+
     return (
         <div className="space-y-6 text-right font-[YekanBakhFaNum]" dir="rtl">
 
@@ -490,7 +559,9 @@ export function LabRequestDetailPage() {
                         </h2>
                         <div className="flex flex-col sm:flex-row items-end gap-4">
                             <div className="w-full sm:w-1/3">
-                                <label className="block text-xs font-medium text-slate-600 mb-1">تاریخ مراجعه (تنظیم شده: <span dir="ltr">{request.appointmentDate || 'ندارد'}</span>)</label>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">
+                                    تاریخ مراجعه (تنظیم شده: <span dir="ltr">{request.appointmentDate || 'ندارد'}</span>)
+                                </label>
                                 <input
                                     type="date"
                                     value={appointmentDate}
@@ -516,6 +587,50 @@ export function LabRequestDetailPage() {
                                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
                             >
                                 {updatingSchedule ? "در حال ثبت..." : "بروزرسانی زمان‌بندی"}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* کارت ارجاع و تخصیص به کارمند آزمایشگاه */}
+                {request.is_assigned && request.status >= 2 && (
+                    <div className="md:col-span-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-6 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+                                <UserCheck className="h-5 w-5 text-indigo-600" /> ارجاع به کارمند / نمونه‌گیر
+                            </h2>
+                            {currentAssignedStaff && (
+                                <span className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-medium">
+                                    مسئول فعلی: {currentAssignedStaff.name} ({currentAssignedStaff.phone})
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-end gap-4">
+                            <div className="w-full sm:flex-1">
+                                <label className="block text-xs font-medium text-slate-600 mb-1">
+                                    انتخاب کارمند آزمایشگاه:
+                                </label>
+                                <select
+                                    value={selectedStaffId}
+                                    onChange={(e) => setSelectedStaffId(e.target.value)}
+                                    disabled={loadingStaff || assigningStaff}
+                                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-indigo-500"
+                                >
+                                    <option value="">-- لطفاً یک کارمند را انتخاب کنید --</option>
+                                    {staffList.map((staff) => (
+                                        <option key={staff.staff_id} value={staff.staff_id}>
+                                            {staff.name} - {staff.phone}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                onClick={handleAssignStaff}
+                                disabled={assigningStaff || !selectedStaffId || loadingStaff}
+                                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+                            >
+                                {assigningStaff ? "در حال ثبت ارجاع..." : "تایید و ارجاع درخواست"}
                             </button>
                         </div>
                     </div>

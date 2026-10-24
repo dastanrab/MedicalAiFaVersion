@@ -1,6 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Navigate } from 'react-router';
+import { Loader2 } from 'lucide-react';
 import type { ProviderRole } from '../../config/providerNav';
+import { showProviderError } from '../../utils/toast';
 import {
     staffBasePath,
     staffHasPermission,
@@ -9,18 +11,17 @@ import {
 } from '../config/staffPermissions';
 import { useStaffStore } from '../store/staffStore';
 
+const API_BASE_URL = 'https://api.mediraai.com/api';
+
 /**
- * نشست کارمند معتبر است اگر:
- * ۱) نشست دارای توکن باشد (لاگین API واقعی یا ماک)
- * ۲) برای حالت ماک، کارمند در لیست اعضا فعال باشد
- * ۳) برای حالت API (مثل منشی پزشک)، وجود توکن و شماره تماس برای احراز هویت کلاینت کافی است
+ * بررسی اعتبار اولیه نشست کارمند در سمت کلاینت
  */
 function useValidStaffSession(role: ProviderRole) {
     const session = useStaffStore((s) => s.sessions[role]);
     const member = useStaffStore((s) => s.members[role]);
 
-    // اگر توکن دارد و عضو لوکال ثبت نشده (ورود واقعی از سرور) یا نقش doctor است
-    const isApiSession = Boolean(session?.token && (!member || role === 'doctor'));
+    // ورودهای واقعی با سرور (پزشک، آزمایشگاه یا توکن مستقیم)
+    const isApiSession = Boolean(session?.token && (!member || role === 'doctor' || role === 'lab'));
 
     const valid = Boolean(
         session?.token &&
@@ -31,23 +32,72 @@ function useValidStaffSession(role: ProviderRole) {
             member.id === session.staffId &&
             member.phone === session.phone)
     );
-    return { session, valid };
+    return { session, valid, isApiSession };
 }
 
 export function StaffAuthGate({ role, children }: { role: ProviderRole; children: ReactNode }) {
-    const { session, valid } = useValidStaffSession(role);
+    const { session, valid, isApiSession } = useValidStaffSession(role);
     const logout = useStaffStore((s) => s.logout);
 
+    // وضعیت استعلام زنده از سرور
+    const [isChecking, setIsChecking] = useState<boolean>(Boolean(isApiSession && session?.token));
+    const [isServerActive, setIsServerActive] = useState<boolean>(true);
+
+    const checkServerStatus = useCallback(async () => {
+        if (!session?.token) {
+            setIsChecking(false);
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/staff/auth/check`, {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${session.token}`,
+                },
+            });
+
+            const data = await res.json().catch(() => null);
+
+            if (!res.ok || !data?.success) {
+                const message = data?.message || 'دسترسی شما غیرفعال شده است یا نشست نامعتبر است.';
+                showProviderError(message);
+                setIsServerActive(false);
+                logout(role, false);
+            } else {
+                setIsServerActive(true);
+            }
+        } catch (err) {
+            console.error('Error verifying staff access:', err);
+            // در خطای موقت اینترنت نشست حفظ می‌شود مگر خطای صریح سرور بازگردد
+        } finally {
+            setIsChecking(false);
+        }
+    }, [session?.token, role, logout]);
+
     useEffect(() => {
-        // فقط در حالتی که نشست ماک دستی نامعتبر شده باشد خارج شود (نه نشست‌های توکن‌دار)
-        if (session && !valid) {
+        // برای نقش‌های آنلاین دسترسی را از بک‌اند استعلام کن
+        if (valid && isApiSession) {
+            checkServerStatus();
+        } else if (session && !valid) {
             logout(role, false);
         }
-    }, [session, valid, role, logout]);
+    }, [valid, isApiSession, session, checkServerStatus, logout, role]);
 
-    if (!valid) {
+    if (!valid || !isServerActive) {
         return <Navigate to={`${staffBasePath(role)}/login`} replace />;
     }
+
+    if (isChecking) {
+        return (
+            <div className="flex h-screen w-full flex-col items-center justify-center gap-3 bg-slate-50">
+                <Loader2 className="h-8 w-8 animate-spin text-slate-700" />
+                <p className="text-xs font-medium text-slate-500">در حال بررسی سطح دسترسی کارمند...</p>
+            </div>
+        );
+    }
+
     return <>{children}</>;
 }
 
@@ -60,16 +110,16 @@ export function StaffPublicRoute({ role, children }: { role: ProviderRole; child
 }
 
 export function StaffPermissionGate({
-    role,
-    permission,
-    children,
-}: {
+                                        role,
+                                        permission,
+                                        children,
+                                    }: {
     role: ProviderRole;
     permission: StaffPermission;
     children: ReactNode;
 }) {
-    // برای نقش پزشک که مستقیم با API لاگین کرده، تمام صفحات مجاز منشی باز هستند
-    if (role === 'doctor') {
+    // پزشک و آزمایشگاه که با وب‌سرویس لاگین می‌کنند دسترسی کامل به صفحات پنل دارند
+    if (role === 'doctor' || role === 'lab') {
         return <>{children}</>;
     }
 
@@ -82,7 +132,7 @@ export function StaffPermissionGate({
 /** برای پنهان کردن دکمه‌ها و اکشن‌هایی که کارمند مجوزشان را ندارد */
 export function useStaffCan(role: ProviderRole) {
     return (permission: StaffPermission) => {
-        if (role === 'doctor') return true;
+        if (role === 'doctor' || role === 'lab') return true;
         return staffHasPermission(role, permission);
     };
 }

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Bell, LogOut } from 'lucide-react';
+import { Bell, LogOut, Menu, X, MoreHorizontal } from 'lucide-react';
 import {
     providerNavByRole,
     providerBasePath,
@@ -17,7 +17,6 @@ import { getProviderPlans } from '../data/providerPlans';
 import { getStaffNavItems, staffBasePath, staffRoleConfig } from '../staff/config/staffPermissions';
 import { useStaffStore } from '../staff/store/staffStore';
 
-/** owner: صاحب حساب — staff: کارمند (منشی / پذیرش) با دسترسی محدود */
 export type ProviderPanelMode = 'owner' | 'staff';
 
 function useNavItems(role: ProviderRole, mode: ProviderPanelMode): ProviderNavItem[] {
@@ -34,9 +33,11 @@ function panelBasePath(role: ProviderRole, mode: ProviderPanelMode) {
 interface ProviderSidebarProps {
     role: ProviderRole;
     mode?: ProviderPanelMode;
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
-export function ProviderSidebar({ role, mode = 'owner' }: ProviderSidebarProps) {
+export function ProviderSidebar({ role, mode = 'owner', isOpen = false, onClose }: ProviderSidebarProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const navItems = useNavItems(role, mode);
@@ -54,99 +55,117 @@ export function ProviderSidebar({ role, mode = 'owner' }: ProviderSidebarProps) 
         mode === 'staff'
             ? (staffSession?.name ?? staffRoleConfig[role].title)
             : role === 'doctor'
-              ? (doctor?.name ?? providerDefaultNames[role])
-              : (session?.user.name ?? providerDefaultNames[role]);
+                ? (doctor?.name ?? providerDefaultNames[role])
+                : (session?.user.name ?? providerDefaultNames[role]);
     const subtitle =
         mode === 'staff'
             ? `${staffRoleConfig[role].title} · ${staffSession?.ownerName ?? providerRoleLabels[role]}`
             : providerRoleLabels[role];
 
+    const handleNavigate = (path: string) => {
+        navigate(path);
+        if (onClose) onClose();
+    };
+
     return (
-        <aside className="flex h-full w-72 flex-shrink-0 flex-col bg-slate-900 text-slate-300">
-            <div className="flex items-center gap-3 px-6 py-5">
+        <>
+            {/* Backdrop تاریک برای موبایل */}
+            {isOpen && (
                 <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br text-base font-semibold text-white ring-2 ring-white/10 ${theme.badge}`}
-                >
-                    {profileName[0]}
-                </div>
-                <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">{profileName}</p>
-                    <p className="truncate text-xs text-slate-500">
-                        {subtitle}
-                        {currentPlanName && (
-                            <span className="mr-1.5 text-slate-400">· پلن {currentPlanName}</span>
-                        )}
-                    </p>
-                </div>
-            </div>
+                    onClick={onClose}
+                    className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden transition-opacity"
+                />
+            )}
 
-            <nav className="flex-1 overflow-y-auto px-4 py-2">
-                <ul className="space-y-1">
-                    {navItems.map((item) => {
-                        const path = `${base}/${item.segment}`;
-                        const active =
-                            location.pathname === path ||
-                            (item.segment === 'requests' &&
-                                location.pathname.startsWith(`${base}/requests`)) ||
-                            (item.segment === 'calendar' && location.pathname.includes('/calendar')) ||
-                            (item.segment === 'appointments' &&
-                                location.pathname.startsWith(`${base}/appointments`)) ||
-                            (item.segment === 'patients' &&
-                                location.pathname.startsWith(`${base}/patients`)) ||
-                            (item.segment === 'plans' &&
-                                location.pathname.startsWith(`${base}/plans`)) ||
-                            (item.segment === 'vip' &&
-                                location.pathname.startsWith(`${base}/vip`)) ||
-                            (item.segment === 'consultations' &&
-                                location.pathname.startsWith(`${base}/consultations`));
-                        const Icon = item.icon;
-                        return (
-                            <li key={item.segment}>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate(path)}
-                                    className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
-                                        active
-                                            ? `bg-gradient-to-l text-white shadow-sm ring-1 ${theme.sidebar}`
-                                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                                    }`}
-                                >
-                                    <Icon className={`h-5 w-5 ${active ? theme.accent : ''}`} />
-                                    <span>{item.label}</span>
-                                </button>
-                            </li>
-                        );
-                    })}
-                </ul>
-            </nav>
+            <aside
+                className={`fixed inset-y-0 right-0 z-50 flex h-full w-72 flex-col bg-slate-900 text-slate-300 shadow-2xl transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:w-72 lg:translate-x-0 ${
+                    isOpen ? 'translate-x-0' : 'translate-x-full'
+                }`}
+            >
+                {/* Header منو و دکمه بستن در موبایل */}
+                <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+                    <div className="flex items-center gap-3">
+                        <div
+                            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-base font-semibold text-white ring-2 ring-white/10 ${theme.badge}`}
+                        >
+                            {profileName[0]}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-white">{profileName}</p>
+                            <p className="truncate text-xs text-slate-400">
+                                {subtitle}
+                                {currentPlanName && (
+                                    <span className="mr-1 text-slate-300">· پلن {currentPlanName}</span>
+                                )}
+                            </p>
+                        </div>
+                    </div>
+                    {/* دکمه بستن در موبایل */}
+                    <button
+                        onClick={onClose}
+                        className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
 
-            <div className="border-t border-white/5 px-6 py-4">
-                {mode === 'staff' && staffSession?.phone && (
-                    <p className="text-xs text-slate-500" dir="ltr">
-                        {staffSession.phone}
-                    </p>
-                )}
-                {mode === 'owner' && role === 'doctor' && doctor?.email && (
-                    <p className="text-xs text-slate-500" dir="ltr">
-                        {doctor.email}
-                    </p>
-                )}
-                {mode === 'owner' && role !== 'doctor' && session?.user.phone && (
-                    <p className="text-xs text-slate-500" dir="ltr">
-                        {session.user.phone}
-                    </p>
-                )}
-            </div>
-        </aside>
+                <nav className="flex-1 overflow-y-auto px-4 py-3">
+                    <ul className="space-y-1.5">
+                        {navItems.map((item) => {
+                            const path = `${base}/${item.segment}`;
+                            const active =
+                                location.pathname === path ||
+                                (item.segment !== 'dashboard' && location.pathname.startsWith(`${base}/${item.segment}`));
+                            const Icon = item.icon;
+                            return (
+                                <li key={item.segment}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleNavigate(path)}
+                                        className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+                                            active
+                                                ? `bg-gradient-to-l text-white shadow-sm ring-1 ${theme.sidebar}`
+                                                : 'text-slate-400 hover:bg-white/5 hover:text-white active:scale-[0.98]'
+                                        }`}
+                                    >
+                                        <Icon className={`h-5 w-5 ${active ? theme.accent : ''}`} />
+                                        <span>{item.label}</span>
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </nav>
+
+                <div className="border-t border-white/5 px-6 py-4">
+                    {mode === 'staff' && staffSession?.phone && (
+                        <p className="text-xs text-slate-500" dir="ltr">
+                            {staffSession.phone}
+                        </p>
+                    )}
+                    {mode === 'owner' && role === 'doctor' && doctor?.email && (
+                        <p className="text-xs text-slate-500" dir="ltr">
+                            {doctor.email}
+                        </p>
+                    )}
+                    {mode === 'owner' && role !== 'doctor' && session?.user.phone && (
+                        <p className="text-xs text-slate-500" dir="ltr">
+                            {session.user.phone}
+                        </p>
+                    )}
+                </div>
+            </aside>
+        </>
     );
 }
 
 interface ProviderNavbarProps {
     role: ProviderRole;
     mode?: ProviderPanelMode;
+    onToggleSidebar: () => void;
 }
 
-export function ProviderNavbar({ role, mode = 'owner' }: ProviderNavbarProps) {
+export function ProviderNavbar({ role, mode = 'owner', onToggleSidebar }: ProviderNavbarProps) {
     const location = useLocation();
     const navItems = useNavItems(role, mode);
     const base = panelBasePath(role, mode);
@@ -167,34 +186,27 @@ export function ProviderNavbar({ role, mode = 'owner' }: ProviderNavbarProps) {
 
     const current = navItems.find((item) => {
         const path = `${base}/${item.segment}`;
-        return (
-            location.pathname === path ||
-            (item.segment === 'requests' && location.pathname.includes('/requests')) ||
-            (item.segment === 'calendar' && location.pathname.includes('/calendar')) ||
-            (item.segment === 'appointments' && location.pathname.includes('/appointments')) ||
-            (item.segment === 'patients' && location.pathname.includes('/patients')) ||
-            (item.segment === 'plans' && location.pathname.includes('/plans')) ||
-            (item.segment === 'vip' && location.pathname.includes('/vip')) ||
-            (item.segment === 'consultations' && location.pathname.includes('/consultations'))
-        );
+        return location.pathname === path || (item.segment !== 'dashboard' && location.pathname.startsWith(path));
     });
 
-    const nestedPlanTitle = location.pathname.includes('/plans/checkout')
-        ? 'تکمیل پرداخت اشتراک'
-        : location.pathname.includes('/vip/checkout')
-          ? 'تکمیل پرداخت VIP'
-          : location.pathname.includes('/vip/charge')
-            ? 'شارژ سرویس VIP'
-            : location.pathname.includes('/plans/gateway') || location.pathname.includes('/vip/gateway')
-              ? 'درگاه پرداخت'
-              : location.pathname.includes('/plans/result') || location.pathname.includes('/vip/result')
-                ? 'نتیجه پرداخت'
-                : current?.label ?? 'پنل خدمات‌دهنده';
-
     return (
-        <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
-            <h1 className="text-lg font-semibold text-slate-800">{nestedPlanTitle}</h1>
-            <div className="flex items-center gap-2">
+        <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-6">
+            <div className="flex items-center gap-3">
+                {/* دکمه منو همبرگری مخصوص موبایل */}
+                <button
+                    type="button"
+                    onClick={onToggleSidebar}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 active:scale-95 lg:hidden"
+                    title="منو"
+                >
+                    <Menu className="h-6 w-6" />
+                </button>
+                <h1 className="text-base sm:text-lg font-bold text-slate-800 truncate">
+                    {current?.label ?? 'پنل کارمند'}
+                </h1>
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                     type="button"
                     title="اعلان‌ها"
@@ -220,6 +232,49 @@ export function ProviderNavbar({ role, mode = 'owner' }: ProviderNavbarProps) {
     );
 }
 
+/** کامپوننت Bottom Navigation اختصاصی منشی روی موبایل */
+function StaffBottomNav({ role, onOpenMore }: { role: ProviderRole; onOpenMore: () => void }) {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const base = staffBasePath(role);
+    const allItems = getStaffNavItems(role);
+
+    // سه تب اصلی را نمایش می‌دهیم و بقیه با زدن دکمه «بیشتر» باز می‌شوند
+    const primaryItems = allItems.slice(0, 3);
+
+    return (
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-slate-200 bg-white/95 backdrop-blur-md px-2 shadow-lg lg:hidden">
+            {primaryItems.map((item) => {
+                const path = `${base}/${item.segment}`;
+                const active = location.pathname === path || (item.segment !== 'dashboard' && location.pathname.startsWith(path));
+                const Icon = item.icon;
+                return (
+                    <button
+                        key={item.segment}
+                        type="button"
+                        onClick={() => navigate(path)}
+                        className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+                            active ? 'text-indigo-600 font-semibold' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        <Icon className={`h-5 w-5 ${active ? 'stroke-[2.5]' : ''}`} />
+                        <span className="text-[11px] mt-1 truncate max-w-[65px]">{item.label}</span>
+                    </button>
+                );
+            })}
+
+            <button
+                type="button"
+                onClick={onOpenMore}
+                className="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-slate-800 transition-colors"
+            >
+                <MoreHorizontal className="h-5 w-5" />
+                <span className="text-[11px] mt-1">بیشتر</span>
+            </button>
+        </nav>
+    );
+}
+
 interface ProviderLayoutShellProps {
     role: ProviderRole;
     mode?: ProviderPanelMode;
@@ -227,13 +282,31 @@ interface ProviderLayoutShellProps {
 }
 
 export function ProviderLayoutShell({ role, mode = 'owner', children }: ProviderLayoutShellProps) {
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
     return (
         <div className="flex h-screen w-full overflow-hidden bg-slate-100 font-[YekanBakhFaNum]" dir="rtl">
-            <ProviderSidebar role={role} mode={mode} />
+            <ProviderSidebar
+                role={role}
+                mode={mode}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+            />
             <div className="flex min-w-0 flex-1 flex-col">
-                <ProviderNavbar role={role} mode={mode} />
-                <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
+                <ProviderNavbar
+                    role={role}
+                    mode={mode}
+                    onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+                />
+                <main className={`min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 ${mode === 'staff' ? 'pb-20 lg:pb-6' : ''}`}>
+                    {children}
+                </main>
             </div>
+
+            {/* نوار پایینی در حالت staff و صفحه موبایل */}
+            {mode === 'staff' && (
+                <StaffBottomNav role={role} onOpenMore={() => setSidebarOpen(true)} />
+            )}
         </div>
     );
 }

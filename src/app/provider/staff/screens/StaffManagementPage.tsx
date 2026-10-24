@@ -30,6 +30,7 @@ import {
     staffRoleConfig,
 } from '../config/staffPermissions';
 import { useStaffStore, type StaffMember } from '../store/staffStore';
+import {useProviderSession} from "../../store/providerAuthStore";
 
 const API_BASE_URL = 'https://api.mediraai.com/api';
 
@@ -38,9 +39,11 @@ function useOwnerInfo(role: ProviderRole) {
     if (role === 'doctor') {
         return { name: doctor?.name ?? providerDefaultNames.doctor, phone: normalizePhone(doctor?.phone ?? '') };
     }
+    return { name: providerDefaultNames[role] ?? '', phone: '' };
 }
 
-function formatDate(iso: string) {
+function formatDate(iso?: string) {
+    if (!iso) return '-';
     return new Date(iso).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
@@ -48,17 +51,26 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
     const config = staffRoleConfig[role];
     const owner = useOwnerInfo(role);
 
-    const { token } = useDoctorAuthStore();
+    // توکن پزشک
+    const doctorToken = useDoctorAuthStore((s) => s.token);
+    const labSession = useProviderSession('lab');
+    const token = labSession?.token || '';
+    // توکن احراز هویت مرکز یا کارمند برای درخواست‌های آزمایشگاه (در صورت نیاز از استور مرکز یا لوکال استوریج خوانده می‌شود)
+    const authToken = role === 'doctor'
+        ? doctorToken
+        : token;
 
-    // برای سایر نقش‌ها (داروخانه / آزمایشگاه) تک‌کارمند لوکال
+    const isRemoteRole = role === 'doctor' || role === 'lab';
+
+    // برای داروخانه (هنوز لوکال)
     const localMember = useStaffStore((s) => s.members[role]);
     const saveLocalMember = useStaffStore((s) => s.saveMember);
     const setLocalMemberActive = useStaffStore((s) => s.setMemberActive);
     const removeLocalMember = useStaffStore((s) => s.removeMember);
 
-    // برای پزشک: لیست منشی‌ها
-    const [doctorSecretaries, setDoctorSecretaries] = useState<StaffMember[]>([]);
-    const [loading, setLoading] = useState<boolean>(role === 'doctor');
+    // لیست کارمندان متصل به سرور (برای دکتر و آزمایشگاه)
+    const [remoteStaffs, setRemoteStaffs] = useState<StaffMember[]>([]);
+    const [loading, setLoading] = useState<boolean>(isRemoteRole);
     const [togglingId, setTogglingId] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -70,72 +82,84 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
 
     const loginUrl = `${window.location.origin}${staffBasePath(role)}/login`;
 
-    // دریافت لیست منشی‌ها از سرور
-    const fetchDoctorSecretaries = useCallback(async () => {
-        if (role !== 'doctor' || !token) return;
+    // تعیین اندپوینت پایه بر اساس نقش
+    const getEndpoint = useCallback((path = '') => {
+        if (role === 'doctor') return `${API_BASE_URL}/doctor/secretaries${path}`;
+        if (role === 'lab') return `${API_BASE_URL}/owner/lab/staffs${path}`;
+        return '';
+    }, [role]);
+
+    // هدرهای مشترک احراز هویت
+    const getHeaders = useCallback(() => {
+        return {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${authToken}`,
+        };
+    }, [authToken]);
+
+    // دریافت لیست کارمندان از سرور
+    const fetchStaffs = useCallback(async () => {
+        if (!isRemoteRole) return;
 
         try {
             setLoading(true);
-            const res = await fetch(`${API_BASE_URL}/doctor/secretaries`, {
-                headers: {
-                    Accept: 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
+            const res = await fetch(getEndpoint(), {
+                headers: getHeaders(),
             });
 
             const result = await res.json();
-            if (result.success && Array.isArray(result.data)) {
-                setDoctorSecretaries(result.data);
+            if (res.ok && result.success && Array.isArray(result.data)) {
+                setRemoteStaffs(result.data);
             } else {
-                showProviderError(result.message || 'خطا در بارگذاری اطلاعات منشی‌ها');
+                showProviderError(result.message || `خطا در دریافت لیست ${config.title}`);
             }
         } catch (err) {
-            console.error('Fetch secretaries failed:', err);
-            showProviderError('خطا در ارتباط با سرور.');
+            console.error('Fetch staff list failed:', err);
+            showProviderError('خطا در برقراری ارتباط با سرور.');
         } finally {
             setLoading(false);
         }
-    }, [role, token]);
+    }, [isRemoteRole, getEndpoint, getHeaders, config.title]);
 
     useEffect(() => {
-        if (role === 'doctor') {
-            fetchDoctorSecretaries();
+        if (isRemoteRole) {
+            fetchStaffs();
         }
-    }, [fetchDoctorSecretaries, role]);
+    }, [fetchStaffs, isRemoteRole]);
 
-    // ذخیره یا افزودن منشی
-    const handleFormSubmit = async (input: { name: string; phone: string }) => {
-        if (role === 'doctor') {
-            if (!token) return;
+    // ذخیره یا ویرایش کارمند
+    const handleFormSubmit = async (input: { name: string; phone: string; jobTitle?: string }) => {
+        if (isRemoteRole) {
             try {
                 setSubmitting(true);
                 const isEdit = Boolean(editingMember);
                 const url = isEdit
-                    ? `${API_BASE_URL}/doctor/secretaries/${editingMember!.id}`
-                    : `${API_BASE_URL}/doctor/secretaries`;
+                    ? getEndpoint(`/${editingMember!.id}`)
+                    : getEndpoint();
                 const method = isEdit ? 'PUT' : 'POST';
 
                 const res = await fetch(url, {
                     method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(input),
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        name: input.name,
+                        phone: input.phone,
+                        job_title: input.jobTitle,
+                    }),
                 });
 
                 const result = await res.json();
-                if (result.success) {
-                    showProviderSuccess(result.message);
+                if (res.ok && result.success) {
+                    showProviderSuccess(result.message || 'عملیات با موفقیت انجام شد');
                     setFormOpen(false);
                     setEditingMember(null);
-                    fetchDoctorSecretaries();
+                    fetchStaffs();
                 } else {
-                    showProviderError(result.message || 'خطا در ذخیره اطلاعات');
+                    showProviderError(result.message || 'خطا در ذخیره اطلاعات کارمند');
                 }
             } catch (err) {
-                console.error('Save secretary failed:', err);
+                console.error('Save staff failed:', err);
                 showProviderError('خطایی در ارتباط با سرور رخ داد.');
             } finally {
                 setSubmitting(false);
@@ -152,29 +176,25 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
         }
     };
 
-    // فعال / غیرفعال‌سازی
+    // فعال / غیرفعال‌سازی وضعیت کارمند
     const handleToggleStatus = async (targetMember: StaffMember) => {
-        if (role === 'doctor') {
-            if (!token) return;
+        if (isRemoteRole) {
             try {
                 setTogglingId(targetMember.id);
-                const res = await fetch(`${API_BASE_URL}/doctor/secretaries/${targetMember.id}/toggle-status`, {
+                const res = await fetch(getEndpoint(`/${targetMember.id}/toggle-status`), {
                     method: 'PATCH',
-                    headers: {
-                        Accept: 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: getHeaders(),
                 });
                 const result = await res.json();
-                if (result.success) {
-                    setDoctorSecretaries((prev) =>
+                if (res.ok && result.success) {
+                    setRemoteStaffs((prev) =>
                         prev.map((item) =>
                             item.id === targetMember.id ? { ...item, active: result.data.active } : item
                         )
                     );
                     showProviderSuccess(result.message);
                 } else {
-                    showProviderError(result.message || 'خطا در تغییر وضعیت');
+                    showProviderError(result.message || 'خطا در تغییر وضعیت دسترسی');
                 }
             } catch (err) {
                 console.error('Toggle status error:', err);
@@ -188,26 +208,22 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
         }
     };
 
-    // حذف منشی
+    // حذف دسترسی کارمند
     const handleRemove = async () => {
         if (!deletingMember) return;
 
-        if (role === 'doctor') {
-            if (!token) return;
+        if (isRemoteRole) {
             try {
-                const res = await fetch(`${API_BASE_URL}/doctor/secretaries/${deletingMember.id}`, {
+                const res = await fetch(getEndpoint(`/${deletingMember.id}`), {
                     method: 'DELETE',
-                    headers: {
-                        Accept: 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: getHeaders(),
                 });
                 const result = await res.json();
-                if (result.success) {
-                    setDoctorSecretaries((prev) => prev.filter((item) => item.id !== deletingMember.id));
+                if (res.ok && result.success) {
+                    setRemoteStaffs((prev) => prev.filter((item) => item.id !== deletingMember.id));
                     showProviderSuccess(result.message);
                 } else {
-                    showProviderError(result.message || 'خطا در حذف منشی');
+                    showProviderError(result.message || 'خطا در حذف کارمند');
                 }
             } catch (err) {
                 showProviderError('خطا در ارتباط با سرور');
@@ -229,15 +245,16 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
         }
     };
 
-    // لیست اعضا جهت نمایش در صفحه
-    const membersList: StaffMember[] =
-        role === 'doctor' ? doctorSecretaries : localMember ? [localMember] : [];
+    // لیست نهایی جهت نمایش
+    const membersList: StaffMember[] = isRemoteRole
+        ? remoteStaffs
+        : localMember ? [localMember] : [];
 
     return (
         <div className="space-y-6">
             <PageHeader
                 title={`کارمندان (${config.title})`}
-                description="مدیریت منشی‌ها و دسترسی به پنل نوبت‌دهی و پذیرش"
+                description={`مدیریت ${config.title}‌ها و کنترل دسترسی آن‌ها به پنل پرسنلی`}
                 actions={
                     <button
                         type="button"
@@ -263,7 +280,7 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
                         <MemberCard
                             key={m.id}
                             member={m}
-                            title={config.title}
+                            title={m.jobTitle || config.title}
                             disabledToggle={togglingId === m.id}
                             onEdit={() => {
                                 setEditingMember(m);
@@ -275,13 +292,13 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
                     ))}
                 </div>
             ) : (
-                <EmptyState message={`هنوز ${config.title} ثبت نکرده‌اید.`} />
+                <EmptyState message={`هنوز هیچ ${config.title}ی ثبت نکرده‌اید.`} />
             )}
 
             {membersList.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">
                     <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-700">لینک ورود منشی‌ها به پنل</p>
+                        <p className="text-sm font-medium text-slate-700">لینک اختصاصی ورود پرسنل به پنل</p>
                         <p className="mt-1 truncate text-xs text-slate-500" dir="ltr">{loginUrl}</p>
                     </div>
                     <button
@@ -299,7 +316,7 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
                 <section className="rounded-2xl border border-slate-200 bg-white p-5">
                     <h3 className="mb-3 flex items-center gap-2 font-semibold text-slate-800">
                         <ShieldCheck className="h-5 w-5 text-emerald-600" />
-                        دسترسی‌های {config.title}
+                        دسترسی‌های مجاز {config.title}
                     </h3>
                     <ul className="space-y-2 text-sm text-slate-600">
                         {config.permissions.map((p) => (
@@ -313,7 +330,7 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
                 <section className="rounded-2xl border border-slate-200 bg-white p-5">
                     <h3 className="mb-3 flex items-center gap-2 font-semibold text-slate-800">
                         <ShieldX className="h-5 w-5 text-red-500" />
-                        بدون دسترسی
+                        بخش‌های بدون دسترسی
                     </h3>
                     <ul className="space-y-2 text-sm text-slate-600">
                         {config.restrictions.map((r) => (
@@ -329,6 +346,7 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
             {formOpen && (
                 <StaffFormModal
                     title={editingMember ? `ویرایش ${config.title}` : `افزودن ${config.title} جدید`}
+                    role={role}
                     initial={editingMember ?? undefined}
                     isSubmitting={submitting}
                     onClose={() => {
@@ -341,10 +359,10 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
 
             {deletingMember && (
                 <ConfirmModal
-                    title="حذف منشی"
+                    title={`حذف ${config.title}`}
                     description={`آیا از حذف دسترسی «${deletingMember.name}» اطمینان دارید؟`}
-                    note="دسترسی این منشی به پنل نوبت‌دهی و بیماران بلافاصله قطع خواهد شد."
-                    confirmLabel="حذف منشی"
+                    note={`دسترسی این کاربر به پنل ${config.title} و مشاهده درخواست‌ها بلافاصله قطع خواهد شد.`}
+                    confirmLabel={`حذف ${config.title}`}
                     onClose={() => setDeletingMember(null)}
                     onConfirm={handleRemove}
                 />
@@ -431,28 +449,35 @@ function MemberCard({
 
 function StaffFormModal({
                             title,
+                            role,
                             initial,
                             isSubmitting,
                             onClose,
                             onSubmit,
                         }: {
     title: string;
+    role: ProviderRole;
     initial?: StaffMember;
     isSubmitting?: boolean;
     onClose: () => void;
-    onSubmit: (input: { name: string; phone: string }) => void;
+    onSubmit: (input: { name: string; phone: string; jobTitle?: string }) => void;
 }) {
     const [name, setName] = useState(initial?.name ?? '');
     const [phone, setPhone] = useState(initial?.phone ?? '');
+    const [jobTitle, setJobTitle] = useState(initial?.jobTitle ?? '');
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const submit = () => {
         const next: Record<string, string> = {};
-        if (name.trim().length < 3) next.name = 'نام و نام خانوادگی را وارد کنید';
+        if (name.trim().length < 3) next.name = 'نام و نام خانوادگی را کامل وارد کنید';
         if (!isValidIranPhone(phone)) next.phone = 'شماره موبایل معتبر نیست';
         setErrors(next);
         if (Object.keys(next).length) return;
-        onSubmit({ name: name.trim(), phone: normalizePhone(phone) });
+        onSubmit({
+            name: name.trim(),
+            phone: normalizePhone(phone),
+            jobTitle: jobTitle.trim() || undefined
+        });
     };
 
     return (
@@ -460,7 +485,7 @@ function StaffFormModal({
             open
             onClose={onClose}
             title={title}
-            description="منشی با همین شماره موبایل و دریافت رمز یک‌بار مصرف (OTP) وارد پنل اختصاصی منشی می‌شود."
+            description="پرسنل با این شماره موبایل و دریافت کد یک‌بار مصرف (OTP) وارد پنل اختصاصی کارمندان می‌شود."
             footer={
                 <>
                     <button
@@ -493,6 +518,7 @@ function StaffFormModal({
                         placeholder="مثال: مریم محمدی"
                     />
                 </ProviderFormField>
+
                 <ProviderFormField label="شماره موبایل" required error={errors.phone}>
                     <input
                         value={phone}
@@ -503,8 +529,21 @@ function StaffFormModal({
                         className={inputClass}
                     />
                 </ProviderFormField>
+
+                {role === 'lab' && (
+                    <ProviderFormField label="عنوان شغلی یا سمت (اختیاری)">
+                        <input
+                            value={jobTitle}
+                            disabled={isSubmitting}
+                            onChange={(e) => setJobTitle(e.target.value)}
+                            placeholder="مثال: نمونه‌گیر آزمایشگاه / پذیرش"
+                            className={inputClass}
+                        />
+                    </ProviderFormField>
+                )}
+
                 {initial && initial.phone !== normalizePhone(phone) && (
-                    <p className="text-xs text-amber-600">با تغییر شماره، منشی باید مجدداً با شماره جدید لاگین کند.</p>
+                    <p className="text-xs text-amber-600">با تغییر شماره موبایل، کارمند باید با شماره جدید وارد پنل شود.</p>
                 )}
             </div>
         </ProviderModal>
