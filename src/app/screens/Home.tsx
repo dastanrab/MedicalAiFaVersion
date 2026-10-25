@@ -20,7 +20,8 @@ import {
   CheckCircle,
   X,
   Loader2,
-  CreditCard
+  CreditCard,
+  MessageSquareQuote
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -75,7 +76,12 @@ interface ActiveAppointment {
   expires_at: string | null;
   status: string;
 }
-
+const SYMPTOMS_MAP: Record<string, { emoji: string; label: string }> = {
+  sweet: { emoji: '🍫', label: 'شیرینی' },
+  salty: { emoji: '🍟', label: 'شوری' },
+  sour: { emoji: '🍋', label: 'ترشی' },
+  spicy: { emoji: '🌶️', label: 'تندی' },
+};
 // ─── Constants & Mock Data ────────────────────────────────────────
 const blogPosts = [
   { id: 1, title: '۱۰ نکته برای سلامت بهتر قلب', excerpt: 'با این تغییرات ساده قلبی سالم‌تر داشته باشید.', image: '/scan.jpg', date: '۲۸ اسفند ۱۴۰۴', readTime: '۵ دقیقه مطالعه', tag: 'قلب و عروق' },
@@ -606,28 +612,34 @@ export function Home() {
                   transition={{ duration: 0.5, ease: 'easeOut' }}
                   className="mb-6 overflow-hidden rounded-[1.75rem] border border-pink-100 bg-gradient-to-br from-pink-50 via-rose-50/70 to-white p-5 shadow-[0_12px_32px_-8px_rgba(244,63,94,0.15)]"
               >
+                {/* هدر باکس پارتنر */}
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-400 to-rose-500 text-white shadow-md shadow-pink-500/20">
                       <Heart className="h-5 w-5 fill-current" />
                     </div>
                     <div className="text-right">
-                      <h3 className="text-sm font-extrabold text-gray-900">وضعیت سلامت پارتنر ({partnerData.partner_name})</h3>
-                      <p className="text-[10px] font-medium text-gray-500">آخرین وضعیت چرخه و روحی پارتنر شما</p>
+                      <h3 className="text-sm font-extrabold text-gray-900">
+                        وضعیت سلامت پارتنر ({partnerData.partner_name})
+                      </h3>
+                      <p className="text-[10px] font-medium text-gray-500">
+                        آخرین وضعیت چرخه و روحی پارتنر شما
+                      </p>
                     </div>
                   </div>
                   <span className="rounded-full bg-pink-100 px-2.5 py-0.5 text-[10px] font-bold text-pink-600">
-                همگام‌سازی شده
-              </span>
+        همگام‌سازی شده
+      </span>
                 </div>
 
+                {/* اطلاعات دو ستونه حالت روحی و روزهای باقی‌مانده */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-white/95 p-3.5 text-right shadow-sm ring-1 ring-pink-100/50">
                     <span className="text-[10px] font-semibold text-gray-400">حالت روحی امروز</span>
                     <div className="mt-1.5 flex items-center gap-2">
-                      <span className="text-2xl" role="img" aria-label="mood">
-                        {moodInfo.emoji}
-                      </span>
+          <span className="text-2xl" role="img" aria-label="mood">
+            {moodInfo.emoji}
+          </span>
                       <span className="text-sm font-bold text-gray-800">{moodInfo.label}</span>
                     </div>
                   </div>
@@ -635,21 +647,61 @@ export function Home() {
                   <div className="rounded-2xl bg-white/95 p-3.5 text-right shadow-sm ring-1 ring-pink-100/50">
                     <span className="text-[10px] font-semibold text-gray-400">باقی‌مانده تا قاعدگی بعدی</span>
                     <p className="mt-1.5 text-base font-black text-rose-600">
-                      {partnerData.cycle_info?.days_remaining !== null && partnerData.cycle_info?.days_remaining !== undefined
+                      {partnerData.cycle_info?.days_remaining !== null &&
+                      partnerData.cycle_info?.days_remaining !== undefined
                           ? `${toFaDigits(partnerData.cycle_info.days_remaining)} روز`
                           : 'نامشخص'}
                     </p>
                   </div>
                 </div>
 
+                {/* وضعیت فعلی دوره */}
                 <div className="mt-3 flex items-center gap-2 rounded-2xl bg-pink-100/40 p-3 text-right text-xs">
                   <span className="font-bold text-rose-600">وضعیت فعلی:</span>
                   <span className="font-bold text-gray-800">
-                    {partnerData.cycle_info?.is_period_days
-                        ? 'دوران قاعدگی پارتنر 🩸'
-                        : 'سیکل عادی روزانه'}
-                  </span>
+        {partnerData.cycle_info?.is_period_days
+            ? 'دوران قاعدگی پارتنر 🩸'
+            : 'سیکل عادی روزانه'}
+      </span>
                 </div>
+
+                {/* نمایش ویار و علائم ثبت‌شده (Symptoms) */}
+                {partnerData.latest_log?.symptoms && partnerData.latest_log.symptoms.length > 0 && (
+                    <div className="mt-3 rounded-2xl bg-white/90 p-3 text-right shadow-sm ring-1 ring-pink-100/40">
+                      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-gray-500">
+                        <UtensilsCrossed className="h-3.5 w-3.5 text-rose-400" />
+                        <span>ویار و تمایلات غذایی ثبت‌شده:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {partnerData.latest_log.symptoms.map((symptomKey) => {
+                          const symptom = SYMPTOMS_MAP[symptomKey];
+                          if (!symptom) return null;
+                          return (
+                              <span
+                                  key={symptomKey}
+                                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50/70 px-2.5 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-100/60"
+                              >
+                <span>{symptom.emoji}</span>
+                <span>{symptom.label}</span>
+              </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                )}
+
+                {/* نمایش یادداشت پارتنر (Notes) */}
+                {partnerData.latest_log?.notes?.trim() && (
+                    <div className="mt-3 rounded-2xl border border-dashed border-rose-200/80 bg-rose-50/50 p-3 text-right">
+                      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-rose-500">
+                        <MessageSquareQuote className="h-3.5 w-3.5" />
+                        <span>یادداشت امروز پارتنر:</span>
+                      </div>
+                      <p className="pr-5 text-xs font-medium leading-relaxed text-gray-700">
+                        «{partnerData.latest_log.notes}»
+                      </p>
+                    </div>
+                )}
               </motion.div>
           )}
 

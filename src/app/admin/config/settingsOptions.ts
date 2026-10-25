@@ -2,7 +2,7 @@ import { Instagram, Send, Youtube, type LucideIcon } from 'lucide-react';
 
 export type SocialPlatform = 'instagram' | 'telegram' | 'youtube';
 export type AdminRole = 'super_admin' | 'operator';
-export type ServiceModuleId = 'labs' | 'pharmacy' | 'radiology' | 'nurseHome';
+export type ServiceModuleId = 'labs' | 'pharmacy' | 'teeth' | 'nurseHome';
 
 export interface SocialLinkSetting {
     id: string;

@@ -9,7 +9,7 @@ import {
     ChartTooltipContent,
     type ChartConfig,
 } from '../../../components/ui/chart';
-import { Sparkles, Power, Wallet, Search, Trash2, ShieldCheck, CreditCard, CheckCircle2, Loader2, Plus } from 'lucide-react';
+import { Sparkles, Power, Wallet, Search, Trash2, ShieldCheck, CreditCard, CheckCircle2, Loader2, Plus, Gift } from 'lucide-react';
 import { PageHeader, formatPrice } from '../../components';
 import { ListRowsSkeleton, CardGridSkeleton } from '../../../components/PageSkeleton';
 import { ProviderModal } from '../../components/ProviderModal';
@@ -100,13 +100,6 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
     const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
     const [paymentVisible, setPaymentVisible] = useState(false);
 
-    const sampleKeyword = {
-        word: 'دکتر قلب',
-        base_click_tariff: 1200,
-        base_impression_tariff: 300,
-        base_price: 150000,
-    };
-
     const apiHeaders = useMemo(() => ({
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -158,7 +151,7 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
         } catch (error) {
             console.warn('Error fetching available keywords');
         }
-    }
+    };
 
     const fetchFinanceAndChart = async () => {
         try {
@@ -175,7 +168,7 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
             const financeRes = await fetch(`${API_BASE_URL}/doctor/finance`, { headers: apiHeaders });
             if (financeRes.ok) {
                 const financeData = await financeRes.json();
-                setWalletBalance(Number(financeData?.wallet_balance || 0));
+                setWalletBalance(Number(financeData?.data?.ad_wallet_balance || 0));
             }
         } catch (e) {
             console.warn('Silent Fetch Error', e);
@@ -192,13 +185,8 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
     }, [availableKeywords, searchInput]);
 
     const selectedPlan = plans.find(p => p.id === selectedPlanId) || null;
-    const previewMultiplier = selectedPlan ? selectedPlan.multiplier : (activePlan?.multiplier || 1);
 
-    const sampleClickTariff = sampleKeyword.base_click_tariff * previewMultiplier;
-    const sampleImpressionTariff = sampleKeyword.base_impression_tariff * previewMultiplier;
-    const sampleTotalPrice = sampleKeyword.base_price * previewMultiplier;
-
-    // حذف window.confirm و اتصال مستقیم به درگاه
+    // اتصال مستقیم به درگاه
     const handleSubscribePlan = async (planId: number, planName: string) => {
         setIsPaying(true);
 
@@ -208,14 +196,13 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                 headers: apiHeaders,
                 body: JSON.stringify({
                     plan_id: planId,
-                    gateway: 'saman' // ارسال درگاه سامان
+                    gateway: 'saman'
                 })
             });
             const data = await res.json();
 
             if (res.ok && data.success) {
                 if (data.data?.payment_url) {
-                    // هدایت مستقیم کاربر به درگاه سامان بدون هیچ پیام اضافه‌ای
                     window.location.href = data.data.payment_url;
                 } else {
                     showProviderSuccess(data.message || 'پلن شما فعال شد');
@@ -253,7 +240,6 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
             if (res.ok) {
                 showProviderSuccess(data.message || 'کلمه با موفقیت اضافه شد');
                 setNewKeywordInput('');
-                // بروزرسانی لیست کلمات برای نمایش کلمه جدید
                 fetchAvailableKeywords();
             } else {
                 showProviderError(data.message || 'خطا در افزودن کلمه');
@@ -341,7 +327,7 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
 
     const handlePlanSelect = (planId: number) => {
         setSelectedPlanId(planId);
-        setPaymentVisible(false); // reset payment when selecting a new plan
+        setPaymentVisible(false);
     };
 
     return (
@@ -418,24 +404,6 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-amber-800">نمونه کلمه (پیش‌نمایش هزینه‌ها)</h3>
-                            <span className="text-xs text-amber-600">
-                                {selectedPlan ? `با پلن انتخابی: ${selectedPlan.name}` : (activePlan ? `با پلن فعال: ${activePlan.plan_name}` : 'بدون پلن')}
-                            </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-4">
-                            <span className="text-sm font-medium text-slate-700">{sampleKeyword.word}</span>
-                            <div className="flex gap-3 text-[11px] text-slate-500">
-                                <span>هر کلیک: <b className="text-amber-700">{formatPrice(sampleClickTariff)} ت</b></span>
-                                <span>هر نمایش: <b className="text-amber-700">{formatPrice(sampleImpressionTariff)} ت</b></span>
-                                <span>هزینه کمپین: <b className="text-amber-700">{formatPrice(sampleTotalPrice)} ت</b></span>
-                            </div>
-                        </div>
-                        <p className="mt-1 text-[10px] text-slate-400">با انتخاب هر پلن، اعداد بالا تغییر می‌کنند.</p>
-                    </div>
-
                     <div>
                         <h3 className="mb-3 mt-6 text-sm font-bold text-slate-800">کمپین‌های کلمات کلیدی من</h3>
                         {isLoading ? (
@@ -504,35 +472,55 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                         {plans.length === 0 ? (
                             <CardGridSkeleton count={4} />
                         ) : (
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 {plans.map((plan) => {
                                     const isActive = activePlan?.plan_id === plan.id;
                                     const isSelected = selectedPlanId === plan.id;
+                                    const bonusAmount = Math.floor(plan.price * 0.2);
+
                                     return (
                                         <div
                                             key={plan.id}
                                             onClick={() => handlePlanSelect(plan.id)}
-                                            className={`rounded-2xl border px-2 py-3 text-center transition cursor-pointer ${
+                                            className={`flex flex-col justify-between rounded-2xl border p-3.5 text-center transition cursor-pointer ${
                                                 isActive
-                                                    ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-300'
+                                                    ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300'
                                                     : isSelected
-                                                        ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-200'
+                                                        ? 'border-blue-400 bg-blue-50/70 ring-2 ring-blue-200'
                                                         : 'border-slate-200 bg-white hover:bg-slate-50'
                                             }`}
                                         >
-                                            <LevelGauge percent={plan.tier_level * 20} active={isActive || isSelected} />
-                                            <p className="mt-1 text-[11px] font-bold text-slate-700">{plan.name}</p>
-                                            <p className="mt-0.5 text-[10px] text-slate-500">سطح {toFaDigits(plan.tier_level)}</p>
-                                            {isActive ? (
-                                                <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                                                    <CheckCircle2 className="inline h-3 w-3 ml-1" />
-                                                    پلن فعال
-                                                </span>
-                                            ) : isSelected ? (
-                                                <span className="mt-1 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-                                                    انتخاب شده
-                                                </span>
-                                            ) : null}
+                                            <div>
+                                                <LevelGauge percent={plan.tier_level * 20} active={isActive || isSelected} />
+                                                <p className="mt-1 text-xs font-bold text-slate-800">{plan.name}</p>
+                                                <p className="mt-0.5 text-[11px] text-slate-500">سطح {toFaDigits(plan.tier_level)}</p>
+
+                                                {/* قیمت درشت و بزرگ */}
+                                                <div className="mt-3 pt-2 border-t border-slate-100">
+                                                    <p className="text-base sm:text-lg font-extrabold text-slate-900">
+                                                        {formatPrice(plan.price)} <span className="text-xs font-normal text-slate-500">تومان</span>
+                                                    </p>
+
+                                                    {/* مبلغ 20 درصد هدیه شارژ */}
+                                                    <div className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-200/60">
+                                                        <Gift className="h-3 w-3 shrink-0 text-emerald-600" />
+                                                        <span>+{formatPrice(bonusAmount)} ت شارژ هدیه (۲۰٪)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-2">
+                                                {isActive ? (
+                                                    <span className="inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                                        <CheckCircle2 className="inline h-3 w-3 ml-1" />
+                                                        پلن فعال
+                                                    </span>
+                                                ) : isSelected ? (
+                                                    <span className="inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-700">
+                                                        انتخاب شده
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -541,27 +529,39 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
 
                         {selectedPlan && (
                             <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-                                <h4 className="text-sm font-bold text-slate-800">
-                                    {selectedPlan.name}
-                                    {activePlan?.plan_id === selectedPlan.id && (
-                                        <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                                            پلن فعال
-                                        </span>
-                                    )}
-                                </h4>
-                                <p className="mt-1 text-xs text-slate-600">{selectedPlan.description}</p>
-                                <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
-                                    <div><span className="text-slate-400">قیمت: </span><b>{formatPrice(selectedPlan.price)} تومان</b></div>
-                                    <div><span className="text-slate-400">مدت: </span><b>{toFaDigits(selectedPlan.duration_days)} روز</b></div>
-                                    <div><span className="text-slate-400">ضریب: </span><b>{toFaDigits(selectedPlan.multiplier)}x</b></div>
-                                    <div><span className="text-slate-400">سطح: </span><b>{toFaDigits(selectedPlan.tier_level)}</b></div>
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-bold text-slate-800">
+                                        {selectedPlan.name}
+                                        {activePlan?.plan_id === selectedPlan.id && (
+                                            <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                                پلن فعال
+                                            </span>
+                                        )}
+                                    </h4>
+                                    <span className="text-xs font-medium text-slate-500">
+                                        مدت: {toFaDigits(selectedPlan.duration_days)} روز
+                                    </span>
                                 </div>
 
-                                <div className="mt-3 rounded-lg bg-white p-3 text-[11px] space-y-1">
-                                    <p className="font-bold text-slate-700">پیش‌نمایش کلمه نمونه با این پلن:</p>
-                                    <p>هر کلیک: {formatPrice(sampleKeyword.base_click_tariff * selectedPlan.multiplier)} ت</p>
-                                    <p>هر نمایش: {formatPrice(sampleKeyword.base_impression_tariff * selectedPlan.multiplier)} ت</p>
-                                    <p>هزینه کمپین: {formatPrice(sampleKeyword.base_price * selectedPlan.multiplier)} ت</p>
+                                {selectedPlan.description && (
+                                    <p className="mt-1.5 text-xs text-slate-600">{selectedPlan.description}</p>
+                                )}
+
+                                {/* نمایش قیمت بزرگ و هدیه در باکس پلن انتخابی */}
+                                <div className="mt-3 rounded-xl bg-white p-3 border border-blue-100 text-center">
+                                    <p className="text-xs text-slate-500 mb-1">مبلغ قابل پرداخت:</p>
+                                    <p className="text-xl font-extrabold text-slate-900">
+                                        {formatPrice(selectedPlan.price)} <span className="text-xs font-medium text-slate-500">تومان</span>
+                                    </p>
+                                    <p className="mt-1.5 text-xs font-bold text-emerald-600 flex items-center justify-center gap-1">
+                                        <Gift className="h-3.5 w-3.5" />
+                                        شامل {formatPrice(Math.floor(selectedPlan.price * 0.2))} تومان شارژ هدیه (۲۰٪)
+                                    </p>
+                                </div>
+
+                                <div className="mt-2.5 flex justify-around text-[11px] text-slate-600 bg-white/60 rounded-lg py-1.5">
+                                    <div><span className="text-slate-400">ضریب پلن: </span><b>{toFaDigits(selectedPlan.multiplier)}x</b></div>
+                                    <div><span className="text-slate-400">سطح VIP: </span><b>{toFaDigits(selectedPlan.tier_level)}</b></div>
                                 </div>
 
                                 {activePlan?.plan_id === selectedPlan.id ? (
@@ -572,7 +572,7 @@ export function ProviderVipPage({ role }: ProviderVipPageProps) {
                                     <button
                                         type="button"
                                         onClick={() => setPaymentVisible(true)}
-                                        className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white hover:bg-amber-600 transition-colors"
+                                        className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-600 transition-colors"
                                     >
                                         <CreditCard className="h-4 w-4" />
                                         ادامه و پرداخت

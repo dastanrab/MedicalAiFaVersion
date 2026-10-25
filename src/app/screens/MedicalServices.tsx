@@ -11,7 +11,7 @@ import {
   Stethoscope,
   Building,
   Home,
-  UserCheck
+  UserCheck, Sparkles
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppBar } from "../components/AppBar";
@@ -64,7 +64,7 @@ const SUPPORTED_SERVICES_MAP: Record<string, { icon: LucideIcon; gradient: strin
   laboratory: { icon: TestTube, gradient: 'from-sky-500 to-blue-600', path: '/services/labs' },
   pharmacy: { icon: Pill, gradient: 'from-emerald-500 to-teal-600', path: '/services/pharmacy' },
   clinic: { icon: Stethoscope, gradient: 'from-violet-500 to-indigo-600', path: '/services/nurse-home' },
-  imaging_center: { icon: Building, gradient: 'from-rose-500 to-pink-600', path: '/services/radiology' },
+  tooth: { icon: Sparkles, gradient: 'from-rose-500 to-pink-600', path: '/doctors?specialty=دندان%20پزشکی' },
 };
 
 export function MedicalServices() {

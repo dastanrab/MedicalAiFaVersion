@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Search, MapPin, Filter, Star, ChevronDown, ThumbsUp, BadgeCheck, Stethoscope, Heart, Sparkles } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
@@ -51,14 +51,24 @@ interface Doctor {
   is_vip: number;
 }
 
+interface SpecialtyItem {
+  id: number;
+  name: string;
+}
+
 function getDoctorAvatarFallback(name: string) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff&size=144&font-size=0.4`;
 }
 
 export function DoctorList() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // استیت‌های تخصص‌های دریافتی از سرور
+  const [specialties, setSpecialties] = useState<SpecialtyItem[]>([]);
 
   // استیت‌های جستجو و کلمات کلیدی
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,17 +83,29 @@ export function DoctorList() {
   const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
   const [favoriteDoctors, setFavoriteDoctors] = useState<number[]>([]);
 
-  const specialties = [
-    'قلب و عروق', 'گوارش', 'ریه', 'مغز و اعصاب', 'ارتوپدی',
-    'پوست و مو', 'کلیه و مجاری ادراری', 'غدد', 'چشم پزشکی',
-    'گوش و حلق و بینی', 'زنان و زایمان', 'روانپزشکی', 'داخلی',
-    'عفونی', 'اطفال'
-  ];
   const provinces = ['خراسان رضوی', 'تهران', 'اصفهان', 'شیراز'];
   const cities = ['مشهد', 'تهران', 'اصفهان', 'شیراز'];
   const ranks = ['پزشک', 'پزشک ارشد', 'متخصص', 'متخصص ارشد'];
 
   const { accessToken } = useAuthStore();
+
+  // دریافت لیست تخصص‌ها از سرور
+  const fetchSpecialties = async () => {
+    try {
+      const response = await fetch('https://api.mediraai.com/api/user/diagnosis/specialties', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const result = await response.json();
+      if (result.success && Array.isArray(result.data)) {
+        setSpecialties(result.data);
+      }
+    } catch (error) {
+      console.error('خطا در دریافت لیست تخصص‌ها:', error);
+    }
+  };
 
   // بستن منوی پیشنهادات در صورت کلیک در خارج از آن
   useEffect(() => {
@@ -96,9 +118,24 @@ export function DoctorList() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // بارگذاری تخصص‌ها در ابتدای سوار شدن کامپوننت
   useEffect(() => {
-    fetchDoctors();
+    fetchSpecialties();
   }, []);
+
+  // بررسی query params و دریافت لیست پزشکان
+  useEffect(() => {
+    const specialtyParam = searchParams.get('specialty') || searchParams.get('query');
+
+    if (specialtyParam) {
+      const decodedParam = decodeURIComponent(specialtyParam).trim();
+      setSearchQuery(decodedParam);
+      setSelectedSpecialties([decodedParam]);
+      fetchDoctors(decodedParam);
+    } else {
+      fetchDoctors('');
+    }
+  }, [searchParams]);
 
   // گرفتن لیست پزشکان با پشتیبانی از کلمه جستجو
   const fetchDoctors = async (queryStr = '') => {
@@ -131,8 +168,8 @@ export function DoctorList() {
       setLoading(false);
     }
   };
+
   const handleDoctorClick = (doctorId: number) => {
-    // 1. اگر کاربر متنی را سرچ کرده بود، درخواست ثبت کلیک را در بک‌گراند به سرور بفرست
     if (searchQuery.trim().length > 0) {
       fetch(`https://api.mediraai.com/api/user/diagnosis/doctor/${doctorId}/click`, {
         method: 'POST',
@@ -144,9 +181,9 @@ export function DoctorList() {
       }).catch((err) => console.error("Error logging click:", err));
     }
 
-    // 2. بلافاصله و بدون معطلی به صفحه پزشک برو
     navigate(`/doctor/${doctorId}`);
   };
+
   // دریافت کلمات کلیدی پیشنهادی
   const fetchSuggestions = async (text: string) => {
     if (text.length < 2) {
@@ -172,13 +209,20 @@ export function DoctorList() {
     const value = e.target.value;
     setSearchQuery(value);
     fetchSuggestions(value);
-    if (value === '') fetchDoctors(''); // بازگردانی لیست کامل در صورت خالی شدن
+    if (value === '') {
+      setSelectedSpecialties([]);
+      fetchDoctors('');
+    }
   };
 
   // هندلر ارسال نهایی جستجو
   const handleSearchSubmit = (query: string) => {
     setSearchQuery(query);
     setShowSuggestions(false);
+    const isSpecialty = specialties.some((s) => s.name === query);
+    if (isSpecialty) {
+      setSelectedSpecialties([query]);
+    }
     fetchDoctors(query);
   };
 
@@ -191,7 +235,7 @@ export function DoctorList() {
     aiApproved: index === 0 || (doctor.id * 7 + 3) % 5 < 3,
   }));
 
-  // فیلترهای استانی و تخصص (جستجوی متنی حذف شد چون سمت سرور است)
+  // فیلترهای استانی و تخصص
   const filteredDoctors = doctorsWithMeta.filter((doctor) => {
     const matchesProvince = selectedProvince === 'all' || doctor.province === selectedProvince;
     const matchesCity = selectedCity === 'all' || doctor.city === selectedCity;
@@ -202,9 +246,9 @@ export function DoctorList() {
     return matchesProvince && matchesCity && matchesGender && matchesSpecialty && matchesRank;
   });
 
-  const toggleSpecialty = (specialty: string) => {
+  const toggleSpecialty = (specialtyName: string) => {
     setSelectedSpecialties((prev) =>
-        prev.includes(specialty) ? prev.filter((s) => s !== specialty) : [...prev, specialty]
+        prev.includes(specialtyName) ? prev.filter((s) => s !== specialtyName) : [...prev, specialtyName]
     );
   };
 
@@ -218,6 +262,8 @@ export function DoctorList() {
     setSelectedGender('all');
     setSelectedSpecialties([]);
     setSelectedRanks([]);
+    setSearchQuery('');
+    fetchDoctors('');
   };
 
   const toggleFavorite = (doctorId: number, e: React.MouseEvent) => {
@@ -279,7 +325,6 @@ export function DoctorList() {
                     className="h-12 rounded-full border-0 bg-white pr-11 text-right shadow-[0_4px_20px_rgba(0,0,0,0.08)] ring-1 ring-gray-100 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-blue-300"
                 />
 
-                {/* منوی بازشوی کلمات کلیدی پیشنهادی */}
                 {showSuggestions && suggestions.length > 0 && (
                     <div className="absolute top-14 w-full bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
                       {suggestions.map((suggestion, idx) => (
@@ -324,7 +369,6 @@ export function DoctorList() {
                             className="pr-10 text-right"
                         />
                       </div>
-
                     </div>
 
                     <div>
@@ -385,14 +429,14 @@ export function DoctorList() {
                       <h3 className="text-lg mb-3 text-gray-900">تخصص</h3>
                       <div className="space-y-3">
                         {specialties.map((specialty) => (
-                            <div key={specialty} className="flex items-center">
+                            <div key={specialty.id} className="flex items-center">
                               <Checkbox
-                                  id={specialty}
-                                  checked={selectedSpecialties.includes(specialty)}
-                                  onCheckedChange={() => toggleSpecialty(specialty)}
+                                  id={`specialty-${specialty.id}`}
+                                  checked={selectedSpecialties.includes(specialty.name)}
+                                  onCheckedChange={() => toggleSpecialty(specialty.name)}
                               />
-                              <Label htmlFor={specialty} className="mr-2 cursor-pointer">
-                                {specialty}
+                              <Label htmlFor={`specialty-${specialty.id}`} className="mr-2 cursor-pointer">
+                                {specialty.name}
                               </Label>
                             </div>
                         ))}
@@ -424,40 +468,41 @@ export function DoctorList() {
                 </SheetContent>
               </Sheet>
             </div>
-
           </div>
+
+          {/* لیست افقی تخصص‌ها به‌صورت اسکرول شونده */}
           <div className="mt-5 -mx-4 px-4">
             <div className="flex overflow-x-auto gap-2.5 pb-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {specialties.map((specialty) => {
-                // بررسی می‌کنیم که آیا متن جستجو دقیقاً برابر با این تخصص است یا خیر
-                const isActive = searchQuery === specialty;
+                const isActive = searchQuery === specialty.name || selectedSpecialties.includes(specialty.name);
                 return (
                     <button
-                        key={specialty}
+                        key={specialty.id}
                         onClick={() => {
                           if (isActive) {
-                            // اگر تخصص قبلاً انتخاب شده بود و دوباره کلیک شد، جستجو را پاک کن و لیست کامل را بگیر
                             setSearchQuery('');
+                            setSelectedSpecialties([]);
                             fetchDoctors('');
                           } else {
-                            // در غیر این صورت، نام تخصص را در سرچ قرار بده و جستجو را اجرا کن
-                            setSearchQuery(specialty);
-                            handleSearchSubmit(specialty);
+                            setSearchQuery(specialty.name);
+                            setSelectedSpecialties([specialty.name]);
+                            handleSearchSubmit(specialty.name);
                           }
                         }}
                         className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 border shadow-sm
-                      ${
+                    ${
                             isActive
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30'
                                 : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600'
                         }`}
                     >
-                      {specialty}
+                      {specialty.name}
                     </button>
                 );
               })}
             </div>
           </div>
+
           {(selectedProvince !== 'all' ||
               selectedCity !== 'all' ||
               selectedGender !== 'all' ||
@@ -479,9 +524,9 @@ export function DoctorList() {
                       {selectedGender}
                     </Badge>
                 )}
-                {selectedSpecialties.map((specialty) => (
-                    <Badge key={specialty} variant="secondary">
-                      {specialty}
+                {selectedSpecialties.map((specialtyName) => (
+                    <Badge key={specialtyName} variant="secondary">
+                      {specialtyName}
                     </Badge>
                 ))}
                 {selectedRanks.map((rank) => (
@@ -501,7 +546,6 @@ export function DoctorList() {
                     className="gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-0 text-right shadow-[0_2px_16px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] cursor-pointer"
                 >
                   <div className="p-4">
-                    {/* سربرگ: عکس، نام، تخصص و علاقه‌مندی */}
                     <div className="flex items-center gap-3">
                       <img
                           src={doctor.image}
@@ -545,27 +589,26 @@ export function DoctorList() {
                       </button>
                     </div>
 
-                    {/* آمار: امتیاز، پیشنهاد، نوبت موفق */}
                     <div className="mt-3 grid grid-cols-3 divide-x divide-gray-100 rounded-xl bg-gray-50/80 py-2 text-center">
                       <div className="flex flex-col items-center gap-0.5 px-1">
-                        <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                          {parseFloat(doctor.rating).toLocaleString('fa-IR')}
-                        </span>
+                    <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                      {parseFloat(doctor.rating).toLocaleString('fa-IR')}
+                    </span>
                         <span className="text-[10px] text-gray-500">{doctor.reviews.toLocaleString('fa-IR')} نظر</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 px-1">
-                        <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
-                          <ThumbsUp className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
-                          {doctor.recommendation.toLocaleString('fa-IR')}٪
-                        </span>
+                    <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
+                      <ThumbsUp className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
+                      {doctor.recommendation.toLocaleString('fa-IR')}٪
+                    </span>
                         <span className="text-[10px] text-gray-500">پیشنهاد کاربران</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 px-1">
-                        <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
-                          <BadgeCheck className="h-3.5 w-3.5 text-blue-500" />
-                          {doctor.visit_count.toLocaleString('fa-IR')}
-                        </span>
+                    <span className="flex items-center gap-1 text-xs font-bold text-gray-900">
+                      <BadgeCheck className="h-3.5 w-3.5 text-blue-500" />
+                      {doctor.visit_count.toLocaleString('fa-IR')}
+                    </span>
                         <span className="text-[10px] text-gray-500">نوبت موفق</span>
                       </div>
                     </div>
@@ -577,8 +620,8 @@ export function DoctorList() {
                                   key={tag}
                                   className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700"
                               >
-                                {tag}
-                              </span>
+                        {tag}
+                      </span>
                           ))}
                         </div>
                     )}
@@ -606,13 +649,12 @@ export function DoctorList() {
                     </div>
                   </div>
 
-                  {/* نوار تایید هوش مصنوعی چسبیده به پایین کارت */}
                   {doctor.aiApproved && (
                       <div className="flex items-center justify-center gap-1.5 border-t border-cyan-100 bg-gradient-to-l from-cyan-50 to-violet-50 py-2 text-[11px] font-semibold">
                         <Sparkles className="h-3.5 w-3.5 shrink-0 text-cyan-500" />
                         <span className="bg-gradient-to-l from-cyan-600 to-violet-600 bg-clip-text text-transparent">
-                          مورد تایید هوش مصنوعی
-                        </span>
+                    مورد تایید هوش مصنوعی
+                  </span>
                       </div>
                   )}
                 </Card>

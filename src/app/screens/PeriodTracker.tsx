@@ -5,53 +5,33 @@ import {
     Heart,
     Plus,
     ChevronLeft,
-    ChevronRight,
     X,
     MessageCircle,
     Sparkles,
     Share2,
     Copy,
     CheckCircle2,
-    Flame,
-    Dumbbell,
-    Flower,
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { AppBar } from '../components/AppBar';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { useAuthStore } from "../store/authStore";
-import { JalaliCalendarModal, gregorianToJalali, jalaliToGregorian, formatJalaliDate } from "../components/JalaliCalendarModal";
-import { WorkoutModal } from '../components/WorkoutModal';
-import { jalaaliMonthLength } from 'jalaali-js';
+import { JalaliCalendarModal } from "../components/JalaliCalendarModal";
+import { PeriodMonthStrip } from '../components/PeriodMonthStrip';
+import { PeriodWorkoutCard } from '../components/PeriodWorkoutCard';
+import {
+    JalaliDate,
+    parseGregorianString,
+    getLocalDateString,
+    dateToJalaliKey,
+    gregorianToJalali,
+    jalaliToGregorian,
+    formatJalaliDate,
+} from '../utils/jalaliHelpers';
 
 const API_BASE_URL = "https://api.mediraai.com/api/user";
 
-// ---------- Jalali Helpers ----------
-export interface JalaliDate {
-    jy: number;
-    jm: number;
-    jd: number;
-}
-
-function parseGregorianString(dateStr: string): Date {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
-}
-
-function getLocalDateString(date: Date): string {
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, "0");
-    const day = `${date.getDate()}`.padStart(2, "0");
-    return `${year}-${month}-${day}`;
-}
-
-function dateToJalaliKey(date: Date): string {
-    const j = gregorianToJalali(date.getFullYear(), date.getMonth() + 1, date.getDate());
-    return formatJalaliDate(j);
-}
-
-// ---------- Constants ----------
 const MOODS = [
     { id: 'happy', emoji: '😊', label: 'شاد' },
     { id: 'calm', emoji: '😌', label: 'آرام' },
@@ -76,7 +56,6 @@ const PHYSICAL_SYMPTOMS = [
     { id: 'back_pain', emoji: '🦴', label: 'کمر درد' },
 ];
 
-// ---------- Insight Dialog Themes ----------
 interface InsightDialogTheme {
     tipsIcon: string;
     tipsItemBg: string;
@@ -114,11 +93,9 @@ const BLUE_DIALOG_THEME: InsightDialogTheme = {
     button: 'h-11 w-full rounded-2xl bg-gradient-to-l from-sky-500 to-blue-600 text-white shadow-md shadow-sky-200/60 hover:from-sky-600 hover:to-blue-700',
 };
 
-// ---------- Main Component ----------
 export default function PeriodTracker() {
     const { accessToken } = useAuthStore();
 
-    // States
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [trackerSettings, setTrackerSettings] = useState<any>(null);
     const [dailyLog, setDailyLog] = useState<any>(null);
@@ -127,22 +104,19 @@ export default function PeriodTracker() {
     const [isSymptomsModalOpen, setIsSymptomsModalOpen] = useState(false);
     const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
     const [isStartPeriodModalOpen, setIsStartPeriodModalOpen] = useState(false);
-    const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
     const [activeInsight, setActiveInsight] = useState<HealthInsight | null>(null);
 
     const [copiedCode, setCopiedCode] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
-
     const [activeDateField, setActiveDateField] = useState<string | null>(null);
 
-    // Floating emojis state and refs
     const [floatEmojis, setFloatEmojis] = useState<{ id: number; emoji: string; label: string; left: number; duration: number; size: number }[]>([]);
     const emojiTimeoutRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
     const [setupData, setSetupData] = useState({
         last_period_start_date: getLocalDateString(new Date()),
         cycle_length: 28,
-        period_length: 5
+        period_length: 5,
     });
 
     const [startPeriodData, setStartPeriodData] = useState({
@@ -152,7 +126,6 @@ export default function PeriodTracker() {
         period_length: 5,
     });
 
-    // Daily log states
     const [symptomText, setSymptomText] = useState('');
     const [selectedMood, setSelectedMood] = useState<string>('');
     const [selectedFoods, setSelectedFoods] = useState<string[]>([]);
@@ -165,48 +138,123 @@ export default function PeriodTracker() {
     const selectedJalali = useMemo(() => gregorianToJalali(selectedDate.getFullYear(), selectedDate.getMonth() + 1, selectedDate.getDate()), [selectedDate]);
     const selectedJalaliString = formatJalaliDate(selectedJalali);
 
-    // NEW: viewJalali state for the month strip
     const [viewJalali, setViewJalali] = useState<JalaliDate>(() => {
         const now = new Date();
         return gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
     });
 
-    // Sync viewJalali when selectedJalali changes (e.g., from calendar modal)
     useEffect(() => {
         setViewJalali(selectedJalali);
     }, [selectedJalali]);
-
-    // Helper to shift Jalali month
-    const shiftJalaliMonth = (jalali: JalaliDate, delta: number): JalaliDate => {
-        const totalMonths = jalali.jy * 12 + (jalali.jm - 1) + delta;
-        const jy = Math.floor(totalMonths / 12);
-        const jm = (totalMonths % 12) + 1;
-        return { jy, jm, jd: 1 };
-    };
 
     useEffect(() => {
         setStartPeriodData(prev => ({ ...prev, start_date: selectedDateString }));
     }, [selectedDateString]);
 
-    // تاریخ امروز به شمسی
     const todayJalali = useMemo(
         () => gregorianToJalali(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()),
         []
     );
 
-    // تاریخ هدف (تاریخ وارد شده توسط کاربر)
-    const targetJalali = useMemo(() => {
+    const nextPeriodDate = useMemo(() => {
         if (!trackerSettings?.last_period_start_date) return null;
-        const d = parseGregorianString(trackerSettings.last_period_start_date);
-        return gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        const start = parseGregorianString(trackerSettings.last_period_start_date);
+        const cycle = Number(trackerSettings.cycle_length) || 28;
+
+        const next = new Date(start);
+        next.setDate(next.getDate() + cycle);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        while (next < today) {
+            next.setDate(next.getDate() + cycle);
+        }
+
+        return next;
     }, [trackerSettings]);
 
-    // Helper to spawn a floating emoji with label
+    const targetJalali = useMemo(() => {
+        if (!nextPeriodDate) return null;
+        return gregorianToJalali(
+            nextPeriodDate.getFullYear(),
+            nextPeriodDate.getMonth() + 1,
+            nextPeriodDate.getDate()
+        );
+    }, [nextPeriodDate]);
+
+    const daysUntil = useMemo(() => {
+        if (trackerSettings?.days_remaining !== undefined && trackerSettings?.days_remaining !== null) {
+            return trackerSettings.days_remaining;
+        }
+        if (!nextPeriodDate) return 0;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const diffTime = nextPeriodDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 ? diffDays : 0;
+    }, [nextPeriodDate, trackerSettings]);
+
+    const ringRadius = 108;
+    const ringCircumference = 2 * Math.PI * ringRadius;
+
+    const cyclePhases = useMemo(() => {
+        const periodDates = new Set<string>();
+        const fertileDates = new Set<string>();
+        const ovulationDates = new Set<string>();
+        if (!trackerSettings?.last_period_start_date || !trackerSettings?.cycle_length || !trackerSettings?.period_length) {
+            return { periodDates, fertileDates, ovulationDates };
+        }
+
+        const lastStart = parseGregorianString(trackerSettings.last_period_start_date);
+        const cycleLen = Number(trackerSettings.cycle_length);
+        const periodLen = Number(trackerSettings.period_length);
+        const lutealPhase = 14;
+
+        for (let i = -12; i <= 12; i++) {
+            const periodStart = new Date(lastStart);
+            periodStart.setDate(periodStart.getDate() + i * cycleLen);
+
+            for (let d = 0; d < periodLen; d++) {
+                const pd = new Date(periodStart);
+                pd.setDate(pd.getDate() + d);
+                periodDates.add(getLocalDateString(pd));
+            }
+
+            const ovulationDate = new Date(periodStart);
+            ovulationDate.setDate(ovulationDate.getDate() + cycleLen - lutealPhase);
+            ovulationDates.add(getLocalDateString(ovulationDate));
+
+            const fertileStart = new Date(ovulationDate);
+            fertileStart.setDate(fertileStart.getDate() - 5);
+            for (let d = 0; d <= 5; d++) {
+                const fd = new Date(fertileStart);
+                fd.setDate(fd.getDate() + d);
+                fertileDates.add(getLocalDateString(fd));
+            }
+        }
+        return { periodDates, fertileDates, ovulationDates };
+    }, [trackerSettings]);
+
+    const hasSymptomLog = useMemo(() => {
+        if (!dailyLog) return false;
+        return Boolean(
+            dailyLog.mood ||
+            (dailyLog.symptoms && dailyLog.symptoms.length > 0) ||
+            (dailyLog.physical_symptoms && dailyLog.physical_symptoms.length > 0) ||
+            dailyLog.notes ||
+            (dailyLog.water && dailyLog.water > 0) ||
+            (dailyLog.calorie && dailyLog.calorie > 0)
+        );
+    }, [dailyLog]);
+
     const spawnFloatingEmoji = (emoji: string, label: string, left?: number) => {
         const id = Date.now() + Math.random();
-        const leftPos = left !== undefined ? left : Math.random() * 80 + 10; // 10% to 90%
-        const duration = Math.random() * 1500 + 1500; // 1.5 to 3 seconds
-        const size = Math.random() * 10 + 26; // 26-36 px
+        const leftPos = left !== undefined ? left : Math.random() * 80 + 10;
+        const duration = Math.random() * 1500 + 1500;
+        const size = Math.random() * 10 + 26;
 
         setFloatEmojis(prev => [...prev, { id, emoji, label, left: leftPos, duration, size }]);
 
@@ -216,78 +264,36 @@ export default function PeriodTracker() {
         emojiTimeoutRef.current.push(removeTimeout);
     };
 
-    // Effect to spawn floating emojis based on the selected date's daily log
     useEffect(() => {
         if (!dailyLog) return;
-
         const itemsToFloat: { emoji: string; label: string }[] = [];
 
         if (dailyLog.mood) {
             const mood = MOODS.find(m => m.id === dailyLog.mood);
             if (mood) itemsToFloat.push({ emoji: mood.emoji, label: mood.label });
         }
-
         dailyLog.symptoms?.forEach((foodId: string) => {
             const food = FOODS.find(f => f.id === foodId);
             if (food) itemsToFloat.push({ emoji: food.emoji, label: food.label });
         });
-
         dailyLog.physical_symptoms?.forEach((symptomId: string) => {
             const symptom = PHYSICAL_SYMPTOMS.find(s => s.id === symptomId);
             if (symptom) itemsToFloat.push({ emoji: symptom.emoji, label: symptom.label });
         });
 
-        // Spawn each with a slight stagger
         itemsToFloat.forEach((item, index) => {
             const timeout = setTimeout(() => {
                 spawnFloatingEmoji(item.emoji, item.label);
-            }, index * 200); // 200ms stagger
+            }, index * 200);
             emojiTimeoutRef.current.push(timeout);
         });
-
-        // No cleanup needed for spawn timeouts; they will fire and spawn emojis.
-        // The removal timeouts will clean up the emojis later.
-        // On unmount, all timeouts are cleared in the main cleanup below.
     }, [dailyLog]);
 
-    const handleSaveDailyLog = async () => {
-        if (!accessToken) return;
-        setLoading(true);
-        try {
-            const payload = {
-                log_date: selectedDateString,
-                mood: selectedMood || null,
-                symptoms: selectedFoods,
-                notes: symptomText || null,
-                water: selectedWater || 0,
-                calorie: selectedCalorie || 0,
-                physical_symptoms: selectedPhysicalSymptoms,
-            };
-            const res = await fetch(`${API_BASE_URL}/period-tracker/daily-log`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                setIsSymptomsModalOpen(false);
-                fetchDailyLog();
-            }
-        } catch (err) {
-            console.error("خطا در ثبت علائم:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // بارگذاری تنظیمات از سرور
     const fetchTrackerSettings = useCallback(async () => {
         if (!accessToken) return;
         try {
             const res = await fetch(`${API_BASE_URL}/period-tracker`, {
-                headers: { Authorization: `Bearer ${accessToken}` }
+                headers: { Authorization: `Bearer ${accessToken}` },
             });
             if (res.ok) {
                 const result = await res.json();
@@ -301,11 +307,20 @@ export default function PeriodTracker() {
         }
     }, [accessToken]);
 
+    const resetForm = () => {
+        setSymptomText('');
+        setSelectedMood('');
+        setSelectedFoods([]);
+        setSelectedWater(0);
+        setSelectedCalorie(0);
+        setSelectedPhysicalSymptoms([]);
+    };
+
     const fetchDailyLog = useCallback(async () => {
         if (!accessToken) return;
         try {
             const res = await fetch(`${API_BASE_URL}/period-tracker/daily-log/${selectedDateString}`, {
-                headers: { Authorization: `Bearer ${accessToken}` }
+                headers: { Authorization: `Bearer ${accessToken}` },
             });
             if (res.ok) {
                 const result = await res.json();
@@ -339,7 +354,6 @@ export default function PeriodTracker() {
         fetchDailyLog();
     }, [fetchDailyLog]);
 
-    // Cleanup all timeouts on unmount
     useEffect(() => {
         return () => {
             emojiTimeoutRef.current.forEach(clearTimeout);
@@ -347,13 +361,42 @@ export default function PeriodTracker() {
         };
     }, []);
 
-    const resetForm = () => {
-        setSymptomText('');
-        setSelectedMood('');
-        setSelectedFoods([]);
-        setSelectedWater(0);
-        setSelectedCalorie(0);
-        setSelectedPhysicalSymptoms([]);
+    const handleDaySelect = (day: JalaliDate) => {
+        const greg = jalaliToGregorian(day.jy, day.jm, day.jd);
+        const gregDate = new Date(greg.gy, greg.gm - 1, greg.gd); // علامت منها اضافه شد
+        setSelectedDate(gregDate);
+    };
+
+    const handleSaveDailyLog = async () => {
+        if (!accessToken) return;
+        setLoading(true);
+        try {
+            const payload = {
+                log_date: selectedDateString,
+                mood: selectedMood || null,
+                symptoms: selectedFoods,
+                notes: symptomText || null,
+                water: selectedWater || 0,
+                calorie: selectedCalorie || 0,
+                physical_symptoms: selectedPhysicalSymptoms,
+            };
+            const res = await fetch(`${API_BASE_URL}/period-tracker/daily-log`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+                setIsSymptomsModalOpen(false);
+                fetchDailyLog();
+            }
+        } catch (err) {
+            console.error("خطا در ثبت علائم:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSaveSetup = async () => {
@@ -364,9 +407,9 @@ export default function PeriodTracker() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
+                    Authorization: `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify(setupData)
+                body: JSON.stringify(setupData),
             });
             if (res.ok) {
                 setIsSetupModalOpen(false);
@@ -379,14 +422,11 @@ export default function PeriodTracker() {
         }
     };
 
-    // ثبت شروع پریود + به‌روزرسانی تنظیمات
     const handleSaveStartPeriod = async () => {
         if (!accessToken) return;
         setLoading(true);
         try {
-            const periodPayload: any = {
-                start_date: startPeriodData.start_date,
-            };
+            const periodPayload: any = { start_date: startPeriodData.start_date };
             if (startPeriodData.end_date) {
                 periodPayload.end_date = startPeriodData.end_date;
             }
@@ -394,9 +434,9 @@ export default function PeriodTracker() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
+                    Authorization: `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify(periodPayload)
+                body: JSON.stringify(periodPayload),
             });
             const periodResult = await periodRes.json();
             if (!periodRes.ok) {
@@ -413,9 +453,9 @@ export default function PeriodTracker() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
+                    Authorization: `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify(settingsPayload)
+                body: JSON.stringify(settingsPayload),
             });
             const settingsResult = await settingsRes.json();
             if (!settingsRes.ok) {
@@ -483,22 +523,6 @@ export default function PeriodTracker() {
         }
     };
 
-    // محاسبه روزهای باقیمانده بدون در نظر گرفتن سیکل
-    const daysUntil = useMemo(() => {
-        if (!trackerSettings?.last_period_start_date) return 0;
-        const targetDate = parseGregorianString(trackerSettings.last_period_start_date);
-        targetDate.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const diffTime = targetDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays > 0 ? diffDays : 0;
-    }, [trackerSettings]);
-
-    const ringRadius = 108;
-    const ringCircumference = 2 * Math.PI * ringRadius;
-
-    // علامت‌گذاری روزهای گذشته از تاریخ شروع تا امروز (برای مودال تقویم)
     const markedDates = useMemo(() => {
         const result: Record<string, string> = {};
         if (trackerSettings?.last_period_start_date) {
@@ -516,79 +540,89 @@ export default function PeriodTracker() {
         return result;
     }, [trackerSettings]);
 
-    // تولید روزهای ماه جاری (شمسی) برای نوار روزها — بر اساس viewJalali
-    const monthDays = useMemo(() => {
-        const days: JalaliDate[] = [];
-        const daysInMonth = jalaaliMonthLength(viewJalali.jy, viewJalali.jm);
-        for (let d = 1; d <= daysInMonth; d++) {
-            days.push({ jy: viewJalali.jy, jm: viewJalali.jm, jd: d });
+    const getCalendarSelectedDate = (): JalaliDate | null => {
+        switch (activeDateField) {
+            case 'setup_start': {
+                const d = parseGregorianString(setupData.last_period_start_date);
+                return gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+            }
+            case 'period_start': {
+                const d = parseGregorianString(startPeriodData.start_date);
+                return gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+            }
+            case 'period_end': {
+                if (!startPeriodData.end_date) return null;
+                const d = parseGregorianString(startPeriodData.end_date);
+                return gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+            }
+            default:
+                return selectedJalali;
         }
-        return days;
-    }, [viewJalali]);
-
-    // تابع انتخاب روز از نوار
-    const handleDaySelect = (day: JalaliDate) => {
-        const greg = jalaliToGregorian(day.jy, day.jm, day.jd);
-        const gregDate = new Date(greg.gy, greg.gm - 1, greg.gd);
-        setSelectedDate(gregDate);
     };
 
-    // بررسی وجود لاگ علائم برای روز انتخاب‌شده
-    const hasSymptomLog = useMemo(() => {
-        if (!dailyLog) return false;
-        return Boolean(
-            dailyLog.mood ||
-            (dailyLog.symptoms && dailyLog.symptoms.length > 0) ||
-            (dailyLog.physical_symptoms && dailyLog.physical_symptoms.length > 0) ||
-            dailyLog.notes ||
-            (dailyLog.water && dailyLog.water > 0) ||
-            (dailyLog.calorie && dailyLog.calorie > 0)
-        );
-    }, [dailyLog]);
+    const handleCalendarDateSelect = (date: JalaliDate) => {
+        const greg = jalaliToGregorian(date.jy, date.jm, date.jd);
+        const gregDate = new Date(greg.gy, greg.gm - 1, greg.gd); // علامت منها اضافه شد
+        const gregStr = getLocalDateString(gregDate);
 
-    // ========== NEW: محاسبه فازهای سیکل برای تقویم خطی ==========
-    const cyclePhases = useMemo(() => {
-        const periodDates = new Set<string>();
-        const fertileDates = new Set<string>();
-        const ovulationDates = new Set<string>();
-        if (!trackerSettings?.last_period_start_date || !trackerSettings?.cycle_length || !trackerSettings?.period_length) {
-            return { periodDates, fertileDates, ovulationDates };
+        if (activeDateField === 'setup_start') {
+            setSetupData(prev => ({ ...prev, last_period_start_date: gregStr }));
+        } else if (activeDateField === 'period_start') {
+            setStartPeriodData(prev => ({ ...prev, start_date: gregStr }));
+        } else if (activeDateField === 'period_end') {
+            setStartPeriodData(prev => ({ ...prev, end_date: gregStr }));
+        } else {
+            setSelectedDate(gregDate);
         }
+        setActiveDateField(null); // ریست کردن فیلد فعال
+        setIsCalendarModalOpen(false);
+    };
+    const openCalendarForField = (field: string | null) => {
+        setActiveDateField(field);
+        setIsCalendarModalOpen(true);
+    };
 
-        const lastStart = parseGregorianString(trackerSettings.last_period_start_date);
-        const cycleLen = trackerSettings.cycle_length;
-        const periodLen = trackerSettings.period_length;
-        const lutealPhase = 14; // فاز لوتئال استاندارد
-
-        // تولید سیکل‌ها از ۱۲ ماه قبل تا ۱۲ ماه بعد
-        for (let i = -12; i <= 12; i++) {
-            const periodStart = new Date(lastStart);
-            periodStart.setDate(periodStart.getDate() + i * cycleLen);
-
-            // روزهای پریود
-            for (let d = 0; d < periodLen; d++) {
-                const pd = new Date(periodStart);
-                pd.setDate(pd.getDate() + d);
-                periodDates.add(getLocalDateString(pd));
-            }
-
-            // روز تخمک‌گذاری (حدود ۱۴ روز قبل از پریود بعدی)
-            const ovulationDate = new Date(periodStart);
-            ovulationDate.setDate(ovulationDate.getDate() + cycleLen - lutealPhase);
-            ovulationDates.add(getLocalDateString(ovulationDate));
-
-            // پنجره باروری (۵ روز قبل از تخمک‌گذاری + خود روز تخمک‌گذاری)
-            const fertileStart = new Date(ovulationDate);
-            fertileStart.setDate(fertileStart.getDate() - 5);
-            for (let d = 0; d <= 5; d++) {
-                const fd = new Date(fertileStart);
-                fd.setDate(fd.getDate() + d);
-                fertileDates.add(getLocalDateString(fd));
-            }
+    const toggleSelection = (id: string, type: 'mood' | 'food' | 'physical') => {
+        if (type === 'mood') {
+            setSelectedMood(prev => prev === id ? '' : id);
+        } else if (type === 'food') {
+            setSelectedFoods(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+        } else if (type === 'physical') {
+            setSelectedPhysicalSymptoms(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
         }
-        return { periodDates, fertileDates, ovulationDates };
-    }, [trackerSettings]);
-    // ============================================================
+    };
+
+    const waterCups = () => (
+        <div className="flex flex-wrap gap-2">
+            {[...Array(8)].map((_, i) => {
+                const cupNumber = i + 1;
+                const filled = selectedWater >= cupNumber;
+                return (
+                    <button
+                        key={cupNumber}
+                        type="button"
+                        onClick={() => setSelectedWater(prev => prev === cupNumber ? cupNumber - 1 : cupNumber)}
+                        className={`flex h-10 w-10 items-center justify-center rounded-xl text-xl transition-all ${
+                            filled ? 'bg-sky-100 ring-2 ring-sky-300 scale-105' : 'bg-gray-50 opacity-50 hover:opacity-80'
+                        }`}
+                    >
+                        💧
+                    </button>
+                );
+            })}
+            <div className="flex items-center gap-2 w-full mt-1">
+                <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={selectedWater}
+                    onChange={(e) => setSelectedWater(parseInt(e.target.value) || 0)}
+                    className="w-20 rounded-xl bg-white border border-pink-100 p-2 text-center text-sm text-gray-700 focus:ring-2 focus:ring-pink-200"
+                />
+                <span className="text-xs text-gray-500">لیوان</span>
+            </div>
+        </div>
+    );
 
     const insights: HealthInsight[] = [
         {
@@ -627,101 +661,14 @@ export default function PeriodTracker() {
         },
     ];
 
-    const toggleSelection = (id: string, type: 'mood' | 'food' | 'physical') => {
-        if (type === 'mood') {
-            setSelectedMood(prev => prev === id ? '' : id);
-        } else if (type === 'food') {
-            setSelectedFoods(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-        } else if (type === 'physical') {
-            setSelectedPhysicalSymptoms(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-        }
-    };
-
-    const getCalendarSelectedDate = (): JalaliDate | null => {
-        switch (activeDateField) {
-            case 'setup_start':
-                return gregorianToJalali(...parseGregorianString(setupData.last_period_start_date).toISOString().slice(0, 10).split('-').map(Number) as [number, number, number]);
-            case 'period_start':
-                return gregorianToJalali(...parseGregorianString(startPeriodData.start_date).toISOString().slice(0, 10).split('-').map(Number) as [number, number, number]);
-            case 'period_end':
-                return startPeriodData.end_date
-                    ? gregorianToJalali(...parseGregorianString(startPeriodData.end_date).toISOString().slice(0, 10).split('-').map(Number) as [number, number, number])
-                    : null;
-            default:
-                return selectedJalali;
-        }
-    };
-
-    const handleCalendarDateSelect = (date: JalaliDate) => {
-        const greg = jalaliToGregorian(date.jy, date.jm, date.jd);
-        const gregDate = new Date(greg.gy, greg.gm - 1, greg.gd);
-        const gregStr = getLocalDateString(gregDate);
-
-        if (activeDateField === 'setup_start') {
-            setSetupData(prev => ({ ...prev, last_period_start_date: gregStr }));
-        } else if (activeDateField === 'period_start') {
-            setStartPeriodData(prev => ({ ...prev, start_date: gregStr }));
-        } else if (activeDateField === 'period_end') {
-            setStartPeriodData(prev => ({ ...prev, end_date: gregStr }));
-        } else {
-            setSelectedDate(gregDate);
-        }
-        setIsCalendarModalOpen(false);
-    };
-
-    const openCalendarForField = (field: string | null) => {
-        setActiveDateField(field);
-        setIsCalendarModalOpen(true);
-    };
-
-    const waterCups = () => {
-        return (
-            <div className="flex flex-wrap gap-2">
-                {[...Array(8)].map((_, i) => {
-                    const cupNumber = i + 1;
-                    const filled = selectedWater >= cupNumber;
-                    return (
-                        <button
-                            key={cupNumber}
-                            type="button"
-                            onClick={() => setSelectedWater(prev => prev === cupNumber ? cupNumber - 1 : cupNumber)}
-                            className={`flex h-10 w-10 items-center justify-center rounded-xl text-xl transition-all ${
-                                filled ? 'bg-sky-100 ring-2 ring-sky-300 scale-105' : 'bg-gray-50 opacity-50 hover:opacity-80'
-                            }`}
-                        >
-                            💧
-                        </button>
-                    );
-                })}
-                <div className="flex items-center gap-2 w-full mt-1">
-                    <input
-                        type="number"
-                        min="0"
-                        max="20"
-                        value={selectedWater}
-                        onChange={(e) => setSelectedWater(parseInt(e.target.value) || 0)}
-                        className="w-20 rounded-xl bg-white border border-pink-100 p-2 text-center text-sm text-gray-700 focus:ring-2 focus:ring-pink-200"
-                    />
-                    <span className="text-xs text-gray-500">لیوان</span>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <>
             <style>{`
                 @keyframes softPulse {
-                    0%, 100% {
-                        box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.7);
-                    }
-                    50% {
-                        box-shadow: 0 0 0 8px rgba(244, 114, 182, 0);
-                    }
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.7); }
+                    50% { box-shadow: 0 0 0 8px rgba(244, 114, 182, 0); }
                 }
-                .animate-soft-pulse {
-                    animation: softPulse 1.8s ease-in-out infinite;
-                }
+                .animate-soft-pulse { animation: softPulse 1.8s ease-in-out infinite; }
 
                 @keyframes emojiFloatUp {
                     0% { transform: translateY(40px) scale(0.6); opacity: 0; }
@@ -751,10 +698,9 @@ export default function PeriodTracker() {
                         </div>
                     ) : (
                         <main className="space-y-6">
-                            {/* Cycle Ring - نمایش روزهای باقیمانده + ایموجی‌های شناور علائم */}
+                            {/* Cycle Ring */}
                             <section className="flex flex-col items-center">
                                 <div className="relative" style={{ width: '320px', height: '320px' }}>
-                                    {/* ایموجی‌های شناور (فقط علائم موجود) */}
                                     {floatEmojis.map((item) => (
                                         <div
                                             key={item.id}
@@ -793,7 +739,7 @@ export default function PeriodTracker() {
 
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center text-center" style={{ width: '200px' }}>
                                         <span className="mb-1 rounded-full bg-pink-50 px-3 py-1 text-[11px] font-medium text-pink-500">روزهای باقیمانده</span>
-                                        <span className="text-xs text-gray-400">تا تاریخ وارد شده</span>
+                                        <span className="text-xs text-gray-400">تا شروع پریود بعدی</span>
                                         <span className="bg-gradient-to-b from-pink-500 to-rose-500 bg-clip-text text-6xl font-light leading-none text-transparent">{daysUntil}</span>
                                         <span className="text-sm text-gray-500">روز</span>
                                     </div>
@@ -820,133 +766,18 @@ export default function PeriodTracker() {
                                 </div>
                             </section>
 
-                            {/* نوار فانتزی روزهای ماه */}
-                            <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-pink-50">
-                                <div className="mb-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setViewJalali(prev => shiftJalaliMonth(prev, -1))}
-                                            className="p-1 rounded-lg hover:bg-pink-50 text-gray-500 transition-colors"
-                                            aria-label="ماه قبل"
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </button>
-
-                                        <h2 className="text-sm font-bold text-gray-800">
-                                            {viewJalali.jy}/{String(viewJalali.jm).padStart(2, '0')}
-                                        </h2>
-
-                                        <button
-                                            onClick={() => setViewJalali(prev => shiftJalaliMonth(prev, 1))}
-                                            className="p-1 rounded-lg hover:bg-pink-50 text-gray-500 transition-colors"
-                                            aria-label="ماه بعد"
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </button>
-                                    </div>
-
-                                    <span className="text-xs text-gray-400">{selectedJalaliString}</span>
-                                </div>
-
-                                <div className="flex flex-wrap gap-1.5" dir="rtl">
-                                    {monthDays.map((day) => {
-                                        const key = formatJalaliDate(day);
-                                        const isSelected =
-                                            day.jy === selectedJalali.jy &&
-                                            day.jm === selectedJalali.jm &&
-                                            day.jd === selectedJalali.jd;
-
-                                        const isToday =
-                                            day.jy === todayJalali.jy &&
-                                            day.jm === todayJalali.jm &&
-                                            day.jd === todayJalali.jd;
-
-                                        const isPast =
-                                            day.jy < todayJalali.jy ||
-                                            (day.jy === todayJalali.jy && day.jm < todayJalali.jm) ||
-                                            (day.jy === todayJalali.jy && day.jm === todayJalali.jm && day.jd < todayJalali.jd);
-
-                                        const isTarget =
-                                            targetJalali &&
-                                            day.jy === targetJalali.jy &&
-                                            day.jm === targetJalali.jm &&
-                                            day.jd === targetJalali.jd;
-
-                                        // تبدیل روز شمسی به میلادی برای بررسی فازها
-                                        const greg = jalaliToGregorian(day.jy, day.jm, day.jd);
-                                        const gregDate = new Date(greg.gy, greg.gm - 1, greg.gd);
-                                        const gregStr = getLocalDateString(gregDate);
-
-                                        const isPeriodDay = cyclePhases.periodDates.has(gregStr);
-                                        const isFertileDay = cyclePhases.fertileDates.has(gregStr);
-                                        const isOvulationDay = cyclePhases.ovulationDates.has(gregStr);
-                                        const isIntimateDay = !isPeriodDay && !isFertileDay && !isOvulationDay;
-
-                                        return (
-                                            <button
-                                                key={key}
-                                                onClick={() => handleDaySelect(day)}
-                                                className={`relative flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                                                    isSelected
-                                                        ? hasSymptomLog
-                                                            ? 'bg-gradient-to-b from-pink-500 to-rose-500 text-white shadow-md scale-105 animate-soft-pulse'
-                                                            : 'bg-gradient-to-b from-pink-500 to-rose-500 text-white shadow-md scale-105'
-                                                        : isTarget
-                                                            ? 'bg-white text-pink-600 ring-2 ring-pink-400'
-                                                            : isPast
-                                                                ? 'bg-pink-100/50 text-pink-400'
-                                                                : isToday
-                                                                    ? 'bg-pink-50 text-pink-700 ring-1 ring-pink-200'
-                                                                    : 'bg-gray-50 text-gray-600 hover:bg-pink-50'
-                                                }`}
-                                            >
-                                                <span>{day.jd}</span>
-
-                                                {/* نشانگر پریود: گل به جای ستاره */}
-                                                {isPeriodDay && (
-                                                    <Flower className="absolute -top-1 -left-1 h-3 w-3 text-rose-500" />
-                                                )}
-
-                                                {/* نشانگر تخمک‌گذاری */}
-                                                {isOvulationDay && (
-                                                    <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-purple-500" />
-                                                )}
-
-                                                {/* نشانگر باروری */}
-                                                {isFertileDay && (
-                                                    <Droplets className="absolute -bottom-1 -left-1 h-3 w-3 text-sky-500" />
-                                                )}
-
-                                                {/* نشانگر صمیمی (روزهای غیر از پریود، باروری، تخمک‌گذاری) */}
-                                                {isIntimateDay && (
-                                                    <Heart className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-pink-300 opacity-70" />
-                                                )}
-
-                                                {/* نشانگر ثبت علائم در روز انتخاب شده */}
-                                                {isSelected && hasSymptomLog && (
-                                                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-white shadow" />
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* راهنمای نشانگرها */}
-                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-gray-500">
-                                    <span className="flex items-center gap-1">
-                                        <Flower className="h-3 w-3 text-rose-500" /> پریود
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Droplets className="h-3 w-3 text-sky-500" /> باروری
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Sparkles className="h-3 w-3 text-purple-500" /> تخمک‌گذاری
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Heart className="h-2.5 w-2.5 text-pink-300" /> صمیمی
-                                    </span>
-                                </div>
-                            </section>
+                            {/* کامپوننت تفکیک‌شده نوار تقویم ماه */}
+                            <PeriodMonthStrip
+                                viewJalali={viewJalali}
+                                onViewJalaliChange={setViewJalali}
+                                selectedJalali={selectedJalali}
+                                selectedJalaliString={selectedJalaliString}
+                                todayJalali={todayJalali}
+                                targetJalali={targetJalali}
+                                cyclePhases={cyclePhases}
+                                hasSymptomLog={hasSymptomLog}
+                                onDaySelect={handleDaySelect}
+                            />
 
                             {/* Actions */}
                             <section className="flex gap-3">
@@ -959,21 +790,8 @@ export default function PeriodTracker() {
                                 </Button>
                             </section>
 
-                            {/* Workout */}
-                            <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-pink-50">
-                                <div className="mb-4 flex items-center gap-2">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100">
-                                        <Dumbbell className="h-3.5 w-3.5 text-pink-500" />
-                                    </div>
-                                    <h2 className="text-base font-bold text-gray-800">تمرین‌های مناسب پریود</h2>
-                                </div>
-                                <p className="mb-4 text-xs text-gray-500 leading-relaxed">
-                                    ورزش‌های سبک می‌توانند درد و خستگی را کاهش دهند. یک برنامه مناسب انتخاب کنید و قدم به قدم پیش بروید.
-                                </p>
-                                <Button onClick={() => setIsWorkoutModalOpen(true)} className="w-full h-11 rounded-2xl bg-gradient-to-l from-pink-500 to-rose-500 text-white text-sm font-bold hover:from-pink-600 hover:to-rose-600">
-                                    مشاهده تمرین‌ها
-                                </Button>
-                            </section>
+                            {/* کامپوننت تفکیک‌شده بخش تمرین */}
+                            <PeriodWorkoutCard />
 
                             {/* Partner Sync */}
                             {trackerSettings?.partner_code && (
@@ -1052,7 +870,7 @@ export default function PeriodTracker() {
 
                 {/* Initial Setup Modal */}
                 {isSetupModalOpen && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
+                    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
                         <div className="w-full max-w-sm rounded-[2.5rem] bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-300">
                             <div className="text-center mb-8">
                                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-50 text-pink-500">
@@ -1356,11 +1174,6 @@ export default function PeriodTracker() {
                     selectedDate={getCalendarSelectedDate()}
                     onSelectDate={handleCalendarDateSelect}
                     markedDates={markedDates}
-                />
-                {/* Workout Modal */}
-                <WorkoutModal
-                    open={isWorkoutModalOpen}
-                    onClose={() => setIsWorkoutModalOpen(false)}
                 />
             </div>
         </>
