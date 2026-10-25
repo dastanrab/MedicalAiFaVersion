@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "784151921757",
+    "project_id": "mediraai",
+    "storage_bucket": "mediraai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:784151921757:android:75642a813f71e220c4b9b4",
+        "android_client_info": {
+          "package_name": "ai.medira.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMcSBaU9ayehwrani-jr7i0agO1RVLWj8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

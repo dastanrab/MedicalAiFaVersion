@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../components/ui/input-otp';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../admin/store/settingsStore';
+import {syncFcmTokenWithBackend} from "../utils/fcm";
 
 export function OTPVerification() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export function OTPVerification() {
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(0);
   const { setTokens } = useAuthStore();
+
 
   // تایمر ارسال مجدد
   useEffect(() => {
@@ -74,6 +76,8 @@ export function OTPVerification() {
 
       if (data.success && data.data?.access_token) {
         setTokens(data.data.access_token);
+
+        await syncFcmTokenWithBackend(data.data.access_token);
         const pendingInviteCode = localStorage.getItem('pending_partner_invite_code');
 
         if (pendingInviteCode) {
