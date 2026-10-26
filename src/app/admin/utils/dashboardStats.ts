@@ -148,42 +148,67 @@ export function computePaymentStats(payments: AdminPaymentRow[]): PaymentDashboa
 
     const dayMap = new Map<string, { amount: number; count: number }>();
 
-    for (const payment of payments) {
-        statusCounts.set(payment.status, (statusCounts.get(payment.status) ?? 0) + 1);
+    for (const payment of payments ?? []) {
+        // بروزرسانی شمارنده وضعیت‌ها
+        if (statusCounts.has(payment.status)) {
+            statusCounts.set(payment.status, (statusCounts.get(payment.status) ?? 0) + 1);
+        }
 
-        if (payment.status === 'success') {
-            successAmount += payment.amount;
+        const isSuccess = payment.status === 'success';
+        const paymentAmount = Number(payment.amount) || 0;
+
+        if (isSuccess) {
+            successAmount += paymentAmount;
             successCount++;
         }
 
-        const serviceEntry = serviceMap.get(payment.serviceType)!;
-        serviceEntry.count++;
-        if (payment.status === 'success') {
-            serviceEntry.amount += payment.amount;
+        // بررسی ایمن نوع خدمت
+        if (payment.serviceType && serviceMap.has(payment.serviceType)) {
+            const serviceEntry = serviceMap.get(payment.serviceType)!;
+            serviceEntry.count++;
+            if (isSuccess) {
+                serviceEntry.amount += paymentAmount;
+            }
         }
 
-        const day = new Intl.DateTimeFormat('fa-IR', {
-            month: 'short',
-            day: 'numeric',
-        }).format(new Date(payment.paidAt));
-        const dayEntry = dayMap.get(day) ?? { amount: 0, count: 0 };
-        if (payment.status === 'success') {
-            dayEntry.amount += payment.amount;
+        // ثبت گزارش روزانه با اعتبارسنجی تاریخ
+        if (payment.paidAt) {
+            try {
+                const dateObj = new Date(payment.paidAt);
+                if (!isNaN(dateObj.getTime())) {
+                    const day = new Intl.DateTimeFormat('fa-IR', {
+                        month: 'short',
+                        day: 'numeric',
+                    }).format(dateObj);
+
+                    const dayEntry = dayMap.get(day) ?? { amount: 0, count: 0 };
+                    if (isSuccess) {
+                        dayEntry.amount += paymentAmount;
+                    }
+                    dayEntry.count++;
+                    dayMap.set(day, dayEntry);
+                }
+            } catch {
+                // نادیده گرفتن تاریخ‌های نامعتبر
+            }
         }
-        dayEntry.count++;
-        dayMap.set(day, dayEntry);
     }
 
     const dailyRevenue = Array.from(dayMap.entries())
         .map(([day, data]) => ({ day, ...data }))
         .slice(-7);
 
-    const recent = [...payments]
-        .sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())
+    // سورت ایمن بر اساس تاریخ
+    const recent = [...(payments ?? [])]
+        .sort((a, b) => {
+            const timeA = a.paidAt ? new Date(a.paidAt).getTime() : 0;
+            const timeB = b.paidAt ? new Date(b.paidAt).getTime() : 0;
+            return timeB - timeA;
+        })
         .slice(0, 5);
 
     return {
-        total: payments.length,
+        total: (payments ?? []).length,
         successAmount,
         successCount,
         pendingCount: statusCounts.get('pending') ?? 0,
@@ -191,15 +216,18 @@ export function computePaymentStats(payments: AdminPaymentRow[]): PaymentDashboa
         refundedCount: statusCounts.get('refunded') ?? 0,
         byStatus: statuses.map((status) => ({
             status,
-            label: paymentStatusLabels[status],
+            label: paymentStatusLabels[status] ?? status,
             count: statusCounts.get(status) ?? 0,
         })),
-        byService: services.map((service) => ({
-            service,
-            label: paymentServiceLabels[service],
-            count: serviceMap.get(service)!.count,
-            amount: serviceMap.get(service)!.amount,
-        })),
+        byService: services.map((service) => {
+            const entry = serviceMap.get(service) ?? { count: 0, amount: 0 };
+            return {
+                service,
+                label: paymentServiceLabels[service] ?? service,
+                count: entry.count,
+                amount: entry.amount,
+            };
+        }),
         dailyRevenue,
         recent,
     };

@@ -36,6 +36,7 @@ import { todayJalali, PERSIAN_MONTHS, toFaDigits } from '../provider/utils/jalal
 
 import NotificationBellWidget from '../components/NotificationBellWidget';
 import { useUserStore } from "../store/useUserStore";
+import {syncFcmTokenWithBackend} from "../utils/fcm";
 
 // ─── Types ────────────────────────────────────────────────────────
 type QuickAction = {
@@ -259,7 +260,7 @@ export function Home() {
       const timer = setTimeout(() => {
         setShowHealthPopup(true);
         localStorage.setItem(seenPopupKey, 'true');
-      }, 400);
+      }, 1);
       return () => clearTimeout(timer);
     }
   }, [user?.id]);
@@ -298,6 +299,7 @@ export function Home() {
     if (accessToken) {
       Promise.all([fetchProfile(), fetchPartnerDashboard(), fetchActiveAppointment()]).finally(() => {
         setBooting(false);
+        syncFcmTokenWithBackend(accessToken);
       });
     } else {
       setBooting(false);
