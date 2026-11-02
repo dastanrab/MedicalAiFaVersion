@@ -62,16 +62,20 @@ import MedicalCenterRulesPage from "../screens/nurse/NurseCoveragePage";
 import LabShiftsPage from "../screens/lab/LabShiftsPage";
 import { StaffRoutes } from "../staff/routes/StaffRoutes";
 import { StaffManagementPage } from "../staff/screens/StaffManagementPage";
+import {DoctorDocumentsGuard} from "../doctor/components/DoctorDocumentsGuard";
+import {DoctorDocumentsUploadPage} from "../doctor/screens/DoctorDocumentsUploadPage";
 
 function ProtectedRolePanel({ role }: { role: ProviderRole }) {
+
     if (role === 'doctor') {
         return (
             <DoctorAuthGate>
-                {/* اضافه شدن ProfileGuard برای دکتر */}
                 <ProfileGuard role={role}>
-                    <SubscriptionGuard role={role}>
-                        <ProviderRoleLayout role={role} />
-                    </SubscriptionGuard>
+                    <DoctorDocumentsGuard role={role}>
+                        <SubscriptionGuard role={role}>
+                            <ProviderRoleLayout role={role} />
+                        </SubscriptionGuard>
+                    </DoctorDocumentsGuard>
                 </ProfileGuard>
             </DoctorAuthGate>
         );
@@ -188,6 +192,7 @@ function RoleRoutes({ role }: { role: ProviderRole }) {
             <Routes>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<DoctorDashboardPage />} />
+                <Route path="documents" element={<DoctorDocumentsUploadPage />} /> {/* روت بارگذاری مدارک */}
                 <Route path="subscription-fee" element={<DoctorSubscriptionFeePage />} />
                 <Route path="appointments" element={<DoctorAppointmentsPage />} />
                 <Route path="appointments/:id" element={<DoctorAppointmentDetailRoute />} />

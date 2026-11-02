@@ -156,7 +156,7 @@ export function PricingPlans() {
     }
 
     return (
-        <div className="min-h-full overflow-y-auto bg-gradient-to-b from-blue-50/60 via-slate-50/30 to-white pb-24 text-right font-[YekanBakhFaNum] relative">
+        <div className="min-h-full mb-20 overflow-y-auto bg-gradient-to-b from-blue-50/60 via-slate-50/30 to-white pb-24 text-right font-[YekanBakhFaNum] relative">
             <AppBar backTo="/home" />
 
             <main className="mx-auto w-full max-w-xl px-3.5 sm:px-6 pt-20 sm:pt-24">
@@ -446,7 +446,7 @@ function PaymentModal({
 }) {
     return (
         <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs transition-opacity p-0 sm:p-4"
+            className="fixed mb-20 inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs transition-opacity p-0 sm:p-4"
             onClick={onClose}
         >
             <div

@@ -30,7 +30,7 @@ import {
     staffRoleConfig,
 } from '../config/staffPermissions';
 import { useStaffStore, type StaffMember } from '../store/staffStore';
-import {useProviderSession} from "../../store/providerAuthStore";
+import { useProviderSession } from '../../store/providerAuthStore';
 
 const API_BASE_URL = 'https://api.mediraai.com/api';
 
@@ -51,24 +51,30 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
     const config = staffRoleConfig[role];
     const owner = useOwnerInfo(role);
 
-    // توکن پزشک
+    // توکن‌ها بر اساس نقش
     const doctorToken = useDoctorAuthStore((s) => s.token);
     const labSession = useProviderSession('lab');
-    const token = labSession?.token || '';
-    // توکن احراز هویت مرکز یا کارمند برای درخواست‌های آزمایشگاه (در صورت نیاز از استور مرکز یا لوکال استوریج خوانده می‌شود)
-    const authToken = role === 'doctor'
-        ? doctorToken
-        : token;
+    const pharmacySession = useProviderSession('pharmacy');
 
-    const isRemoteRole = role === 'doctor' || role === 'lab';
+    let authToken = '';
+    if (role === 'doctor') {
+        authToken = doctorToken || '';
+    } else if (role === 'lab') {
+        authToken = labSession?.token || '';
+    } else if (role === 'pharmacy') {
+        authToken = pharmacySession?.token || '';
+    }
 
-    // برای داروخانه (هنوز لوکال)
+    // هر سه نقش اکنون به وب‌سرویس بک‌اند متصل هستند
+    const isRemoteRole = role === 'doctor' || role === 'lab' || role === 'pharmacy';
+
+    // فال‌بک استور محلی (در صورت وجود سناریوی آفلاین)
     const localMember = useStaffStore((s) => s.members[role]);
     const saveLocalMember = useStaffStore((s) => s.saveMember);
     const setLocalMemberActive = useStaffStore((s) => s.setMemberActive);
     const removeLocalMember = useStaffStore((s) => s.removeMember);
 
-    // لیست کارمندان متصل به سرور (برای دکتر و آزمایشگاه)
+    // لیست کارمندان متصل به سرور
     const [remoteStaffs, setRemoteStaffs] = useState<StaffMember[]>([]);
     const [loading, setLoading] = useState<boolean>(isRemoteRole);
     const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -86,6 +92,7 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
     const getEndpoint = useCallback((path = '') => {
         if (role === 'doctor') return `${API_BASE_URL}/doctor/secretaries${path}`;
         if (role === 'lab') return `${API_BASE_URL}/owner/lab/staffs${path}`;
+        if (role === 'pharmacy') return `${API_BASE_URL}/owner/pharmacy/staffs${path}`;
         return '';
     }, [role]);
 
@@ -100,7 +107,7 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
 
     // دریافت لیست کارمندان از سرور
     const fetchStaffs = useCallback(async () => {
-        if (!isRemoteRole) return;
+        if (!isRemoteRole || !authToken) return;
 
         try {
             setLoading(true);
@@ -120,7 +127,7 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
         } finally {
             setLoading(false);
         }
-    }, [isRemoteRole, getEndpoint, getHeaders, config.title]);
+    }, [isRemoteRole, authToken, getEndpoint, getHeaders, config.title]);
 
     useEffect(() => {
         if (isRemoteRole) {
@@ -245,7 +252,6 @@ export function StaffManagementPage({ role }: { role: ProviderRole }) {
         }
     };
 
-    // لیست نهایی جهت نمایش
     const membersList: StaffMember[] = isRemoteRole
         ? remoteStaffs
         : localMember ? [localMember] : [];
@@ -476,7 +482,7 @@ function StaffFormModal({
         onSubmit({
             name: name.trim(),
             phone: normalizePhone(phone),
-            jobTitle: jobTitle.trim() || undefined
+            jobTitle: jobTitle.trim() || undefined,
         });
     };
 
@@ -530,13 +536,17 @@ function StaffFormModal({
                     />
                 </ProviderFormField>
 
-                {role === 'lab' && (
+                {(role === 'lab' || role === 'pharmacy') && (
                     <ProviderFormField label="عنوان شغلی یا سمت (اختیاری)">
                         <input
                             value={jobTitle}
                             disabled={isSubmitting}
                             onChange={(e) => setJobTitle(e.target.value)}
-                            placeholder="مثال: نمونه‌گیر آزمایشگاه / پذیرش"
+                            placeholder={
+                                role === 'pharmacy'
+                                    ? 'مثال: نسخه‌پیچ / صندوق‌دار'
+                                    : 'مثال: نمونه‌گیر آزمایشگاه / پذیرش'
+                            }
                             className={inputClass}
                         />
                     </ProviderFormField>

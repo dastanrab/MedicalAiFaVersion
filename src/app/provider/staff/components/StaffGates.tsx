@@ -21,7 +21,7 @@ function useValidStaffSession(role: ProviderRole) {
     const member = useStaffStore((s) => s.members[role]);
 
     // ورودهای واقعی با سرور (پزشک، آزمایشگاه یا توکن مستقیم)
-    const isApiSession = Boolean(session?.token && (!member || role === 'doctor' || role === 'lab'));
+    const isApiSession = Boolean(session?.token && (!member || role === 'doctor' || role === 'lab' || role === 'pharmacy'));
 
     const valid = Boolean(
         session?.token &&

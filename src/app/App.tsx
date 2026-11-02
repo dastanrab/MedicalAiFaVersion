@@ -137,6 +137,7 @@ const START_WITH_FITNESS = false;
 import { NativeDeepLinks } from "./native/NativeDeepLinks";
 import { ServiceFlowDraftsGuard } from "./navigation/ServiceFlowDraftsGuard";
 import {PharmacyDrugDetails} from "./screens/PharmacyDrugDetails";
+import {AppUpdateChecker} from "./components/AppUpdateChecker";
 
 // کامپوننت مدیریت لینک دعوت پارتنر زمانی که کاربر لاگین نیست
 function PartnerInviteHandler() {
@@ -281,6 +282,7 @@ function App() {
         <BrowserRouter>
             <SplashScreen/>
             <Skeleton/>
+            <AppUpdateChecker />
             <NativeDeepLinks />
             <ServiceFlowDraftsGuard />
             <Routes>

@@ -1,205 +1,600 @@
-import { useMemo, useState } from 'react';
-import { MapPin, Phone } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import {
+    Phone, Loader2, Send, Lock, Unlock, XCircle,
+} from 'lucide-react';
 import {
     EmptyState,
     FilterSelect,
     PageHeader,
-    ProviderModal,
     SearchInput,
     StatusBadge,
     formatFaNumber,
 } from '../../../components';
-import {
-    pharmacyStatusLabels,
-    pharmacyStatusStyles,
-} from '../../../config/statusOptions';
-import { showProviderSuccess } from '../../../utils/toast';
+import { showProviderSuccess, showProviderError } from '../../../utils/toast';
 import { useStaffCan } from '../../components/StaffGates';
-import { ConfirmModal, DetailRow } from '../../components/StaffUi';
-import { deliveryTypeLabels } from '../../config/staffStatusOptions';
-import type { StaffPharmacyRequest, StaffPharmacyStatus } from '../../data/mockStaffData';
-import { useStaffDataStore } from '../../store/staffDataStore';
-import { useStaffActivityLogger } from '../../store/staffStore';
+import { ConfirmModal } from '../../components/StaffUi';
+import { useStaffSession, useStaffActivityLogger } from '../../store/staffStore';
+import {
+    API_BASE,
+    staffPharmacyStatusLabels,
+    staffPharmacyStatusStyles,
+    getNextStep,
+    statusOptions,
+    deliveryOptions,
+    isAssignedToUs,
+    type ApiPharmacyRequest,
+} from '../../types/pharmacyShared';
+import { PharmacyRequestDetailModal } from '../../components/PharmacyRequestDetailModal';
 
-const statusOptions = [
-    { value: 'all', label: 'همه وضعیت‌ها' },
-    ...Object.entries(pharmacyStatusLabels).map(([value, label]) => ({ value, label })),
-];
-
-const nextStep: Partial<Record<StaffPharmacyStatus, { to: StaffPharmacyStatus; label: string }>> = {
-    new: { to: 'reviewing', label: 'شروع بررسی' },
-    reviewing: { to: 'preparing', label: 'آماده‌سازی' },
-    preparing: { to: 'ready', label: 'آماده تحویل' },
-};
+// حفظ سازگاری با ایمپورت‌های قبلی سایر فایل‌ها
+export {
+    staffPharmacyStatusLabels,
+    staffPharmacyStatusStyles,
+    pharmacyDeliveryTypeLabels,
+} from './../../types/pharmacyShared';
+export type {
+    ApiPharmacyRequest,
+    DetailedPharmacyRequest,
+    PharmacyItem,
+} from './../../types/pharmacyShared';
 
 export function StaffPharmacyRequestsPage() {
     const can = useStaffCan('pharmacy');
     const log = useStaffActivityLogger('pharmacy');
-    const requests = useStaffDataStore((s) => s.pharmacyRequests);
-    const updatePharmacyRequest = useStaffDataStore((s) => s.updatePharmacyRequest);
+    const session = useStaffSession('pharmacy');
+
+    const [requests, setRequests] = useState<ApiPharmacyRequest[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [status, setStatus] = useState('all');
+    const [deliveryType, setDeliveryType] = useState('all');
     const [search, setSearch] = useState('');
-    const [selectedId, setSelectedId] = useState<number | null>(null);
+
+    // مودال مستقل: فقط شناسه درخواست فعال را نگه می‌داریم
+    const [detailRequestId, setDetailRequestId] = useState<number | null>(null);
+
     const [cancelId, setCancelId] = useState<number | null>(null);
+    const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
-    const list = useMemo(() => {
-        const q = search.trim();
-        return requests
-            .filter((r) => {
-                if (status !== 'all' && r.status !== status) return false;
-                if (q && !r.patientName.includes(q) && !r.patientPhone.includes(q) && !r.code.includes(q)) return false;
-                return true;
-            })
-            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    }, [requests, status, search]);
+    // ---------- fetch list ----------
+    const fetchRequests = useCallback(async () => {
+        if (!session?.token) return;
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (status !== 'all') params.append('status', status);
+            if (search.trim()) params.append('search', search.trim());
 
-    const selected = requests.find((r) => r.id === selectedId) ?? null;
-    const toCancel = requests.find((r) => r.id === cancelId) ?? null;
+            const response = await fetch(
+                `${API_BASE}/staff/pharmacy/requests?${params.toString()}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${session.token}`,
+                        'Accept': 'application/json',
+                    },
+                }
+            );
+            const result = await response.json();
+            setRequests(result.data || []);
+        } catch {
+            showProviderError('خطا در دریافت لیست درخواست‌های داروخانه');
+        } finally {
+            setLoading(false);
+        }
+    }, [session?.token, status, search]);
 
-    const setRequestStatus = (r: StaffPharmacyRequest, to: StaffPharmacyStatus, action: string) => {
-        updatePharmacyRequest(r.id, { status: to });
-        log(action, `${r.code} — ${r.patientName}`);
-        showProviderSuccess(`وضعیت به «${pharmacyStatusLabels[to]}» تغییر کرد`);
+    useEffect(() => {
+        fetchRequests();
+    }, [fetchRequests]);
+
+    // ---------- reserve ----------
+    const handleAcceptRequest = async (requestId: number) => {
+        if (!session?.token) return;
+        setActionLoadingId(requestId);
+        try {
+            const response = await fetch(
+                `${API_BASE}/staff/pharmacy/requests/${requestId}/accept`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.token}`,
+                        'Accept': 'application/json',
+                    },
+                }
+            );
+            const result = await response.json();
+            if (response.ok) {
+                showProviderSuccess('درخواست با موفقیت برای داروخانه شما رزرو شد');
+                log('رزرو درخواست نسخه', `درخواست #${requestId}`);
+                await fetchRequests();
+            } else {
+                showProviderError(result.message || 'خطا در رزرو درخواست');
+            }
+        } catch {
+            showProviderError('خطا در برقراری ارتباط');
+        } finally {
+            setActionLoadingId(null);
+        }
     };
 
-    return (
-        <div className="space-y-6">
-            <PageHeader title="درخواست‌های نسخه" description="بررسی و آماده‌سازی نسخه‌های دریافتی" />
+    // ---------- release ----------
+    const handleReleaseRequest = async (requestId: number) => {
+        if (!session?.token) return;
+        setActionLoadingId(requestId);
+        try {
+            const response = await fetch(
+                `${API_BASE}/staff/pharmacy/requests/${requestId}/release`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.token}`,
+                        'Accept': 'application/json',
+                    },
+                }
+            );
+            const result = await response.json();
+            if (response.ok) {
+                showProviderSuccess('درخواست آزاد شد و به لیست عمومی بازگشت');
+                log('آزادسازی درخواست نسخه', `درخواست #${requestId}`);
+                await fetchRequests();
+            } else {
+                showProviderError(result.message || 'خطا در آزادسازی درخواست');
+            }
+        } catch {
+            showProviderError('خطا در برقراری ارتباط');
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
 
-            <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-                <SearchInput value={search} onChange={setSearch} placeholder="کد، نام یا موبایل..." />
-                <FilterSelect label="وضعیت" value={status} onChange={setStatus} options={statusOptions} />
+    // ---------- status transition ----------
+    const handleStatusTransition = async (
+        requestId: number,
+        endpoint: string,
+        stepLabel: string
+    ) => {
+        if (!session?.token) return;
+        setActionLoadingId(requestId);
+        try {
+            const response = await fetch(
+                `${API_BASE}/staff/pharmacy/requests/${requestId}/${endpoint}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.token}`,
+                        'Accept': 'application/json',
+                    },
+                }
+            );
+            const result = await response.json();
+            if (response.ok) {
+                showProviderSuccess(`عملیات "${stepLabel}" ثبت شد`);
+                log(`تغییر وضعیت به ${stepLabel}`, `درخواست #${requestId}`);
+                await fetchRequests();
+            } else {
+                showProviderError(result.message || 'خطا در تغییر وضعیت');
+            }
+        } catch {
+            showProviderError('ارتباط با سرور برقرار نشد');
+        } finally {
+            setActionLoadingId(null);
+            setCancelId(null);
+        }
+    };
+
+    // فیلتر سمت کلاینت: delivery_type + search
+    const list = requests.filter((r) => {
+        if (deliveryType !== 'all' && String(r.delivery_type) !== deliveryType) return false;
+        const q = search.trim();
+        if (!q) return true;
+        return (
+            r.user_name?.includes(q) ||
+            r.user_mobile?.includes(q) ||
+            String(r.id).includes(q) ||
+            (r.prescription_code && r.prescription_code.includes(q))
+        );
+    });
+
+    const toCancel = requests.find((r) => r.id === cancelId) ?? null;
+
+    return (
+        <div className="space-y-4 sm:space-y-6 text-right font-[YekanBakhFaNum]" dir="rtl">
+            <PageHeader
+                title="درخواست‌های نسخه داروخانه"
+                description="بررسی نسخه، قیمت‌گذاری و ارسال برای بیمار"
+            />
+
+            {/* فیلترها */}
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
+                <div className="flex-1 min-w-[200px]">
+                    <SearchInput
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="شماره درخواست، نام بیمار، موبایل یا کد نسخه..."
+                    />
+                </div>
+                <div className="grid grid-cols-2 sm:flex items-center gap-2">
+                    <FilterSelect
+                        label="وضعیت"
+                        value={status}
+                        onChange={setStatus}
+                        options={statusOptions}
+                    />
+                    <FilterSelect
+                        label="نوع تحویل"
+                        value={deliveryType}
+                        onChange={setDeliveryType}
+                        options={deliveryOptions}
+                    />
+                </div>
             </div>
 
-            {list.length === 0 ? (
-                <EmptyState message="درخواستی یافت نشد." />
+            {loading ? (
+                <div className="flex h-48 items-center justify-center rounded-2xl border border-slate-200 bg-white">
+                    <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                </div>
+            ) : list.length === 0 ? (
+                <EmptyState message="درخواست دارویی فعالی یافت نشد." />
             ) : (
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-50">
+                <>
+                    {/* کارت موبایل */}
+                    <div className="space-y-3 md:hidden">
+                        {list.map((r) => {
+                            const statusStr = String(r.status);
+                            const step = getNextStep(r.status, r.delivery_type);
+                            const isActionLoading = actionLoadingId === r.id;
+                            const assigned = isAssignedToUs(r);
+
+                            return (
+                                <div
+                                    key={r.id}
+                                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3"
+                                >
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                                #{r.id}
+                                            </span>
+                                            <span className="text-[11px] font-medium text-slate-500">
+                                                {r.delivery_type === 1
+                                                    ? 'ارسال با پیک'
+                                                    : 'حضوری'}
+                                            </span>
+                                            {!assigned ? (
+                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                                                    عمومی
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700">
+                                                    رزرو شما
+                                                </span>
+                                            )}
+                                        </div>
+                                        <StatusBadge
+                                            label={
+                                                staffPharmacyStatusLabels[statusStr] || statusStr
+                                            }
+                                            className={
+                                                staffPharmacyStatusStyles[statusStr] ||
+                                                'bg-gray-100'
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-bold text-slate-900 text-sm">
+                                                {r.user_name || 'کاربر ناشناس'}
+                                            </p>
+                                            <p className="font-mono text-xs text-slate-400 mt-0.5">
+                                                {new Date(r.created_at).toLocaleDateString('fa-IR')}
+                                            </p>
+                                        </div>
+                                        {r.user_mobile && (
+                                            <a
+                                                href={`tel:${r.user_mobile}`}
+                                                className="flex items-center gap-1.5 rounded-xl bg-teal-50 px-2.5 py-1.5 text-xs font-semibold text-teal-700"
+                                                dir="ltr"
+                                            >
+                                                <Phone className="h-3.5 w-3.5" />
+                                                <span>{r.user_mobile}</span>
+                                            </a>
+                                        )}
+                                    </div>
+
+                                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl text-xs">
+                                        <span>مبلغ کل:</span>
+                                        <span className="font-bold text-slate-800">
+                                            {r.total_price
+                                                ? `${formatFaNumber(r.total_price)} تومان`
+                                                : 'در انتظار قیمت‌گذاری'}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDetailRequestId(r.id)}
+                                            className="w-full rounded-xl bg-slate-100 py-2.5 text-center text-xs font-medium text-slate-700 hover:bg-slate-200"
+                                        >
+                                            {r.status === 0
+                                                ? assigned
+                                                    ? 'قیمت‌گذاری'
+                                                    : 'مشاهده نسخه'
+                                                : 'اقلام و مدارک'}
+                                        </button>
+
+                                        {can('pharmacy.requests.status') && (
+                                            <>
+                                                {!assigned && r.status === 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAcceptRequest(r.id)}
+                                                        disabled={isActionLoading}
+                                                        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-medium text-white disabled:opacity-50"
+                                                    >
+                                                        {isActionLoading ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Lock className="h-3.5 w-3.5" />
+                                                        )}
+                                                        <span>رزرو درخواست</span>
+                                                    </button>
+                                                )}
+
+                                                {assigned && r.status === 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleReleaseRequest(r.id)}
+                                                        disabled={isActionLoading}
+                                                        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-50 py-2.5 text-xs font-medium text-amber-700 disabled:opacity-50"
+                                                    >
+                                                        {isActionLoading ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Unlock className="h-3.5 w-3.5" />
+                                                        )}
+                                                        <span>آزادسازی</span>
+                                                    </button>
+                                                )}
+
+                                                {assigned && r.status > 0 && step && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleStatusTransition(
+                                                                r.id,
+                                                                step.endpoint,
+                                                                step.label
+                                                            )
+                                                        }
+                                                        disabled={isActionLoading}
+                                                        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-600 py-2.5 text-xs font-medium text-white disabled:opacity-50"
+                                                    >
+                                                        {isActionLoading && (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        )}
+                                                        <span>{step.label}</span>
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {can('pharmacy.requests.status') &&
+                                        assigned &&
+                                        [0, 1].includes(r.status) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setCancelId(r.id)}
+                                                className="w-full rounded-xl bg-red-50 py-2 text-xs font-medium text-red-700 hover:bg-red-100"
+                                            >
+                                                لغو درخواست
+                                            </button>
+                                        )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* جدول دسکتاپ */}
+                    <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+                        <table className="w-full text-sm">
+                            <thead className="bg-slate-50 text-slate-600">
                             <tr>
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">کد</th>
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">بیمار</th>
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">اقلام</th>
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">تحویل</th>
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">وضعیت</th>
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">عملیات</th>
+                                <th className="px-4 py-3 text-right">شناسه</th>
+                                <th className="px-4 py-3 text-right">بیمار</th>
+                                <th className="px-4 py-3 text-right">روش تحویل</th>
+                                <th className="px-4 py-3 text-right">وضعیت رزرو</th>
+                                <th className="px-4 py-3 text-right">مبلغ نسخه</th>
+                                <th className="px-4 py-3 text-right">تاریخ</th>
+                                <th className="px-4 py-3 text-right">وضعیت</th>
+                                <th className="px-4 py-3 text-center">عملیات</th>
                             </tr>
-                        </thead>
-                        <tbody>
+                            </thead>
+                            <tbody>
                             {list.map((r) => {
-                                const step = nextStep[r.status];
+                                const statusStr = String(r.status);
+                                const step = getNextStep(r.status, r.delivery_type);
+                                const isActionLoading = actionLoadingId === r.id;
+                                const assigned = isAssignedToUs(r);
+
                                 return (
-                                    <tr key={r.id} className="border-t border-slate-100">
-                                        <td className="px-4 py-3 font-mono text-xs text-slate-500">{r.code}</td>
-                                        <td className="px-4 py-3">
-                                            <p className="font-medium text-slate-800">{r.patientName}</p>
-                                            <p className="text-xs text-slate-400">{r.createdAt}</p>
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-600">{formatFaNumber(r.drugs.length)} قلم</td>
-                                        <td className="px-4 py-3 text-slate-600">{deliveryTypeLabels[r.deliveryType]}</td>
-                                        <td className="px-4 py-3">
-                                            <StatusBadge label={pharmacyStatusLabels[r.status]} className={pharmacyStatusStyles[r.status]} />
+                                    <tr
+                                        key={r.id}
+                                        className="border-t border-slate-100 hover:bg-slate-50/50"
+                                    >
+                                        <td className="px-4 py-3 font-mono text-xs font-bold text-slate-500">
+                                            #{r.id}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex flex-wrap gap-1.5">
+                                            <p className="font-semibold text-slate-800">
+                                                {r.user_name || 'کاربر ناشناس'}
+                                            </p>
+                                            <p
+                                                className="text-xs text-slate-400 font-mono"
+                                                dir="ltr"
+                                            >
+                                                {r.user_mobile}
+                                            </p>
+                                        </td>
+                                        <td className="px-4 py-3 text-xs">
+                                            {r.delivery_type === 1
+                                                ? 'ارسال با پیک'
+                                                : 'حضوری'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs">
+                                            {!assigned ? (
+                                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 font-medium text-amber-700">
+                                                        <XCircle className="w-3 h-3" />
+                                                        عمومی
+                                                    </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2 py-0.5 font-medium text-teal-700">
+                                                        <Lock className="w-3 h-3" />
+                                                        رزرو شما
+                                                    </span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 font-medium text-slate-700">
+                                            {r.total_price
+                                                ? `${formatFaNumber(r.total_price)} تومان`
+                                                : '-'}
+                                        </td>
+                                        <td
+                                            className="px-4 py-3 text-slate-500 font-mono text-xs"
+                                            dir="ltr"
+                                        >
+                                            {new Date(r.created_at).toLocaleDateString('fa-IR')}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <StatusBadge
+                                                label={
+                                                    staffPharmacyStatusLabels[statusStr] ||
+                                                    statusStr
+                                                }
+                                                className={
+                                                    staffPharmacyStatusStyles[statusStr] ||
+                                                    ''
+                                                }
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                                 <button
                                                     type="button"
-                                                    onClick={() => setSelectedId(r.id)}
-                                                    className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                                                    onClick={() => setDetailRequestId(r.id)}
+                                                    className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
                                                 >
-                                                    جزئیات
+                                                    {r.status === 0
+                                                        ? assigned
+                                                            ? 'قیمت‌گذاری'
+                                                            : 'مشاهده'
+                                                        : 'جزئیات'}
                                                 </button>
-                                                {can('pharmacy.requests.status') && step && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setRequestStatus(r, step.to, step.label)}
-                                                        className="rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100"
-                                                    >
-                                                        {step.label}
-                                                    </button>
-                                                )}
-                                                {can('pharmacy.requests.status') && r.status === 'ready' && r.deliveryType === 'pickup' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setRequestStatus(r, 'delivered', 'تحویل حضوری نسخه')}
-                                                        className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-                                                    >
-                                                        تحویل شد
-                                                    </button>
-                                                )}
-                                                {can('pharmacy.requests.status') && (r.status === 'new' || r.status === 'reviewing') && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setCancelId(r.id)}
-                                                        className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
-                                                    >
-                                                        لغو
-                                                    </button>
+
+                                                {can('pharmacy.requests.status') && (
+                                                    <>
+                                                        {!assigned && r.status === 0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleAcceptRequest(r.id)
+                                                                }
+                                                                disabled={isActionLoading}
+                                                                className="flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                                            >
+                                                                {isActionLoading ? (
+                                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                                ) : (
+                                                                    <Lock className="h-3 w-3" />
+                                                                )}
+                                                                <span>رزرو</span>
+                                                            </button>
+                                                        )}
+
+                                                        {assigned && r.status === 0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleReleaseRequest(r.id)
+                                                                }
+                                                                disabled={isActionLoading}
+                                                                className="flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                                                            >
+                                                                {isActionLoading ? (
+                                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                                ) : (
+                                                                    <Unlock className="h-3 w-3" />
+                                                                )}
+                                                                <span>آزادسازی</span>
+                                                            </button>
+                                                        )}
+
+                                                        {assigned && r.status > 0 && step && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleStatusTransition(
+                                                                        r.id,
+                                                                        step.endpoint,
+                                                                        step.label
+                                                                    )
+                                                                }
+                                                                disabled={isActionLoading}
+                                                                className="flex items-center gap-1 rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 disabled:opacity-50"
+                                                            >
+                                                                {isActionLoading && (
+                                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                                )}
+                                                                <span>{step.label}</span>
+                                                            </button>
+                                                        )}
+
+                                                        {assigned &&
+                                                            [0, 1].includes(r.status) && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setCancelId(r.id)
+                                                                    }
+                                                                    className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                                                                >
+                                                                    لغو
+                                                                </button>
+                                                            )}
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
                                     </tr>
                                 );
                             })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {selected && (
-                <ProviderModal open onClose={() => setSelectedId(null)} title={`نسخه ${selected.code}`}>
-                    <dl className="space-y-3 text-sm">
-                        <DetailRow label="بیمار" value={selected.patientName} />
-                        <DetailRow
-                            label="موبایل"
-                            value={
-                                <span className="flex items-center gap-1" dir="ltr">
-                                    <Phone className="h-3.5 w-3.5 text-slate-400" />
-                                    {selected.patientPhone}
-                                </span>
-                            }
-                        />
-                        <DetailRow label="کد رهگیری نسخه" value={selected.prescriptionCode} />
-                        <DetailRow label="نوع تحویل" value={deliveryTypeLabels[selected.deliveryType]} />
-                        {selected.address && (
-                            <DetailRow
-                                label="آدرس"
-                                value={
-                                    <span className="flex items-start gap-1">
-                                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                        {selected.address}
-                                    </span>
-                                }
-                            />
-                        )}
-                    </dl>
-                    <div className="mt-4 rounded-xl border border-slate-200">
-                        <p className="border-b border-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">اقلام نسخه</p>
-                        <ul className="divide-y divide-slate-100 text-sm">
-                            {selected.drugs.map((d) => (
-                                <li key={d.name} className="flex justify-between px-4 py-2">
-                                    <span>{d.name}</span>
-                                    <span className="text-slate-500">{formatFaNumber(d.qty)} عدد</span>
-                                </li>
-                            ))}
-                        </ul>
+                            </tbody>
+                        </table>
                     </div>
-                </ProviderModal>
+                </>
             )}
 
+            {/* مودال مستقل جزئیات */}
+            <PharmacyRequestDetailModal
+                requestId={detailRequestId}
+                onClose={() => setDetailRequestId(null)}
+                onMutated={fetchRequests}
+            />
+
+            {/* مودال لغو */}
             {toCancel && (
                 <ConfirmModal
-                    title="لغو نسخه"
-                    description={`درخواست ${toCancel.code} (${toCancel.patientName}) لغو شود؟`}
-                    note="پس از لغو، بیمار از طریق پیامک مطلع می‌شود."
-                    confirmLabel="لغو درخواست"
+                    title="لغو درخواست نسخه"
+                    description={`آیا از لغو نسخه #${toCancel.id} اطمینان دارید؟`}
+                    note="با تأیید این عمل، وضعیت درخواست به لغو شده تغییر خواهد کرد."
+                    confirmLabel="تأیید لغو"
                     onClose={() => setCancelId(null)}
-                    onConfirm={() => {
-                        setRequestStatus(toCancel, 'canceled', 'لغو درخواست نسخه');
-                        setCancelId(null);
-                    }}
+                    onConfirm={() =>
+                        handleStatusTransition(toCancel.id, 'cancel', 'لغو سفارش')
+                    }
                 />
             )}
         </div>

@@ -30,6 +30,8 @@ export interface DoctorUser {
     rating?: number;
     medical_code?: string;
     has_paid_subscription?: number;
+    has_uploaded_documents?: number;
+    document_status?: string;
 }
 
 // ساختار واقعی ریسپانس login

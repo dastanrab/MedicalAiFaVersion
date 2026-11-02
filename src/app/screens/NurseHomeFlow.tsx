@@ -176,7 +176,7 @@ export function NurseHomeFlow() {
                     "Accept": "application/json",
                     "Authorization": `Bearer ${accessToken}`
                 },
-                body: JSON.stringify({ service_ids: selectedServices })
+                body: JSON.stringify({ service_ids: selectedServices , address_id:selectedAddressId })
             });
             const json = await response.json();
             if (json.success) {

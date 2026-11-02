@@ -1,6 +1,8 @@
 {
   "appId": "ai.medira.app",
   "appName": "مدیرا AI",
+  "version": "0.0.14",
+  "build": 14,
   "webDir": "dist",
   "backgroundColor": "#ffffff",
   "android": {

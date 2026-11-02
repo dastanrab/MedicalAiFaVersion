@@ -5,7 +5,8 @@ import { Button } from '../components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../components/ui/input-otp';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../admin/store/settingsStore';
-// import {syncFcmTokenWithBackend} from "../utils/fcm";
+import { AndroidSmsRetriever } from '@capgo/capacitor-android-sms-retriever';
+import { Capacitor } from '@capacitor/core';
 
 export function OTPVerification() {
   const navigate = useNavigate();
@@ -20,7 +21,6 @@ export function OTPVerification() {
   const [cooldown, setCooldown] = useState(0);
   const { setTokens } = useAuthStore();
 
-
   // تایمر ارسال مجدد
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -28,30 +28,63 @@ export function OTPVerification() {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  // اضافه شدن Web OTP API برای خواندن خودکار پیامک
+  // خواندن خودکار پیامک (پشتیبانی هم‌زمان از موبایل و وب)
   useEffect(() => {
-    if ('OTPCredential' in window) {
-      const ac = new AbortController();
+    let smsListener: any;
+    const ac = new AbortController();
 
-      navigator.credentials
-          .get({
-            otp: { transport: ['sms'] },
-            signal: ac.signal,
-          })
-          .then((credential) => {
-            if (credential && credential.code) {
-              setOtp(credential.code);
-              // در صورت تمایل می‌توانید اینجا مستقیماً handleVerify را هم صدا بزنید
-              // تا بلافاصله بعد از پر شدن، لاگین انجام شود
+    const startAutoRead = async () => {
+      // حالت اول: اگر برنامه روی اپلیکیشن موبایل (اندروید با کاپاسیتور) باشد
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await AndroidSmsRetriever.startWatch();
+
+          smsListener = await AndroidSmsRetriever.addListener('smsReceived', (event: { message?: string }) => {
+            const messageText = event.message || '';
+            // استخراج کد ۴ الی ۶ رقمی (مثل 7714 از متن پیامک شما)
+            const match = messageText.match(/\b\d{4,6}\b/);
+            if (match && match[0]) {
+              setOtp(match[0]);
             }
-          })
-          .catch((err) => {
-            console.error('خطا در دریافت خودکار پیامک:', err);
           });
+        } catch (err) {
+          console.error('خطا در SMS Retriever موبایل:', err);
+        }
+      }
+      // حالت دوم: اگر برنامه روی مرورگر وب (سایت یا PWA) باشد
+      else if ('OTPCredential' in window) {
+        try {
+          navigator.credentials
+              .get({
+                otp: { transport: ['sms'] },
+                signal: ac.signal,
+              })
+              .then((credential: any) => {
+                if (credential && credential.code) {
+                  setOtp(credential.code);
+                }
+              })
+              .catch((err) => {
+                console.log('Web OTP API skipped or not supported:', err);
+              });
+        } catch (err) {
+          console.error('خطا در Web OTP API:', err);
+        }
+      }
+    };
 
-      // اگر کاربر صفحه را بست، درخواست متوقف شود
-      return () => ac.abort();
-    }
+    startAutoRead();
+
+    // پاکسازی هنگام خروج از صفحه
+    return () => {
+      ac.abort();
+      if (smsListener) {
+        smsListener.remove();
+      }
+      if (Capacitor.isNativePlatform()) {
+        AndroidSmsRetriever.stopWatch().catch(() => {});
+      }
+    };
   }, []);
 
   const handleVerify = async () => {
@@ -118,6 +151,10 @@ export function OTPVerification() {
         setError('');
         setOtp('');
         setCooldown(resendCooldown);
+
+        if (Capacitor.isNativePlatform()) {
+          await AndroidSmsRetriever.startWatch();
+        }
       } else {
         setError(data.message || 'خطا در ارسال مجدد کد');
       }
@@ -174,7 +211,7 @@ export function OTPVerification() {
                       value={otp}
                       onChange={setOtp}
                       disabled={loading}
-                      autoComplete="one-time-code" // ضروری برای آیفون (Safari)
+                      autoComplete="one-time-code"
                       containerClassName="justify-center"
                   >
                     <InputOTPGroup className="gap-2">

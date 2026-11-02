@@ -98,7 +98,7 @@ export function LabsFlowV1() {
 
             const res = await fetch(`${API_BASE_URL}/api/user/labs/search-centers`, {
                 method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ test_pack_ids: testPackIds,visit_type: visitType }),
+                body: JSON.stringify({ test_pack_ids: testPackIds,visit_type: visitType , address_id:selectedAddressId }),
             });
             const json = await res.json();
             if (json.success) {

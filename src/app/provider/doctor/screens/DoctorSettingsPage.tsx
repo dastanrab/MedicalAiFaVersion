@@ -2,11 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { PageHeader } from '../../components';
 import { PanelPageSkeleton } from '../../../components/PageSkeleton';
 import { useDoctorAuthStore } from '../store/doctorAuthStore';
-import { Camera, User } from 'lucide-react';
-import {ProvinceCitySelector} from "../../../components/ProvinceCitySelector";
+import { Camera, User, MessageSquare } from 'lucide-react';
+import { ProvinceCitySelector } from '../../../components/ProvinceCitySelector';
 import { formatPriceInput, parsePriceInput } from '../../../utils/formatNumber';
-// توجه: مسیر ایمپورت ProvinceCitySelector را بر اساس ساختار پوشه‌های خود تنظیم کنید
-
 
 const BASE_URL = 'https://api.mediraai.com/api';
 
@@ -14,7 +12,6 @@ export function DoctorSettingsPage() {
     const token = useDoctorAuthStore((state) => state.token);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // افزودن province_id و city_id به استیت
     const [profile, setProfile] = useState({
         name: '',
         specialty: '',
@@ -23,9 +20,14 @@ export function DoctorSettingsPage() {
         phone: '',
         office_phone: '',
         email: '',
+        // تعرفه‌ها
         visit_price: '',
         phone_consultation_price: '',
         video_consultation_price: '',
+        // مشاوره متنی
+        is_text_consultation_enabled: false,
+        text_consultation_price: '',
+        // استان و شهر (فقط خواندنی)
         province_id: '',
         city_id: ''
     });
@@ -60,9 +62,11 @@ export function DoctorSettingsPage() {
                         phone: docInfo.phone || '',
                         office_phone: docInfo.office_phone || '',
                         email: docInfo.email || '',
-                        visit_price: docInfo.visit_price || '',
-                        phone_consultation_price: docInfo.phone_consultation_price || '',
-                        video_consultation_price: docInfo.video_consultation_price || '',
+                        visit_price: docInfo.visit_price ? String(docInfo.visit_price) : '',
+                        phone_consultation_price: docInfo.phone_consultation_price ? String(docInfo.phone_consultation_price) : '',
+                        video_consultation_price: docInfo.video_consultation_price ? String(docInfo.video_consultation_price) : '',
+                        is_text_consultation_enabled: Boolean(docInfo.is_text_consultation_enabled),
+                        text_consultation_price: docInfo.text_consultation_price ? String(docInfo.text_consultation_price) : '',
                         province_id: docInfo.province_id || '',
                         city_id: docInfo.city_id || ''
                     });
@@ -97,21 +101,28 @@ export function DoctorSettingsPage() {
             const formData = new FormData();
             formData.append('_method', 'PUT');
 
+            // فیلدهای مجاز برای ویرایش
             formData.append('name', profile.name);
-            formData.append('medical_code', profile.medical_code);
             formData.append('address', profile.address);
             formData.append('phone', profile.phone);
             formData.append('office_phone', profile.office_phone);
             formData.append('email', profile.email);
 
-            // افزودن تعرفه‌ها (چک کردن خالی نبودن مقدار)
+            // تعرفه‌ها به تومان
             formData.append('visit_price', profile.visit_price ? profile.visit_price.toString() : '');
             formData.append('phone_consultation_price', profile.phone_consultation_price ? profile.phone_consultation_price.toString() : '');
             formData.append('video_consultation_price', profile.video_consultation_price ? profile.video_consultation_price.toString() : '');
 
-            // افزودن استان و شهر به FormData
-            if (profile.province_id) formData.append('province_id', profile.province_id.toString());
-            if (profile.city_id) formData.append('city_id', profile.city_id.toString());
+            // وضعیت و تعرفه مشاوره متنی
+            formData.append('is_text_consultation_enabled', profile.is_text_consultation_enabled ? '1' : '0');
+            formData.append(
+                'text_consultation_price',
+                profile.is_text_consultation_enabled && profile.text_consultation_price
+                    ? profile.text_consultation_price.toString()
+                    : ''
+            );
+
+            // توجه: فیلدهای medical_code، province_id و city_id طبق درخواست عمداً ارسال نمی‌شوند.
 
             if (imageFile) {
                 formData.append('avatar', imageFile);
@@ -127,12 +138,12 @@ export function DoctorSettingsPage() {
             });
 
             if (res.ok) {
-                setMessage({ text: 'اطلاعات و تصویر با موفقیت بروزرسانی شد.', type: 'success' });
+                setMessage({ text: 'اطلاعات با موفقیت ذخیره شد.', type: 'success' });
             } else {
                 const errorData = await res.json();
                 setMessage({ text: errorData.message || 'خطا در ذخیره اطلاعات.', type: 'error' });
             }
-        } catch (error) {
+        } catch {
             setMessage({ text: 'خطای ارتباط با سرور.', type: 'error' });
         } finally {
             setSaving(false);
@@ -153,9 +164,9 @@ export function DoctorSettingsPage() {
                 </div>
             )}
 
-            {/* بخش آپلود تصویر */}
-            <div className="flex items-center gap-6 rounded-2xl border border-slate-200 bg-white p-6">
-                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-slate-50 bg-slate-100 shadow-sm">
+            {/* بخش تصویر پروفایل */}
+            <div className="flex items-center gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-slate-50 bg-slate-100 shadow-inner">
                     {previewUrl ? (
                         <img src={previewUrl} alt="Avatar preview" className="h-full w-full object-cover" />
                     ) : (
@@ -186,66 +197,113 @@ export function DoctorSettingsPage() {
                 </div>
             </div>
 
-            {/* بخش اطلاعات هویتی و تماس */}
-            <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 md:grid-cols-2">
-                <Field label="نام و نام خانوادگی" value={profile.name} onChange={(v) => setProfile({ ...profile, name: v })} />
-                <Field label="شماره موبایل" value={profile.phone} onChange={(v) => setProfile({ ...profile, phone: v })} />
+            {/* بخش اطلاعات پایه و موقعیت (با فیلدهای قفل‌شده) */}
+            <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 md:grid-cols-2 shadow-sm">
+                <div className="col-span-full mb-1">
+                    <h3 className="text-sm font-semibold text-slate-800">اطلاعات هویتی و آدرس مطب</h3>
+                </div>
+
+                <Field label="نام و نام خانوادگی" value={profile.name} onChange={(v) => setProfile(prev => ({ ...prev, name: v }))} />
+                <Field label="شماره موبایل" value={profile.phone} onChange={(v) => setProfile(prev => ({ ...prev, phone: v }))} />
 
                 <Field label="تخصص" value={profile.specialty} onChange={() => {}} disabled />
-                <Field label="شماره نظام پزشکی" value={profile.medical_code} onChange={(v) => setProfile({ ...profile, medical_code: v })} />
+                <Field label="شماره نظام پزشکی (غیرقابل تغییر)" value={profile.medical_code} onChange={() => {}} disabled />
 
-                <Field label="ایمیل" value={profile.email} onChange={(v) => setProfile({ ...profile, email: v })} />
-                <Field label="تلفن ثابت مطب" value={profile.office_phone} onChange={(v) => setProfile({ ...profile, office_phone: v })} />
+                <Field label="ایمیل" value={profile.email} onChange={(v) => setProfile(prev => ({ ...prev, email: v }))} />
+                <Field label="تلفن ثابت مطب" value={profile.office_phone} onChange={(v) => setProfile(prev => ({ ...prev, office_phone: v }))} />
 
-                {/* اضافه کردن کامپوننت انتخاب استان و شهر */}
-                {/* اضافه کردن کامپوننت انتخاب استان و شهر */}
-                <div className="md:col-span-2">
+                {/* استان و شهر قفل‌شده (Disabled) */}
+                <div className="md:col-span-2 pointer-events-none opacity-60">
                     <ProvinceCitySelector
                         provinceId={profile.province_id ? Number(profile.province_id) : ''}
                         cityId={profile.city_id ? Number(profile.city_id) : ''}
-                        // به جای profile از prev استفاده کنید:
-                        onProvinceChange={(val) => setProfile(prev => ({ ...prev, province_id: val.toString(), city_id: '' }))}
-                        onCityChange={(val) => setProfile(prev => ({ ...prev, city_id: val.toString() }))}
+                        onProvinceChange={() => {}}
+                        onCityChange={() => {}}
+                    />
+                    <span className="text-[11px] text-slate-400 mt-1 block">استان و شهر فقط توسط پشتیبانی قابل تغییر است.</span>
+                </div>
+
+                <Field label="آدرس مطب" value={profile.address} onChange={(v) => setProfile(prev => ({ ...prev, address: v }))} full />
+            </div>
+
+            {/* بخش کاملاً ایزوله‌شده تعرفه‌ها و تنظیمات نوبت‌دهی */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-base font-semibold text-slate-800">مدیریت تعرفه و خدمات نوبت‌دهی</h3>
+                    <p className="text-xs text-slate-500 mt-1">کلیه مبالغ را بر حسب <span className="font-bold text-slate-700">تومان</span> وارد کنید.</p>
+                </div>
+
+                {/* ویزیت حضوری و مشاوره‌ها */}
+                <div className="grid gap-4 md:grid-cols-3">
+                    <Field
+                        label="هزینه ویزیت حضوری"
+                        value={profile.visit_price}
+                        onChange={(v) => setProfile(prev => ({ ...prev, visit_price: v }))}
+                        type="price"
+                    />
+                    <Field
+                        label="هزینه مشاوره تلفنی"
+                        value={profile.phone_consultation_price}
+                        onChange={(v) => setProfile(prev => ({ ...prev, phone_consultation_price: v }))}
+                        type="price"
+                    />
+                    <Field
+                        label="هزینه مشاوره تصویری"
+                        value={profile.video_consultation_price}
+                        onChange={(v) => setProfile(prev => ({ ...prev, video_consultation_price: v }))}
+                        type="price"
                     />
                 </div>
 
+                {/* بلوک مستقل مشاوره متنی با تاگل سوئیچ */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition-all">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                                <MessageSquare size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-slate-800">فعال‌سازی مشاوره متنی</h4>
+                                <p className="text-xs text-slate-500">امکان دریافت پیام و ارسال نسخه/پاسخ متنی توسط بیمار</p>
+                            </div>
+                        </div>
 
-                <Field label="آدرس مطب" value={profile.address} onChange={(v) => setProfile({ ...profile, address: v })} full />
-            </div>
+                        {/* سوئیچ تاگل */}
+                        <label className="relative inline-flex cursor-pointer items-center">
+                            <input
+                                type="checkbox"
+                                checked={profile.is_text_consultation_enabled}
+                                onChange={(e) => setProfile(prev => ({ ...prev, is_text_consultation_enabled: e.target.checked }))}
+                                className="peer sr-only"
+                            />
+                            <div className="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:right-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all"></div>
+                        </label>
+                    </div>
 
-            {/* بخش تعرفه‌ها */}
-            <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 md:grid-cols-3">
-                <div className="col-span-full mb-2">
-                    <h3 className="text-sm font-semibold text-slate-700">تعرفه‌های پزشکی (تومان)</h3>
+                    {/* فیلد مبلغ مشاوره متنی تنها در صورت فعال بودن تاگل نمایش داده می‌شود */}
+                    {profile.is_text_consultation_enabled && (
+                        <div className="mt-4 pt-4 border-t border-slate-200/60 max-w-sm">
+                            <Field
+                                label="هزینه مشاوره متنی"
+                                value={profile.text_consultation_price}
+                                onChange={(v) => setProfile(prev => ({ ...prev, text_consultation_price: v }))}
+                                type="price"
+                            />
+                        </div>
+                    )}
                 </div>
-                <Field
-                    label="هزینه ویزیت حضوری"
-                    value={profile.visit_price}
-                    onChange={(v) => setProfile({ ...profile, visit_price: v })}
-                    type="price"
-                />
-                <Field
-                    label="هزینه مشاوره تلفنی"
-                    value={profile.phone_consultation_price}
-                    onChange={(v) => setProfile({ ...profile, phone_consultation_price: v })}
-                    type="price"
-                />
-                <Field
-                    label="هزینه مشاوره ویدیویی"
-                    value={profile.video_consultation_price}
-                    onChange={(v) => setProfile({ ...profile, video_consultation_price: v })}
-                    type="price"
-                />
             </div>
 
-            <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-xl bg-blue-600 px-8 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-                {saving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
-            </button>
+            <div className="flex justify-end">
+                <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="rounded-xl bg-blue-600 px-8 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                >
+                    {saving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
+                </button>
+            </div>
         </div>
     );
 }
@@ -267,21 +325,30 @@ function Field({
 }) {
     const isPrice = type === 'price';
     return (
-        <label className={`flex flex-col gap-1 ${full ? 'md:col-span-2' : ''} ${disabled ? 'opacity-70' : ''}`}>
-            <span className="text-xs text-slate-500">{label}</span>
-            <input
-                type={isPrice ? 'text' : type}
-                inputMode={isPrice ? 'numeric' : undefined}
-                dir={isPrice ? 'ltr' : undefined}
-                value={isPrice ? formatPriceInput(value) : value ?? ''}
-                onChange={(e) => onChange(isPrice ? parsePriceInput(e.target.value) : e.target.value)}
-                disabled={disabled}
-                className={`rounded-xl border px-3 py-2 text-sm outline-none transition-colors ${
-                    disabled
-                        ? 'bg-slate-50 border-slate-200 cursor-not-allowed text-slate-500'
-                        : 'border-slate-200 focus:border-blue-400 bg-white'
-                }`}
-            />
+        <label className={`flex flex-col gap-1.5 ${full ? 'md:col-span-2' : ''} ${disabled ? 'opacity-75' : ''}`}>
+            <span className="text-xs font-medium text-slate-600">{label}</span>
+            <div className="relative">
+                <input
+                    type={isPrice ? 'text' : type}
+                    inputMode={isPrice ? 'numeric' : undefined}
+                    dir={isPrice ? 'ltr' : undefined}
+                    value={isPrice ? formatPriceInput(value) : (value ?? '')}
+                    onChange={(e) => onChange(isPrice ? parsePriceInput(e.target.value) : e.target.value)}
+                    disabled={disabled}
+                    className={`w-full rounded-xl border px-3 py-2 text-sm outline-none transition-colors ${
+                        isPrice ? 'pl-14' : ''
+                    } ${
+                        disabled
+                            ? 'bg-slate-100 border-slate-200 cursor-not-allowed text-slate-500'
+                            : 'border-slate-200 focus:border-blue-500 bg-white'
+                    }`}
+                />
+                {isPrice && (
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                        تومان
+                    </span>
+                )}
+            </div>
         </label>
     );
 }

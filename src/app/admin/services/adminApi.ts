@@ -18,16 +18,43 @@ function headers(): HeadersInit {
     return h;
 }
 
+// در فایل adminApi.ts
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, { ...init, headers: { ...headers(), ...init?.headers } });
-    if (res.status === 401 || res.status === 403) throw new Error('دسترسی غیرمجاز');
-    if (!res.ok) throw new Error(`خطای سرور: ${res.status}`);
-    return res.json();
+
+    // اگر پاسخ ۴۰۱ یا ۴۰۳ بود
+    if (res.status === 401 || res.status === 403) {
+        throw new Error('دسترسی غیرمجاز');
+    }
+
+    // خواندن بدنه پاسخ به عنوان JSON
+    let json: any = null;
+    try {
+        json = await res.json();
+    } catch {
+        // بدنه پاسخ JSON نبوده است
+    }
+
+    if (!res.ok) {
+        const errorMsg = json?.message || `خطای سرور: ${res.status}`;
+        const error = new Error(errorMsg);
+        (error as any).response = { data: json, status: res.status };
+        throw error;
+    }
+
+    return json;
 }
+
 
 const statusMapApiToFront: Record<number, UserStatus> = { 1: 'active', 0: 'inactive' };
 const statusMapFrontToApi: Record<string, number> = { active: 1, blocked: 0, inactive: 2 };
-
+export async function rejectDoctorDocuments(userId: number, reason: string): Promise<{ success: boolean; message: string }> {
+    return await apiFetch<{ success: boolean; message: string }>(`/admin/users/${userId}/reject-documents`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+    });
+}
 export function normalizeUserFromApi(user: Record<string, unknown>): AdminUserRow {
     const name = (user.name as string) ?? '';
     const role = (user.role as string) ?? 'patient';
@@ -216,6 +243,54 @@ export function buildSignupTrend(users: AdminUserRow[]): { week: string; count: 
         .slice(-8)
         .map(([week, count]) => ({ week, count }));
 }
+// --- فراخوانی سرویس شاهکار ---
+export async function verifyUserShahkar(userId: number, nationalCode: string): Promise<{ success: boolean; message: string }> {
+    const result = await apiFetch<{ success: boolean; message: string }>(`/admin/users/${userId}/verify-shahkar`, {
+        method: 'POST',
+        body: JSON.stringify({ national_code: nationalCode }),
+    });
+    return result;
+}
+
+// --- دانلود ایمن مدرک با حفظ توکن ---
+// adminApi.ts
+
+export async function downloadAdminDocument(inputPath: string): Promise<void> {
+    if (!inputPath) return;
+
+    let cleanPath = inputPath;
+
+    // اگر مسیر به صورت URL کامل بود، فقط پارامتر path را جدا کن
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        try {
+            const urlObj = new URL(cleanPath);
+            const extractedParam = urlObj.searchParams.get('path');
+            if (extractedParam) {
+                cleanPath = decodeURIComponent(extractedParam);
+            } else {
+                // اگر استوریج مستقیم بود (مثلا https://api.../storage/doctor_documents/...)
+                cleanPath = urlObj.pathname.replace(/^\/?storage\//, '').replace(/^\//, '');
+            }
+        } catch {
+            // در صورت بروز خطا از همان رشته استفاده شود
+        }
+    }
+
+    // ارسال درخواست تمیز با مسیر نسبی
+    const res = await fetch(`${API_BASE}/admin/documents/download?path=${encodeURIComponent(cleanPath)}`, {
+        headers: headers(),
+    });
+
+    if (!res.ok) {
+        throw new Error('خطا در دریافت فایل مدرک.');
+    }
+
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 15000);
+}
+
 
 export function buildAppointmentTrend(appointments: AdminAppointmentRow[]): { week: string; count: number }[] {
     const weeks = new Map<string, number>();
